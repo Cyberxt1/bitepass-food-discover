@@ -1,0 +1,71 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Receipt } from "lucide-react";
+import { FILES, readTable } from "@/lib/csv-store";
+import type { Order } from "@/lib/seed";
+import { useAuth } from "@/lib/auth";
+import { naira } from "@/lib/format";
+
+export const Route = createFileRoute("/orders/")({ component: OrdersList });
+
+const statusColors: Record<string, string> = {
+  received: "bg-warning/15 text-warning",
+  preparing: "bg-primary/15 text-primary",
+  ready: "bg-success/15 text-success",
+  completed: "bg-muted text-muted-foreground",
+};
+
+function OrdersList() {
+  const { user } = useAuth();
+  const nav = useNavigate();
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    if (!user) { nav({ to: "/login" }); return; }
+    const list = readTable<Order>(FILES.orders).filter((o) => o.userId === user.id);
+    setOrders(list.reverse());
+  }, [user, nav]);
+
+  if (!user) return null;
+
+  return (
+    <div>
+      <header className="sticky top-0 z-30 glass border-b border-border/40">
+        <div className="px-4 py-3"><h1 className="text-base font-bold">Your orders</h1></div>
+      </header>
+
+      {orders.length === 0 ? (
+        <div className="grid place-items-center px-6 pt-20 text-center">
+          <Receipt className="h-12 w-12 text-muted-foreground" />
+          <p className="mt-4 text-base font-semibold">No orders yet</p>
+          <Link to="/" className="mt-6 rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">Order something</Link>
+        </div>
+      ) : (
+        <main className="space-y-3 px-4 pt-4">
+          {orders.map((o) => {
+            const items = JSON.parse(o.items) as { name: string; qty: number }[];
+            return (
+              <Link key={o.id} to="/orders/$orderId" params={{ orderId: o.id }}
+                className="block rounded-2xl bg-card p-4 shadow-soft transition hover:-translate-y-0.5"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">Order #{o.id.slice(-5)}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</p>
+                  </div>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${statusColors[o.status] ?? ""}`}>
+                    {o.status}
+                  </span>
+                </div>
+                <p className="mt-2 line-clamp-1 text-xs text-muted-foreground">
+                  {items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
+                </p>
+                <div className="mt-2 text-sm font-bold text-primary">{naira(o.total)}</div>
+              </Link>
+            );
+          })}
+        </main>
+      )}
+    </div>
+  );
+}
