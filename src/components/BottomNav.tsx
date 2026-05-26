@@ -3,13 +3,13 @@ import { Home, Search, ShoppingBag, Receipt, User } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { cn } from "@/lib/utils";
 
-const items = [
+const items: { to: "/" | "/search" | "/cart" | "/orders" | "/profile"; label: string; icon: typeof Home; badge?: boolean }[] = [
   { to: "/", label: "Home", icon: Home },
   { to: "/search", label: "Search", icon: Search },
   { to: "/cart", label: "Cart", icon: ShoppingBag, badge: true },
   { to: "/orders", label: "Orders", icon: Receipt },
   { to: "/profile", label: "Profile", icon: User },
-] as const;
+];
 
 export function BottomNav() {
   const path = useRouterState({ select: (s) => s.location.pathname });
