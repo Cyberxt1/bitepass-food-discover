@@ -4,12 +4,10 @@
  * Browsers can't write real .txt/.csv files to disk, so each "file" is a
  * CSV-formatted string persisted in localStorage. The API mimics a real
  * file system: read("users.csv") -> parse -> mutate -> write("users.csv").
- * Behavior is identical to a server reading/writing CSV files.
  */
 
 const NS = "bitepass:fs:";
 
-// --- CSV parsing (handles quoted fields with commas) ---
 function parseCSV(text: string): Record<string, string>[] {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
@@ -77,6 +75,10 @@ export function updateRow(
   const next = rows.map((r) => (match(r) ? { ...r, ...patch } : r));
   writeTable(name, next as Record<string, unknown>[]);
 }
+export function deleteRow(name: string, match: (r: Record<string, string>) => boolean): void {
+  const rows = readTable(name);
+  writeTable(name, rows.filter((r) => !match(r)) as Record<string, unknown>[]);
+}
 
 export const FILES = {
   users: "users.csv",
@@ -84,5 +86,6 @@ export const FILES = {
   meals: "meals.csv",
   reviews: "reviews.csv",
   orders: "orders.csv",
+  discounts: "discounts.csv",
   session: "session.txt",
 } as const;
