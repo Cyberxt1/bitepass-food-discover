@@ -78,37 +78,43 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+import { useRouterState } from "@tanstack/react-router";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const [ready, setReady] = useState(false);
-  const [splashDone, setSplashDone] = useState(false);
+  const [splashDone, setSplashDone] = useState(true);
 
   useEffect(() => {
     ensureSeed();
     setReady(true);
-    const seen = sessionStorage.getItem("bitepass:splash");
-    if (seen) setSplashDone(true);
   }, []);
-
-  const finishSplash = () => {
-    sessionStorage.setItem("bitepass:splash", "1");
-    setSplashDone(true);
-  };
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
           <CartProvider>
-            {ready && !splashDone && <Splash onDone={finishSplash} />}
-            <div className="mx-auto min-h-screen max-w-md bg-background pb-24">
-              <Outlet />
-            </div>
+            {ready && !splashDone && <Splash onDone={() => setSplashDone(true)} />}
+            <AppShell />
             <BottomNav />
             <Toaster position="top-center" richColors closeButton />
           </CartProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
+  );
+}
+
+function AppShell() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const fullWidth = path === "/" || path.startsWith("/business") || path.startsWith("/admin");
+  if (fullWidth) {
+    return <div className="min-h-screen bg-background"><Outlet /></div>;
+  }
+  return (
+    <div className="mx-auto min-h-screen max-w-md bg-background pb-24">
+      <Outlet />
+    </div>
   );
 }

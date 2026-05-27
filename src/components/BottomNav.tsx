@@ -3,8 +3,8 @@ import { Home, Search, ShoppingBag, Receipt, User } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { cn } from "@/lib/utils";
 
-const items: { to: "/" | "/search" | "/cart" | "/orders" | "/profile"; label: string; icon: typeof Home; badge?: boolean }[] = [
-  { to: "/", label: "Home", icon: Home },
+const items: { to: "/discover" | "/search" | "/cart" | "/orders" | "/profile"; label: string; icon: typeof Home; badge?: boolean }[] = [
+  { to: "/discover", label: "Home", icon: Home },
   { to: "/search", label: "Search", icon: Search },
   { to: "/cart", label: "Cart", icon: ShoppingBag, badge: true },
   { to: "/orders", label: "Orders", icon: Receipt },
@@ -15,13 +15,20 @@ export function BottomNav() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { count } = useCart();
 
-  if (path.startsWith("/admin") || path === "/login" || path === "/signup" || path === "/splash") return null;
+  const hidden =
+    path === "/" ||
+    path.startsWith("/admin") ||
+    path.startsWith("/business") ||
+    path === "/login" ||
+    path === "/signup" ||
+    path === "/splash";
+  if (hidden) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border/60 pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
         {items.map(({ to, label, icon: Icon, badge }) => {
-          const active = to === "/" ? path === "/" : path.startsWith(to);
+          const active = to === "/discover" ? path === "/discover" : path.startsWith(to);
           return (
             <Link
               key={to}

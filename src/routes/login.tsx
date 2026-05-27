@@ -20,7 +20,8 @@ function LoginPage() {
     try {
       const u = await login(email, password);
       toast.success(`Welcome back, ${u.name.split(" ")[0]}!`);
-      nav({ to: u.role === "admin" ? "/admin" : "/" });
+      const to = u.role === "admin" ? "/admin" : u.role === "restaurant" ? "/business" : "/discover";
+      nav({ to });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Login failed");
     } finally { setLoading(false); }
@@ -61,6 +62,7 @@ function LoginPage() {
       <div className="mt-5 rounded-2xl border border-dashed border-border bg-card/60 p-3 text-xs animate-slide-up" style={{ animationDelay: "200ms" }}>
         <p className="font-semibold">Demo credentials</p>
         <p className="mt-1 text-muted-foreground">Customer: <span className="font-mono">user@bitepass.app</span> / password</p>
+        <p className="text-muted-foreground">Restaurant: <span className="font-mono">owner@bitepass.app</span> / owner</p>
         <p className="text-muted-foreground">Admin: <span className="font-mono">admin@bitepass.app</span> / admin</p>
       </div>
 

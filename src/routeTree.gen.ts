@@ -15,6 +15,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as CartRouteImport } from './routes/cart'
+import { Route as BusinessRouteImport } from './routes/business'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
@@ -23,69 +24,49 @@ import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
 import { Route as MealMealIdRouteImport } from './routes/meal.$mealId'
 
 const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
+  id: '/signup', path: '/signup', getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => rootRouteImport,
+  id: '/search', path: '/search', getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
+  id: '/profile', path: '/profile', getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
+  id: '/login', path: '/login', getParentRoute: () => rootRouteImport,
 } as any)
 const DiscoverRoute = DiscoverRouteImport.update({
-  id: '/discover',
-  path: '/discover',
-  getParentRoute: () => rootRouteImport,
+  id: '/discover', path: '/discover', getParentRoute: () => rootRouteImport,
 } as any)
 const CartRoute = CartRouteImport.update({
-  id: '/cart',
-  path: '/cart',
-  getParentRoute: () => rootRouteImport,
+  id: '/cart', path: '/cart', getParentRoute: () => rootRouteImport,
+} as any)
+const BusinessRoute = BusinessRouteImport.update({
+  id: '/business', path: '/business', getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
+  id: '/admin', path: '/admin', getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
+  id: '/', path: '/', getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersIndexRoute = OrdersIndexRouteImport.update({
-  id: '/orders/',
-  path: '/orders/',
-  getParentRoute: () => rootRouteImport,
+  id: '/orders/', path: '/orders/', getParentRoute: () => rootRouteImport,
 } as any)
 const RestaurantRestaurantIdRoute = RestaurantRestaurantIdRouteImport.update({
-  id: '/restaurant/$restaurantId',
-  path: '/restaurant/$restaurantId',
-  getParentRoute: () => rootRouteImport,
+  id: '/restaurant/$restaurantId', path: '/restaurant/$restaurantId', getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersOrderIdRoute = OrdersOrderIdRouteImport.update({
-  id: '/orders/$orderId',
-  path: '/orders/$orderId',
-  getParentRoute: () => rootRouteImport,
+  id: '/orders/$orderId', path: '/orders/$orderId', getParentRoute: () => rootRouteImport,
 } as any)
 const MealMealIdRoute = MealMealIdRouteImport.update({
-  id: '/meal/$mealId',
-  path: '/meal/$mealId',
-  getParentRoute: () => rootRouteImport,
+  id: '/meal/$mealId', path: '/meal/$mealId', getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/business': typeof BusinessRoute
   '/cart': typeof CartRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
@@ -100,6 +81,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/business': typeof BusinessRoute
   '/cart': typeof CartRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
@@ -115,6 +97,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/business': typeof BusinessRoute
   '/cart': typeof CartRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
@@ -129,51 +112,24 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/admin'
-    | '/cart'
-    | '/discover'
-    | '/login'
-    | '/profile'
-    | '/search'
-    | '/signup'
-    | '/meal/$mealId'
-    | '/orders/$orderId'
-    | '/restaurant/$restaurantId'
-    | '/orders/'
+    | '/' | '/admin' | '/business' | '/cart' | '/discover' | '/login' | '/profile'
+    | '/search' | '/signup' | '/meal/$mealId' | '/orders/$orderId'
+    | '/restaurant/$restaurantId' | '/orders/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/admin'
-    | '/cart'
-    | '/discover'
-    | '/login'
-    | '/profile'
-    | '/search'
-    | '/signup'
-    | '/meal/$mealId'
-    | '/orders/$orderId'
-    | '/restaurant/$restaurantId'
-    | '/orders'
+    | '/' | '/admin' | '/business' | '/cart' | '/discover' | '/login' | '/profile'
+    | '/search' | '/signup' | '/meal/$mealId' | '/orders/$orderId'
+    | '/restaurant/$restaurantId' | '/orders'
   id:
-    | '__root__'
-    | '/'
-    | '/admin'
-    | '/cart'
-    | '/discover'
-    | '/login'
-    | '/profile'
-    | '/search'
-    | '/signup'
-    | '/meal/$mealId'
-    | '/orders/$orderId'
-    | '/restaurant/$restaurantId'
-    | '/orders/'
+    | '__root__' | '/' | '/admin' | '/business' | '/cart' | '/discover' | '/login'
+    | '/profile' | '/search' | '/signup' | '/meal/$mealId' | '/orders/$orderId'
+    | '/restaurant/$restaurantId' | '/orders/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  BusinessRoute: typeof BusinessRoute
   CartRoute: typeof CartRoute
   DiscoverRoute: typeof DiscoverRoute
   LoginRoute: typeof LoginRoute
@@ -188,107 +144,37 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/discover': {
-      id: '/discover'
-      path: '/discover'
-      fullPath: '/discover'
-      preLoaderRoute: typeof DiscoverRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cart': {
-      id: '/cart'
-      path: '/cart'
-      fullPath: '/cart'
-      preLoaderRoute: typeof CartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/orders/': {
-      id: '/orders/'
-      path: '/orders'
-      fullPath: '/orders/'
-      preLoaderRoute: typeof OrdersIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/restaurant/$restaurantId': {
-      id: '/restaurant/$restaurantId'
-      path: '/restaurant/$restaurantId'
-      fullPath: '/restaurant/$restaurantId'
-      preLoaderRoute: typeof RestaurantRestaurantIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/orders/$orderId': {
-      id: '/orders/$orderId'
-      path: '/orders/$orderId'
-      fullPath: '/orders/$orderId'
-      preLoaderRoute: typeof OrdersOrderIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/meal/$mealId': {
-      id: '/meal/$mealId'
-      path: '/meal/$mealId'
-      fullPath: '/meal/$mealId'
-      preLoaderRoute: typeof MealMealIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    '/signup': { id: '/signup'; path: '/signup'; fullPath: '/signup'; preLoaderRoute: typeof SignupRouteImport; parentRoute: typeof rootRouteImport }
+    '/search': { id: '/search'; path: '/search'; fullPath: '/search'; preLoaderRoute: typeof SearchRouteImport; parentRoute: typeof rootRouteImport }
+    '/profile': { id: '/profile'; path: '/profile'; fullPath: '/profile'; preLoaderRoute: typeof ProfileRouteImport; parentRoute: typeof rootRouteImport }
+    '/login': { id: '/login'; path: '/login'; fullPath: '/login'; preLoaderRoute: typeof LoginRouteImport; parentRoute: typeof rootRouteImport }
+    '/discover': { id: '/discover'; path: '/discover'; fullPath: '/discover'; preLoaderRoute: typeof DiscoverRouteImport; parentRoute: typeof rootRouteImport }
+    '/cart': { id: '/cart'; path: '/cart'; fullPath: '/cart'; preLoaderRoute: typeof CartRouteImport; parentRoute: typeof rootRouteImport }
+    '/business': { id: '/business'; path: '/business'; fullPath: '/business'; preLoaderRoute: typeof BusinessRouteImport; parentRoute: typeof rootRouteImport }
+    '/admin': { id: '/admin'; path: '/admin'; fullPath: '/admin'; preLoaderRoute: typeof AdminRouteImport; parentRoute: typeof rootRouteImport }
+    '/': { id: '/'; path: '/'; fullPath: '/'; preLoaderRoute: typeof IndexRouteImport; parentRoute: typeof rootRouteImport }
+    '/orders/': { id: '/orders/'; path: '/orders'; fullPath: '/orders/'; preLoaderRoute: typeof OrdersIndexRouteImport; parentRoute: typeof rootRouteImport }
+    '/restaurant/$restaurantId': { id: '/restaurant/$restaurantId'; path: '/restaurant/$restaurantId'; fullPath: '/restaurant/$restaurantId'; preLoaderRoute: typeof RestaurantRestaurantIdRouteImport; parentRoute: typeof rootRouteImport }
+    '/orders/$orderId': { id: '/orders/$orderId'; path: '/orders/$orderId'; fullPath: '/orders/$orderId'; preLoaderRoute: typeof OrdersOrderIdRouteImport; parentRoute: typeof rootRouteImport }
+    '/meal/$mealId': { id: '/meal/$mealId'; path: '/meal/$mealId'; fullPath: '/meal/$mealId'; preLoaderRoute: typeof MealMealIdRouteImport; parentRoute: typeof rootRouteImport }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
-  CartRoute: CartRoute,
-  DiscoverRoute: DiscoverRoute,
-  LoginRoute: LoginRoute,
-  ProfileRoute: ProfileRoute,
-  SearchRoute: SearchRoute,
-  SignupRoute: SignupRoute,
-  MealMealIdRoute: MealMealIdRoute,
-  OrdersOrderIdRoute: OrdersOrderIdRoute,
-  RestaurantRestaurantIdRoute: RestaurantRestaurantIdRoute,
-  OrdersIndexRoute: OrdersIndexRoute,
+  IndexRoute, AdminRoute, BusinessRoute, CartRoute, DiscoverRoute, LoginRoute,
+  ProfileRoute, SearchRoute, SignupRoute, MealMealIdRoute, OrdersOrderIdRoute,
+  RestaurantRestaurantIdRoute, OrdersIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
