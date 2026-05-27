@@ -13,7 +13,9 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as CartRouteImport } from './routes/cart'
+import { Route as BusinessRouteImport } from './routes/business'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
@@ -41,9 +43,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DiscoverRoute = DiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CartRoute = CartRouteImport.update({
   id: '/cart',
   path: '/cart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BusinessRoute = BusinessRouteImport.update({
+  id: '/business',
+  path: '/business',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -80,7 +92,9 @@ const MealMealIdRoute = MealMealIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/business': typeof BusinessRoute
   '/cart': typeof CartRoute
+  '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
@@ -93,7 +107,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/business': typeof BusinessRoute
   '/cart': typeof CartRoute
+  '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
@@ -107,7 +123,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/business': typeof BusinessRoute
   '/cart': typeof CartRoute
+  '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
@@ -122,7 +140,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/business'
     | '/cart'
+    | '/discover'
     | '/login'
     | '/profile'
     | '/search'
@@ -135,7 +155,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/business'
     | '/cart'
+    | '/discover'
     | '/login'
     | '/profile'
     | '/search'
@@ -148,7 +170,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/business'
     | '/cart'
+    | '/discover'
     | '/login'
     | '/profile'
     | '/search'
@@ -162,7 +186,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  BusinessRoute: typeof BusinessRoute
   CartRoute: typeof CartRoute
+  DiscoverRoute: typeof DiscoverRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   SearchRoute: typeof SearchRoute
@@ -203,11 +229,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cart': {
       id: '/cart'
       path: '/cart'
       fullPath: '/cart'
       preLoaderRoute: typeof CartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/business': {
+      id: '/business'
+      path: '/business'
+      fullPath: '/business'
+      preLoaderRoute: typeof BusinessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -258,7 +298,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  BusinessRoute: BusinessRoute,
   CartRoute: CartRoute,
+  DiscoverRoute: DiscoverRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   SearchRoute: SearchRoute,
