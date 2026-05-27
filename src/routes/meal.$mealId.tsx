@@ -46,7 +46,7 @@ function MealPage() {
       <div className="relative h-64 overflow-hidden">
         <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-black/20" />
-        <Link to="/" className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft">
+        <Link to="/discover" className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft">
           <ArrowLeft className="h-4 w-4 text-foreground" />
         </Link>
       </div>
