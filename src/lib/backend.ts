@@ -49,6 +49,7 @@ export const backend = {
   setUser: (user: User) => withFallback(() => setDoc("users", user), () => appendRow(FILES.users, user)),
   setRestaurant: (restaurant: Restaurant) =>
     withFallback(() => setDoc("restaurants", restaurant), () => appendRow(FILES.restaurants, restaurant)),
+  addOrder: (order: Order) => withFallback(() => setDoc("orders", order), () => appendRow(FILES.orders, order)),
 
   updateRestaurant: (id: string, patch: Partial<Restaurant>) =>
     withFallback(() => patchDoc("restaurants", id, patch), () => updateRow(FILES.restaurants, (r) => r.id === id, patch)),

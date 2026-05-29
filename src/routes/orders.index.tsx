@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Receipt } from "lucide-react";
-import { FILES, readTable } from "@/lib/csv-store";
 import type { Order } from "@/lib/seed";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
+import { backend } from "@/lib/backend";
 
 export const Route = createFileRoute("/orders/")({ component: OrdersList });
 
@@ -21,9 +21,21 @@ function OrdersList() {
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    if (!user) { nav({ to: "/login" }); return; }
-    const list = readTable<Order>(FILES.orders).filter((o) => o.userId === user.id);
-    setOrders(list.reverse());
+    if (!user) {
+      nav({ to: "/login" });
+      return;
+    }
+    let cancelled = false;
+    async function loadOrders() {
+      const list = (await backend.orders())
+        .filter((o) => o.userId === user.id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      if (!cancelled) setOrders(list);
+    }
+    void loadOrders();
+    return () => {
+      cancelled = true;
+    };
   }, [user, nav]);
 
   if (!user) return null;

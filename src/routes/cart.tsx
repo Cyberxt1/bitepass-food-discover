@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
-import { FILES, appendRow, readTable, updateRow } from "@/lib/csv-store";
+import { FILES, readTable, updateRow } from "@/lib/csv-store";
+import { backend } from "@/lib/backend";
 import type { Discount } from "@/lib/seed";
 
 export const Route = createFileRoute("/cart")({ component: CartPage });
@@ -14,6 +15,7 @@ function CartPage() {
   const { items, setQty, remove, total, clear, setNotes } = useCart();
   const { user } = useAuth();
   const nav = useNavigate();
+  const [pickupMode, setPickupMode] = useState<"asap" | "schedule">("asap");
   const [pickupMins, setPickupMins] = useState(30);
   const [placing, setPlacing] = useState(false);
   const [code, setCode] = useState("");
@@ -53,14 +55,17 @@ function CartPage() {
     setPlacing(true);
     await new Promise((r) => setTimeout(r, 1200));
     const orderId = "o" + Date.now();
-    appendRow(FILES.orders, {
+    const pickupTime = pickupMode === "asap"
+      ? new Date().toISOString()
+      : new Date(Date.now() + pickupMins * 60 * 1000).toISOString();
+    await backend.addOrder({
       id: orderId,
       userId: user.id,
       restaurantId,
       items: JSON.stringify(items.map((i) => ({ mealId: i.mealId, name: i.name, qty: i.qty, price: i.price, servingUnit: i.servingUnit, notes: i.notes, options: i.options ?? [] }))),
-      total: grand,
+      total: String(grand),
       status: "received",
-      pickupTime: new Date(Date.now() + pickupMins * 60 * 1000).toISOString(),
+      pickupTime,
       notes: "",
       createdAt: new Date().toISOString(),
       discountCode: applied?.code ?? "",
@@ -166,10 +171,44 @@ function CartPage() {
 
             <div className="rounded-2xl bg-card p-4 shadow-soft">
               <div className="flex items-center gap-2 text-sm font-semibold"><Clock className="h-4 w-4 text-primary" />Pickup time</div>
-              <p className="mt-1 text-xs text-muted-foreground">Ready in approximately {pickupMins} minutes</p>
-              <input type="range" min={15} max={120} step={5} value={pickupMins} onChange={(e) => setPickupMins(Number(e.target.value))}
-                className="mt-3 w-full accent-[oklch(var(--primary))]" />
-              <div className="mt-1 flex justify-between text-[10px] text-muted-foreground"><span>15 min</span><span>2 hours</span></div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPickupMode("asap")}
+                  className={`rounded-2xl border px-3 py-3 text-left transition ${
+                    pickupMode === "asap"
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border bg-muted/40 text-muted-foreground"
+                  }`}
+                >
+                  <p className="text-sm font-semibold">Start now</p>
+                  <p className="mt-1 text-xs">The restaurant can prepare before I arrive.</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPickupMode("schedule")}
+                  className={`rounded-2xl border px-3 py-3 text-left transition ${
+                    pickupMode === "schedule"
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border bg-muted/40 text-muted-foreground"
+                  }`}
+                >
+                  <p className="text-sm font-semibold">Choose a time</p>
+                  <p className="mt-1 text-xs">Match the kitchen to my arrival.</p>
+                </button>
+              </div>
+              {pickupMode === "asap" ? (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Your order goes to the kitchen immediately so it may already be ready when you get there.
+                </p>
+              ) : (
+                <>
+                  <p className="mt-3 text-xs text-muted-foreground">Ready in approximately {pickupMins} minutes</p>
+                  <input type="range" min={15} max={120} step={5} value={pickupMins} onChange={(e) => setPickupMins(Number(e.target.value))}
+                    className="mt-3 w-full accent-[oklch(var(--primary))]" />
+                  <div className="mt-1 flex justify-between text-[10px] text-muted-foreground"><span>15 min</span><span>2 hours</span></div>
+                </>
+              )}
             </div>
 
             <div className="rounded-2xl bg-card p-4 shadow-soft">

@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, ChefHat, ShoppingBag, PackageCheck } from "lucide-react";
-import { FILES, readTable, updateRow } from "@/lib/csv-store";
 import type { Order, Restaurant } from "@/lib/seed";
 import { naira } from "@/lib/format";
+import { backend } from "@/lib/backend";
 
 export const Route = createFileRoute("/orders/$orderId")({ component: OrderDetail });
 
@@ -21,8 +21,15 @@ function OrderDetail() {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const load = () => setOrder(readTable<Order>(FILES.orders).find((o) => o.id === orderId));
-    load();
+    let cancelled = false;
+    async function load() {
+      const found = (await backend.orders()).find((o) => o.id === orderId);
+      if (!cancelled) setOrder(found);
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, [orderId, tick]);
 
   // Auto-advance status for demo realism
@@ -31,7 +38,7 @@ function OrderDetail() {
     const idx = flow.indexOf(order.status as (typeof flow)[number]);
     if (idx < 0 || idx >= flow.length - 1) return;
     const t = setTimeout(() => {
-      updateRow(FILES.orders, (r) => r.id === orderId, { status: flow[idx + 1] });
+      void backend.updateOrder(orderId, { status: flow[idx + 1] });
       setTick((x) => x + 1);
     }, 8000);
     return () => clearTimeout(t);
@@ -44,9 +51,24 @@ function OrderDetail() {
   }, []);
 
   const restaurant = useMemo(
-    () => (order ? readTable<Restaurant>(FILES.restaurants).find((r) => r.id === order.restaurantId) : undefined),
-    [order],
+    () => undefined as Restaurant | undefined,
+    [],
   );
+
+  const [restaurantName, setRestaurantName] = useState<string>("restaurant");
+
+  useEffect(() => {
+    if (!order) return;
+    let cancelled = false;
+    async function loadRestaurant() {
+      const found = (await backend.restaurants()).find((r) => r.id === order.restaurantId);
+      if (!cancelled) setRestaurantName(found?.name ?? "restaurant");
+    }
+    void loadRestaurant();
+    return () => {
+      cancelled = true;
+    };
+  }, [order]);
 
   if (!order) return <div className="p-8 text-center text-sm">Order not found.</div>;
 
@@ -55,6 +77,7 @@ function OrderDetail() {
   const pickupMs = new Date(order.pickupTime).getTime() - Date.now();
   const mins = Math.max(0, Math.floor(pickupMs / 60000));
   const secs = Math.max(0, Math.floor((pickupMs % 60000) / 1000));
+  const isAsap = pickupMs <= 0 && order.status !== "completed";
 
   return (
     <div>
@@ -69,14 +92,16 @@ function OrderDetail() {
         {/* Countdown */}
         <div className="rounded-3xl bg-gradient-warm p-5 text-white shadow-glow animate-slide-up">
           <p className="text-xs uppercase tracking-wider opacity-85">
-            {order.status === "completed" ? "Order finished" : "Ready in approx."}
+            {order.status === "completed" ? "Order finished" : isAsap ? "Kitchen started" : "Ready in approx."}
           </p>
           <p className="mt-1 font-mono text-4xl font-bold">
             {order.status === "completed"
               ? "00:00"
+              : isAsap
+                ? "ASAP"
               : `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`}
           </p>
-          <p className="mt-1 text-xs opacity-85">Pickup at {restaurant?.name ?? "restaurant"}</p>
+          <p className="mt-1 text-xs opacity-85">Pickup at {restaurantName}</p>
         </div>
 
         {/* Progress */}

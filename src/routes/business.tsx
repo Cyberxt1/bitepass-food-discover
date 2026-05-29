@@ -38,8 +38,13 @@ function BusinessDashboard() {
     let cancelled = false;
     async function loadDashboard() {
       const allRestaurants = await backend.restaurants();
-      const ownedRestaurant = allRestaurants.find((r) => r.ownerId === user.id) ?? allRestaurants[0];
-      if (!ownedRestaurant || cancelled) return;
+      const ownedRestaurant = user.role === "admin"
+        ? allRestaurants[0]
+        : allRestaurants.find((r) => r.ownerId === user.id);
+      if (!ownedRestaurant || cancelled) {
+        if (!cancelled) setRestaurant(undefined);
+        return;
+      }
       const [allOrders, allMeals, allDiscounts] = await Promise.all([
         backend.orders(),
         backend.meals(),
