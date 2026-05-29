@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Minus, Plus, Trash2, Tag, X } from "lucide-react";
+import { ArrowLeft, Clock, Minus, Plus, Tag, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useCart } from "@/lib/cart";
@@ -16,6 +16,8 @@ function CartPage() {
   const { user } = useAuth();
   const nav = useNavigate();
   const [placing, setPlacing] = useState(false);
+  const [pickupMode, setPickupMode] = useState<"asap" | "scheduled">("asap");
+  const [pickupAt, setPickupAt] = useState(getDefaultPickupTime());
   const [code, setCode] = useState("");
   const [applied, setApplied] = useState<Discount | null>(null);
 
@@ -63,6 +65,7 @@ function CartPage() {
     setPlacing(true);
     await new Promise((resolve) => setTimeout(resolve, 1200));
     const orderId = "o" + Date.now();
+    const pickupTime = pickupMode === "scheduled" && pickupAt ? new Date(pickupAt).toISOString() : new Date().toISOString();
     await backend.addOrder({
       id: orderId,
       userId: user.id,
@@ -80,7 +83,7 @@ function CartPage() {
       ),
       total: String(grand),
       status: "received",
-      pickupTime: new Date().toISOString(),
+      pickupTime,
       notes: "",
       createdAt: new Date().toISOString(),
       discountCode: applied?.code ?? "",
@@ -126,9 +129,7 @@ function CartPage() {
                     <p className="text-[11px] text-muted-foreground">{item.restaurantName}</p>
                     {item.options && item.options.length > 0 && (
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {item.options
-                          .map((option) => `${option.name}${option.qty && option.qty > 1 ? ` x${option.qty}` : ""}`)
-                          .join(", ")}
+                        {item.options.map((option) => `${option.name}${option.qty && option.qty > 1 ? ` x${option.qty}` : ""}`).join(", ")}
                       </p>
                     )}
                     <p className="mt-1 text-sm font-bold text-primary">
@@ -206,6 +207,43 @@ function CartPage() {
             </div>
 
             <div className="rounded-2xl bg-card p-4 shadow-soft">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Clock className="h-4 w-4 text-primary" />
+                Pickup time
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPickupMode("asap")}
+                  className={`rounded-2xl border px-3 py-3 text-left transition ${pickupMode === "asap" ? "border-primary bg-primary/10 text-foreground" : "border-border bg-muted/40 text-muted-foreground"}`}
+                >
+                  <p className="text-sm font-semibold">ASAP</p>
+                  <p className="mt-1 text-xs">Send now and let the store prepare immediately.</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPickupMode("scheduled")}
+                  className={`rounded-2xl border px-3 py-3 text-left transition ${pickupMode === "scheduled" ? "border-primary bg-primary/10 text-foreground" : "border-border bg-muted/40 text-muted-foreground"}`}
+                >
+                  <p className="text-sm font-semibold">Set a time</p>
+                  <p className="mt-1 text-xs">Choose the pickup time you want.</p>
+                </button>
+              </div>
+              {pickupMode === "scheduled" && (
+                <div className="mt-3">
+                  <input
+                    type="datetime-local"
+                    value={pickupAt}
+                    min={getMinPickupTime()}
+                    onChange={(event) => setPickupAt(event.target.value)}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">The store will see this requested pickup time.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl bg-card p-4 shadow-soft">
               <p className="text-sm font-semibold">Payment and fulfilment</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Once you pay, the order goes straight to the store. The store also sees that the order is already paid.
@@ -244,4 +282,19 @@ function Row({ label, value, bold, accent }: { label: string; value: string; bol
       <span>{value}</span>
     </div>
   );
+}
+
+function toLocalInputValue(date: Date) {
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function getDefaultPickupTime() {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() + 30, 0, 0);
+  return toLocalInputValue(date);
+}
+
+function getMinPickupTime() {
+  return toLocalInputValue(new Date());
 }

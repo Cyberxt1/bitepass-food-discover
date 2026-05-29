@@ -373,6 +373,7 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                   <div>
                     <p className="text-sm font-bold">Order #{o.id.slice(-5)}</p>
                     <p className="text-[11px] text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</p>
+                    <p className="text-[11px] text-muted-foreground">Pickup: {new Date(o.pickupTime).toLocaleString()}</p>
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">
                     {o.paymentStatus === "paid" && (

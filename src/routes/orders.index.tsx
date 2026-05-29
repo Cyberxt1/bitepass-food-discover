@@ -75,6 +75,9 @@ function OrdersList() {
                   <div>
                     <p className="text-sm font-semibold">Order #{order.id.slice(-5)}</p>
                     <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleString()}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Pickup: {new Date(order.pickupTime).toLocaleString()}
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${statusColors[order.status] ?? ""}`}>

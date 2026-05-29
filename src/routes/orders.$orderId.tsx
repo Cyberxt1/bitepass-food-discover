@@ -90,6 +90,7 @@ function OrderDetail() {
           <p className="text-xs uppercase tracking-wider opacity-85">{order.status === "completed" ? "Order finished" : "Order sent to store"}</p>
           <p className="mt-1 font-mono text-4xl font-bold">{order.status === "completed" ? "DONE" : "PAID"}</p>
           <p className="mt-1 text-xs opacity-85">Pickup at {restaurantName}</p>
+          <p className="mt-1 text-xs opacity-85">Requested pickup: {new Date(order.pickupTime).toLocaleString()}</p>
         </div>
 
         <div className="rounded-2xl bg-card p-4 shadow-soft">
