@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Star, Clock, Flame } from "lucide-react";
 import type { Meal } from "@/lib/seed";
 import { naira } from "@/lib/format";
+import { MealPlaceholder } from "@/components/MealPlaceholder";
 
 export function MealCard({ meal, restaurantName }: { meal: Meal; restaurantName?: string }) {
   return (
@@ -11,8 +12,7 @@ export function MealCard({ meal, restaurantName }: { meal: Meal; restaurantName?
       className="group flex gap-3 rounded-2xl bg-card p-3 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card"
     >
       <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-muted">
-        <img src={meal.image} alt={meal.name} loading="lazy"
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
+        <MealPlaceholder name={meal.name} className="h-full w-full text-4xl transition duration-500 group-hover:scale-110" />
         {meal.popular === "1" && (
           <span className="absolute left-1 top-1 flex items-center gap-0.5 rounded-full bg-gradient-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">
             <Flame className="h-2.5 w-2.5" /> HOT

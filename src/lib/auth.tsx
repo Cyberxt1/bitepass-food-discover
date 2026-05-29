@@ -5,7 +5,7 @@ import { getFirebase } from "./firebase";
 import type { Restaurant, User } from "./seed";
 
 type SignupOptions =
-  | { role?: "customer" }
+  | { role?: "customer"; location?: { address: string; lat: number; lng: number } }
   | {
       role: "restaurant";
       restaurant: {
@@ -79,8 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (name: string, email: string, password: string, options: SignupOptions = { role: "customer" }) => {
     await new Promise((r) => setTimeout(r, 600));
     const users = readTable<User>(FILES.users);
-    if (users.find((x) => x.email.toLowerCase() === email.toLowerCase()))
+    if (users.find((x) => x.email.toLowerCase() === email.toLowerCase())) {
       throw new Error("Email already registered");
+    }
     const role = options.role === "restaurant" ? "restaurant" : "customer";
     let uid = "u" + Date.now();
     try {
@@ -92,10 +93,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.warn("Firebase Auth signup unavailable, using local account", error);
     }
+
     const u: User = {
       id: uid,
-      name, email, password, role,
+      name,
+      email,
+      password,
+      role,
       avatar: name.charAt(0).toUpperCase(),
+      address: options.role !== "restaurant" ? options.location?.address : undefined,
+      lat: options.role !== "restaurant" ? String(options.location?.lat ?? "") : undefined,
+      lng: options.role !== "restaurant" ? String(options.location?.lng ?? "") : undefined,
     };
     await backend.setUser(u);
 

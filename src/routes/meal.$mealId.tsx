@@ -7,6 +7,7 @@ import type { Meal, Restaurant, Review } from "@/lib/seed";
 import { useCart } from "@/lib/cart";
 import { naira } from "@/lib/format";
 import { parseMealOptions, type MealOption } from "@/lib/meal-options";
+import { MealPlaceholder } from "@/components/MealPlaceholder";
 
 type SelectedMealOption = MealOption & { qty: number };
 
@@ -58,6 +59,10 @@ function MealPage() {
   };
 
   const addToCart = () => {
+    if (restaurant?.isOpen === "0") {
+      toast.error("This restaurant is closed right now");
+      return;
+    }
     const optionsSignature = selectedOptions
       .slice()
       .sort((a, b) => a.id.localeCompare(b.id))
@@ -89,7 +94,7 @@ function MealPage() {
   return (
     <div className="pb-32">
       <div className="relative h-64 overflow-hidden">
-        <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
+        <MealPlaceholder name={meal.name} className="h-full w-full rounded-none text-7xl" />
         <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-black/20" />
         <Link to="/discover" className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft">
           <ArrowLeft className="h-4 w-4 text-foreground" />
@@ -102,6 +107,11 @@ function MealPage() {
           <Link to="/restaurant/$restaurantId" params={{ restaurantId: restaurant.id }} className="mt-1 inline-block text-sm text-primary">
             {restaurant.name} -
           </Link>
+        )}
+        {restaurant?.isOpen === "0" && (
+          <p className="mt-2 inline-flex rounded-full bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">
+            Restaurant is closed
+          </p>
         )}
         <div className="mt-3 flex items-center gap-4 text-sm">
           <span className="flex items-center gap-1 font-semibold">
@@ -222,6 +232,7 @@ function MealPage() {
       <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3">
         <button
           onClick={addToCart}
+          disabled={restaurant?.isOpen === "0"}
           className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95"
         >
           <span className="flex items-center gap-2">

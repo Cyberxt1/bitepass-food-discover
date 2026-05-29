@@ -2,15 +2,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search, TrendingUp, ChevronRight, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { backend } from "@/lib/backend";
+import { useAuth } from "@/lib/auth";
 import type { Meal, Restaurant } from "@/lib/seed";
 import {
   distanceKm,
   formatDistance,
-  getCurrentLocationDetails,
+  getPreferredLocationDetails,
   restaurantCoords,
+  shortLocationLabel,
   type Coordinates,
 } from "@/lib/location";
 import { AppHeader } from "@/components/AppHeader";
+import { MealPlaceholder } from "@/components/MealPlaceholder";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { MealCard } from "@/components/MealCard";
 import { SkeletonCard } from "@/components/SkeletonCard";
@@ -18,16 +21,17 @@ import { SkeletonCard } from "@/components/SkeletonCard";
 export const Route = createFileRoute("/discover")({ component: Discover });
 
 const categories = [
-  { name: "Jollof", emoji: "🍚" },
-  { name: "Shawarma", emoji: "🌯" },
-  { name: "Burgers", emoji: "🍔" },
-  { name: "Swallow", emoji: "🍲" },
-  { name: "Soup", emoji: "🥣" },
-  { name: "Noodles", emoji: "🍜" },
-  { name: "Drinks", emoji: "🥤" },
+  { name: "Jollof", emoji: "Rice" },
+  { name: "Shawarma", emoji: "Wrap" },
+  { name: "Burgers", emoji: "Burger" },
+  { name: "Swallow", emoji: "Swallow" },
+  { name: "Soup", emoji: "Soup" },
+  { name: "Noodles", emoji: "Noodles" },
+  { name: "Drinks", emoji: "Drinks" },
 ];
 
 function Discover() {
+  const { user } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,15 +50,11 @@ function Discover() {
   }, []);
 
   useEffect(() => {
-    getCurrentLocationDetails()
-      .then((location) => {
-        setCoords({ lat: location.lat, lng: location.lng });
-        setLocationLabel(location.address.split(",").slice(0, 2).join(", "));
-      })
-      .catch(() => {
-        setLocationLabel("Lagos, Nigeria");
-      });
-  }, []);
+    getPreferredLocationDetails(user).then((location) => {
+      setCoords({ lat: location.lat, lng: location.lng });
+      setLocationLabel(shortLocationLabel(location.address));
+    });
+  }, [user]);
 
   const restaurantsByDistance = coords
     ? [...restaurants].sort((a, b) => {
@@ -77,11 +77,11 @@ function Discover() {
 
   return (
     <>
-      <AppHeader subtitle={locationLabel} />
+      <AppHeader locationLabel={locationLabel} subtitle="Welcome to BitePass" />
       <main className="space-y-6 px-4 pt-4">
         <Link to="/search" className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 shadow-soft animate-slide-up">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Search restaurants…</span>
+          <span className="text-sm text-muted-foreground">Search restaurants...</span>
         </Link>
 
         <div className="relative overflow-hidden rounded-3xl bg-gradient-warm p-5 text-white shadow-glow animate-slide-up">
@@ -105,7 +105,7 @@ function Discover() {
                 search={{ q: c.name }}
                 className="flex w-[72px] shrink-0 flex-col items-center gap-1.5 rounded-2xl bg-card p-3 shadow-soft transition hover:-translate-y-0.5"
               >
-                <span className="text-2xl">{c.emoji}</span>
+                <span className="text-sm font-semibold">{c.emoji}</span>
                 <span className="text-[11px] font-medium">{c.name}</span>
               </Link>
             ))}
@@ -125,18 +125,15 @@ function Discover() {
             {loading
               ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="w-44 shrink-0"><SkeletonCard /></div>)
               : trending.map((m) => (
-                  <Link key={m.id} to="/meal/$mealId" params={{ mealId: m.id }}
-                    className="group block w-44 shrink-0 overflow-hidden rounded-2xl bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-card"
-                  >
+                  <Link key={m.id} to="/meal/$mealId" params={{ mealId: m.id }} className="group block w-44 shrink-0 overflow-hidden rounded-2xl bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-card">
                     <div className="h-28 overflow-hidden bg-muted">
-                      <img src={m.image} alt={m.name} loading="lazy"
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
+                      <MealPlaceholder name={m.name} className="h-full w-full rounded-none text-5xl transition duration-500 group-hover:scale-110" />
                     </div>
                     <div className="p-2.5">
                       <p className="line-clamp-1 text-xs font-semibold">{m.name}</p>
                       <div className="mt-1 flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">⭐ {m.rating}</span>
-                        <span className="text-xs font-bold text-primary">₦{Number(m.price).toLocaleString()}</span>
+                        <span className="text-[10px] text-muted-foreground">Rating {m.rating}</span>
+                        <span className="text-xs font-bold text-primary">N{Number(m.price).toLocaleString()}</span>
                       </div>
                     </div>
                   </Link>

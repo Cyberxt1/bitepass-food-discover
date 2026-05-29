@@ -8,6 +8,7 @@ import { naira } from "@/lib/format";
 import { FILES, readTable, updateRow } from "@/lib/csv-store";
 import { backend } from "@/lib/backend";
 import type { Discount } from "@/lib/seed";
+import { MealPlaceholder } from "@/components/MealPlaceholder";
 
 export const Route = createFileRoute("/cart")({ component: CartPage });
 
@@ -59,6 +60,12 @@ function CartPage() {
     if (!user) {
       toast.info("Please sign in to checkout");
       nav({ to: "/login" });
+      return;
+    }
+
+    const restaurant = (await backend.restaurants()).find((entry) => entry.id === restaurantId);
+    if (!restaurant || restaurant.isOpen === "0") {
+      toast.error("You can't place an order because this restaurant is closed");
       return;
     }
 
@@ -123,7 +130,7 @@ function CartPage() {
             {items.map((item) => (
               <div key={item.id} className="rounded-2xl bg-card p-3 shadow-soft animate-slide-up">
                 <div className="flex gap-3">
-                  <img src={item.image} alt={item.name} className="h-20 w-20 rounded-xl object-cover" />
+                  <MealPlaceholder name={item.name} className="h-20 w-20 text-3xl" />
                   <div className="flex-1">
                     <p className="text-sm font-semibold leading-tight">{item.name}</p>
                     <p className="text-[11px] text-muted-foreground">{item.restaurantName}</p>

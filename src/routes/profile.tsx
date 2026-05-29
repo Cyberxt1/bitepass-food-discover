@@ -33,6 +33,7 @@ function ProfilePage() {
               <div>
                 <p className="text-base font-bold">{user.name}</p>
                 <p className="text-xs opacity-85">{user.email}</p>
+                {user.address && <p className="text-xs opacity-85">{user.address}</p>}
                 <span className="mt-1 inline-block rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-semibold uppercase">{user.role}</span>
               </div>
             </div>

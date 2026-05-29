@@ -7,6 +7,12 @@ export type LocationDetails = Coordinates & {
   address: string;
 };
 
+type LocationCarrier = {
+  lat?: string;
+  lng?: string;
+  address?: string;
+};
+
 const LAGOS_CENTER: Coordinates = { lat: 6.5244, lng: 3.3792 };
 
 export function getFallbackLocation(): LocationDetails {
@@ -14,6 +20,14 @@ export function getFallbackLocation(): LocationDetails {
     ...LAGOS_CENTER,
     address: "Lagos, Nigeria",
   };
+}
+
+export function getStoredLocation(details?: LocationCarrier | null): LocationDetails | null {
+  if (!details?.address) return null;
+  const lat = Number(details.lat);
+  const lng = Number(details.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng, address: details.address };
 }
 
 export function getCurrentCoordinates(): Promise<Coordinates> {
@@ -64,6 +78,26 @@ export async function getCurrentLocationDetails(): Promise<LocationDetails> {
   const coords = await getCurrentCoordinates();
   const address = await reverseGeocode(coords);
   return { ...coords, address };
+}
+
+export async function getPreferredLocationDetails(details?: LocationCarrier | null): Promise<LocationDetails> {
+  const stored = getStoredLocation(details);
+  if (stored) return stored;
+  try {
+    return await getCurrentLocationDetails();
+  } catch {
+    return getFallbackLocation();
+  }
+}
+
+export function shortLocationLabel(address: string): string {
+  const compact = address
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(", ");
+  return compact || "Current location";
 }
 
 export function distanceKm(a: Coordinates, b: Coordinates): number {

@@ -2,20 +2,23 @@ import { Link } from "@tanstack/react-router";
 import { MapPin, Moon, Sun, Bell } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
+import { shortLocationLabel } from "@/lib/location";
 
-export function AppHeader({ subtitle }: { subtitle?: string }) {
+export function AppHeader({ subtitle, locationLabel }: { subtitle?: string; locationLabel?: string }) {
   const { theme, toggle } = useTheme();
   const { user } = useAuth();
+  const label = locationLabel ?? (user?.address ? shortLocationLabel(user.address) : "Lagos, Nigeria");
+
   return (
     <header className="sticky top-0 z-40 glass border-b border-border/40">
       <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
         <div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3" />
-            <span>Lagos, Nigeria</span>
+            <span>{label}</span>
           </div>
           <div className="text-sm font-semibold">
-            {user ? `Hey, ${user.name.split(" ")[0]} 👋` : subtitle ?? "Welcome to BitePass"}
+            {user ? `Hey, ${user.name.split(" ")[0]}` : subtitle ?? "Welcome to BitePass"}
           </div>
         </div>
         <div className="flex items-center gap-2">

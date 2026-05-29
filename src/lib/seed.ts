@@ -25,6 +25,7 @@ export type Order = {
 };
 export type User = {
   id: string; name: string; email: string; password: string; role: string; avatar: string;
+  address?: string; lat?: string; lng?: string;
 };
 export type Discount = {
   id: string; restaurantId: string; code: string; type: string; // "percent" | "fixed"

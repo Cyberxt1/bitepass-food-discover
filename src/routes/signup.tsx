@@ -31,7 +31,7 @@ function SignupPage() {
       const details = await getCurrentLocationDetails();
       setLocation(details);
       setConfirmingLocation(false);
-      toast.success("Restaurant location pinned");
+      toast.success(accountType === "restaurant" ? "Restaurant location pinned" : "Your location has been saved");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Location access failed");
     } finally {
@@ -43,22 +43,22 @@ function SignupPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      if (!location) {
+        toast.error(accountType === "restaurant" ? "Pin your restaurant location before creating the account" : "Use your current location before creating your account");
+        setLoading(false);
+        return;
+      }
+
       if (accountType === "restaurant") {
-        if (!location) {
-          toast.error("Pin your restaurant location before creating the account");
-          setLoading(false);
-          return;
-        }
-        const pinnedLocation = location;
         const user = await signup(name, email, password, {
           role: "restaurant",
           restaurant: {
             name: restaurantName || `${name}'s Kitchen`,
             cuisine,
             phone,
-            address: pinnedLocation.address,
-            lat: pinnedLocation.lat,
-            lng: pinnedLocation.lng,
+            address: location.address,
+            lat: location.lat,
+            lng: location.lng,
           },
         });
         toast.success(`${user.name}, your restaurant is live on BitePass`);
@@ -66,7 +66,14 @@ function SignupPage() {
         return;
       }
 
-      await signup(name, email, password);
+      await signup(name, email, password, {
+        role: "customer",
+        location: {
+          address: location.address,
+          lat: location.lat,
+          lng: location.lng,
+        },
+      });
       toast.success("Account created! Let's get you fed");
       nav({ to: "/discover" });
     } catch (err) {
@@ -87,7 +94,7 @@ function SignupPage() {
         </div>
         <h1 className="mt-4 text-2xl font-bold">Create your account</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {accountType === "restaurant" ? "Pin your kitchen and start receiving preorders" : "Start preordering in seconds"}
+          {accountType === "restaurant" ? "Pin your kitchen and start receiving preorders" : "Use your location for the right restaurants near you"}
         </p>
       </div>
 
@@ -144,57 +151,59 @@ function SignupPage() {
           />
         </Field>
 
-        {accountType === "restaurant" && (
-          <div className="space-y-3">
-            <Field icon={Store}>
-              <input
-                value={restaurantName}
-                onChange={(e) => setRestaurantName(e.target.value)}
-                placeholder="Restaurant name"
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                required
-              />
-            </Field>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={cuisine}
-                onChange={(e) => setCuisine(e.target.value)}
-                placeholder="Cuisine"
-                className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
-                required
-              />
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Phone"
-                className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
-                required
-              />
-            </div>
+        <div className="space-y-3">
+          {accountType === "restaurant" && (
+            <>
+              <Field icon={Store}>
+                <input
+                  value={restaurantName}
+                  onChange={(e) => setRestaurantName(e.target.value)}
+                  placeholder="Restaurant name"
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  required
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  value={cuisine}
+                  onChange={(e) => setCuisine(e.target.value)}
+                  placeholder="Cuisine"
+                  className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
+                  required
+                />
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Phone"
+                  className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
+                  required
+                />
+              </div>
+            </>
+          )}
 
-            <LocationPreview
-              coords={location}
-              address={location?.address}
-              emptyText="Click below when you are physically at your restaurant."
-            />
+          <LocationPreview
+            coords={location}
+            address={location?.address}
+            emptyText={accountType === "restaurant" ? "Click below when you are physically at your restaurant." : "Use your current location so BitePass can recommend places close to you."}
+          />
 
-            <div className="rounded-2xl border border-border bg-card p-3 shadow-soft">
-              <button
-                type="button"
-                onClick={() => setConfirmingLocation(true)}
-                disabled={locating}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background py-2.5 text-xs font-bold transition hover:bg-muted disabled:opacity-60"
-              >
-                <LocateFixed className="h-3.5 w-3.5" />
-                {locating ? "Getting location..." : location ? "Update current location" : "Use my current location"}
-              </button>
-            </div>
+          <div className="rounded-2xl border border-border bg-card p-3 shadow-soft">
+            <button
+              type="button"
+              onClick={() => setConfirmingLocation(true)}
+              disabled={locating}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background py-2.5 text-xs font-bold transition hover:bg-muted disabled:opacity-60"
+            >
+              <LocateFixed className="h-3.5 w-3.5" />
+              {locating ? "Getting location..." : location ? "Update current location" : "Use my current location"}
+            </button>
           </div>
-        )}
+        </div>
 
         <button
           type="submit"
-          disabled={loading || (accountType === "restaurant" && locating)}
+          disabled={loading || locating}
           className="w-full rounded-2xl bg-gradient-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-60"
         >
           {loading ? "Creating account..." : accountType === "restaurant" ? "Create restaurant account" : "Create account"}
@@ -207,9 +216,11 @@ function SignupPage() {
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-warning/15 text-warning">
               <LocateFixed className="h-5 w-5" />
             </div>
-            <h2 className="mt-4 text-lg font-bold">Confirm restaurant location</h2>
+            <h2 className="mt-4 text-lg font-bold">{accountType === "restaurant" ? "Confirm restaurant location" : "Confirm your location"}</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Ensure the location you are currently standing in is the exact location of your restaurant before you proceed.
+              {accountType === "restaurant"
+                ? "Ensure the location you are currently standing in is the exact location of your restaurant before you proceed."
+                : "Use the location you are currently in so BitePass can show the right restaurants around you."}
             </p>
             <div className="mt-5 grid gap-2">
               <button
@@ -221,10 +232,10 @@ function SignupPage() {
               </button>
               <button
                 type="button"
-                onClick={() => nav({ to: "/business" })}
+                onClick={() => setConfirmingLocation(false)}
                 className="rounded-xl border border-border bg-background py-2.5 text-sm font-bold"
               >
-                Go back to dashboard
+                Go back
               </button>
               <button
                 type="button"
