@@ -1,27 +1,82 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Star, Clock, MapPin, Phone } from "lucide-react";
-import { useMemo } from "react";
-import { FILES, readTable } from "@/lib/csv-store";
-import type { Meal, Restaurant } from "@/lib/seed";
+import { ArrowLeft, Clock, MapPin, MessageSquare, Phone, Send, Star } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
 import { MealCard } from "@/components/MealCard";
+import { backend } from "@/lib/backend";
+import { useAuth } from "@/lib/auth";
+import type { Meal, Restaurant, Review } from "@/lib/seed";
 
 export const Route = createFileRoute("/restaurant/$restaurantId")({ component: RestaurantPage });
 
 function RestaurantPage() {
   const { restaurantId } = Route.useParams();
-  const restaurant = useMemo(
-    () => readTable<Restaurant>(FILES.restaurants).find((r) => r.id === restaurantId),
-    [restaurantId],
-  );
-  const meals = useMemo(
-    () => readTable<Meal>(FILES.meals).filter((m) => m.restaurantId === restaurantId),
-    [restaurantId],
-  );
+  const { user } = useAuth();
+  const [restaurant, setRestaurant] = useState<Restaurant | undefined>();
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [tab, setTab] = useState<"menu" | "reviews">("menu");
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    Promise.all([backend.restaurants(), backend.meals(), backend.reviews()]).then(
+      ([restaurants, allMeals, allReviews]) => {
+        const restaurantMeals = allMeals.filter((m) => m.restaurantId === restaurantId);
+        const mealIds = new Set(restaurantMeals.map((m) => m.id));
+        setRestaurant(restaurants.find((r) => r.id === restaurantId));
+        setMeals(restaurantMeals);
+        setReviews(
+          allReviews
+            .filter((r) => r.restaurantId === restaurantId || mealIds.has(r.mealId))
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+        );
+      },
+    );
+  }, [restaurantId]);
 
   if (!restaurant) return <div className="p-8 text-center text-sm">Restaurant not found.</div>;
 
   const popular = meals.filter((m) => m.popular === "1");
   const others = meals.filter((m) => m.popular !== "1");
+  const avgRating = reviews.length
+    ? (reviews.reduce((sum, review) => sum + Number(review.rating), 0) / reviews.length).toFixed(1)
+    : restaurant.rating;
+
+  const submitReview = async () => {
+    if (!user) {
+      toast.info("Please sign in to leave feedback");
+      return;
+    }
+    if (!comment.trim()) {
+      toast.error("Write a short comment before sending feedback");
+      return;
+    }
+
+    setSubmitting(true);
+    const review: Review = {
+      id: "rv" + Date.now(),
+      mealId: "",
+      restaurantId,
+      userId: user.id,
+      userName: user.name,
+      rating: String(rating),
+      taste: "",
+      portion: "",
+      spice: "",
+      waitTime: "",
+      comment: comment.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    await backend.addReview(review);
+    setReviews((prev) => [review, ...prev]);
+    setComment("");
+    setRating(5);
+    setSubmitting(false);
+    toast.success("Thanks for the feedback");
+  };
 
   return (
     <div>
@@ -41,45 +96,176 @@ function RestaurantPage() {
               <p className="text-sm text-muted-foreground">{restaurant.cuisine} cuisine</p>
             </div>
             <span className="flex shrink-0 items-center gap-1 rounded-lg bg-success/10 px-2 py-1 text-sm font-bold text-success">
-              <Star className="h-3.5 w-3.5 fill-current" />{restaurant.rating}
+              <Star className="h-3.5 w-3.5 fill-current" />
+              {avgRating}
             </span>
           </div>
           <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{restaurant.prepTime} min prep</span>
             <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{restaurant.distance} km away</span>
-            <span>· {restaurant.reviews} reviews</span>
+            <span>{reviews.length} reviews</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {restaurant.tags.split("|").map((t) => (
+            {restaurant.tags.split("|").filter(Boolean).map((t) => (
               <span key={t} className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-foreground">{t}</span>
             ))}
           </div>
           <div className="mt-4 flex gap-2">
-            <button className="flex-1 rounded-xl bg-gradient-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">Order now</button>
+            <button onClick={() => setTab("menu")} className="flex-1 rounded-xl bg-gradient-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">View menu</button>
             <button className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-card">
               <Phone className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {popular.length > 0 && (
-          <section className="mt-6">
-            <h3 className="mb-3 text-base font-bold">🔥 Popular dishes</h3>
-            <div className="space-y-2.5">
-              {popular.map((m) => <MealCard key={m.id} meal={m} />)}
-            </div>
+        <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-card p-1 shadow-soft">
+          <button
+            type="button"
+            onClick={() => setTab("menu")}
+            className={`rounded-xl py-2 text-xs font-bold transition ${
+              tab === "menu" ? "bg-gradient-primary text-primary-foreground shadow-soft" : "text-muted-foreground"
+            }`}
+          >
+            Menu
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("reviews")}
+            className={`rounded-xl py-2 text-xs font-bold transition ${
+              tab === "reviews" ? "bg-gradient-primary text-primary-foreground shadow-soft" : "text-muted-foreground"
+            }`}
+          >
+            Reviews ({reviews.length})
+          </button>
+        </div>
+
+        {restaurant.address && (
+          <section className="mt-4 rounded-2xl bg-card p-3 shadow-soft">
+            <p className="text-sm font-semibold">Pickup location</p>
+            <p className="text-xs text-muted-foreground">{restaurant.address}</p>
           </section>
         )}
 
-        {others.length > 0 && (
-          <section className="mt-6">
-            <h3 className="mb-3 text-base font-bold">Full menu</h3>
-            <div className="space-y-2.5">
-              {others.map((m) => <MealCard key={m.id} meal={m} />)}
-            </div>
-          </section>
+        {tab === "menu" ? (
+          <MenuSection popular={popular} others={others} meals={meals} />
+        ) : (
+          <ReviewsSection
+            reviews={reviews}
+            rating={rating}
+            setRating={setRating}
+            comment={comment}
+            setComment={setComment}
+            submitting={submitting}
+            submitReview={submitReview}
+          />
         )}
       </div>
     </div>
+  );
+}
+
+function MenuSection({ popular, others, meals }: { popular: Meal[]; others: Meal[]; meals: Meal[] }) {
+  return (
+    <>
+      {popular.length > 0 && (
+        <section className="mt-6">
+          <h3 className="mb-3 text-base font-bold">Popular dishes</h3>
+          <div className="space-y-2.5">
+            {popular.map((m) => <MealCard key={m.id} meal={m} />)}
+          </div>
+        </section>
+      )}
+
+      <section className="mt-6">
+        <h3 className="mb-3 text-base font-bold">Full menu</h3>
+        {meals.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
+            <p className="text-sm font-semibold">No menu items yet</p>
+            <p className="mt-1 text-xs text-muted-foreground">This restaurant has not published a menu.</p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {[...popular, ...others].map((m) => <MealCard key={m.id} meal={m} />)}
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
+function ReviewsSection({
+  reviews,
+  rating,
+  setRating,
+  comment,
+  setComment,
+  submitting,
+  submitReview,
+}: {
+  reviews: Review[];
+  rating: number;
+  setRating: (rating: number) => void;
+  comment: string;
+  setComment: (comment: string) => void;
+  submitting: boolean;
+  submitReview: () => void;
+}) {
+  return (
+    <section className="mt-6 space-y-4">
+      <div className="rounded-2xl bg-card p-4 shadow-soft">
+        <div className="flex items-center gap-2 text-sm font-bold">
+          <MessageSquare className="h-4 w-4 text-primary" />
+          Leave feedback
+        </div>
+        <div className="mt-3 flex gap-1">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button key={value} type="button" onClick={() => setRating(value)} className="p-1">
+              <Star className={`h-5 w-5 ${value <= rating ? "fill-warning text-warning" : "text-muted-foreground"}`} />
+            </button>
+          ))}
+        </div>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="How was your experience with this restaurant?"
+          rows={3}
+          className="mt-3 w-full resize-none rounded-xl border border-border bg-background p-3 text-sm outline-none focus:border-primary"
+        />
+        <button
+          type="button"
+          onClick={submitReview}
+          disabled={submitting}
+          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary py-2.5 text-xs font-bold text-primary-foreground shadow-glow disabled:opacity-60"
+        >
+          <Send className="h-3.5 w-3.5" />
+          {submitting ? "Sending..." : "Send feedback"}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {reviews.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
+            <p className="text-sm font-semibold">No reviews yet</p>
+            <p className="mt-1 text-xs text-muted-foreground">Be the first to share feedback.</p>
+          </div>
+        ) : (
+          reviews.map((review) => (
+            <div key={review.id} className="rounded-2xl bg-card p-4 shadow-soft">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold">{review.userName}</p>
+                  <p className="text-[11px] text-muted-foreground">{new Date(review.createdAt).toLocaleString()}</p>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-lg bg-success/10 px-2 py-1 text-xs font-bold text-success">
+                  <Star className="h-3 w-3 fill-current" />
+                  {review.rating}
+                </span>
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">{review.comment}</p>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
   );
 }

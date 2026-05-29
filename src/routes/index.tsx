@@ -124,7 +124,7 @@ function Landing() {
                   <p className="text-sm font-bold">Hey, Tobi 👋</p>
                 </div>
                 <div className="rounded-2xl bg-gradient-warm p-3 text-white shadow-glow">
-                  <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">15% off · BITE15</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">Preorder pickup</span>
                   <p className="mt-1 text-sm font-bold leading-tight">Preorder lunch. Skip the queue.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -346,7 +346,6 @@ function Landing() {
                   Become a partner
                 </Link>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">Demo: owner@bitepass.app / owner</p>
             </div>
           </Reveal>
           <Reveal delay={120}>

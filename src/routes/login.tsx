@@ -10,8 +10,8 @@ export const Route = createFileRoute("/login")({ component: LoginPage });
 function LoginPage() {
   const { login } = useAuth();
   const nav = useNavigate();
-  const [email, setEmail] = useState("user@bitepass.app");
-  const [password, setPassword] = useState("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -58,13 +58,6 @@ function LoginPage() {
           {loading ? "Signing in…" : "Sign in"}
         </button>
       </form>
-
-      <div className="mt-5 rounded-2xl border border-dashed border-border bg-card/60 p-3 text-xs animate-slide-up" style={{ animationDelay: "200ms" }}>
-        <p className="font-semibold">Demo credentials</p>
-        <p className="mt-1 text-muted-foreground">Customer: <span className="font-mono">user@bitepass.app</span> / password</p>
-        <p className="text-muted-foreground">Restaurant: <span className="font-mono">owner@bitepass.app</span> / owner</p>
-        <p className="text-muted-foreground">Admin: <span className="font-mono">admin@bitepass.app</span> / admin</p>
-      </div>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         New here? <Link to="/signup" className="font-semibold text-primary">Create account</Link>

@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChefHat, LogOut, Store, ShoppingBag, UtensilsCrossed, Tag, BarChart3,
-  Plus, Trash2, Power, TrendingUp, Clock, Pencil, Check, X,
+  Plus, Trash2, Power, TrendingUp, Clock, Pencil, Check, X, Menu, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
-import { FILES, appendRow, deleteRow, readTable, updateRow } from "@/lib/csv-store";
+import { backend } from "@/lib/backend";
 import type { Discount, Meal, Order, Restaurant } from "@/lib/seed";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
+import { parseMealOptions, stringifyMealOptions, type MealOption } from "@/lib/meal-options";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/business")({ component: BusinessDashboard });
@@ -18,6 +19,7 @@ function BusinessDashboard() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tick, setTick] = useState(0);
   const refresh = () => setTick((x) => x + 1);
 
@@ -26,24 +28,34 @@ function BusinessDashboard() {
     else if (user.role !== "restaurant" && user.role !== "admin") nav({ to: "/discover" });
   }, [user, nav]);
 
-  const restaurant = useMemo(() => {
-    const all = readTable<Restaurant>(FILES.restaurants);
-    if (!user) return undefined;
-    return all.find((r) => r.ownerId === user.id) ?? all[0];
-  }, [user, tick]);
+  const [restaurant, setRestaurant] = useState<Restaurant | undefined>();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
 
-  const orders = useMemo(
-    () => readTable<Order>(FILES.orders).filter((o) => o.restaurantId === restaurant?.id),
-    [restaurant, tick],
-  );
-  const meals = useMemo(
-    () => readTable<Meal>(FILES.meals).filter((m) => m.restaurantId === restaurant?.id),
-    [restaurant, tick],
-  );
-  const discounts = useMemo(
-    () => readTable<Discount>(FILES.discounts).filter((d) => d.restaurantId === restaurant?.id),
-    [restaurant, tick],
-  );
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    async function loadDashboard() {
+      const allRestaurants = await backend.restaurants();
+      const ownedRestaurant = allRestaurants.find((r) => r.ownerId === user.id) ?? allRestaurants[0];
+      if (!ownedRestaurant || cancelled) return;
+      const [allOrders, allMeals, allDiscounts] = await Promise.all([
+        backend.orders(),
+        backend.meals(),
+        backend.discounts(),
+      ]);
+      if (cancelled) return;
+      setRestaurant(ownedRestaurant);
+      setOrders(allOrders.filter((o) => o.restaurantId === ownedRestaurant.id));
+      setMeals(allMeals.filter((m) => m.restaurantId === ownedRestaurant.id));
+      setDiscounts(allDiscounts.filter((d) => d.restaurantId === ownedRestaurant.id));
+    }
+    void loadDashboard();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, tick]);
 
   if (!user || !restaurant) return null;
 
@@ -54,18 +66,102 @@ function BusinessDashboard() {
     { id: "discounts", label: "Discounts", icon: Tag },
     { id: "profile", label: "Profile", icon: Store },
   ];
+  const activeTab = tabs.find((t) => t.id === tab) ?? tabs[0];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-72" : "lg:pl-20"}`}>
+      {sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm lg:hidden"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-card shadow-card transition-all duration-300 ${
+          sidebarOpen ? "w-72 translate-x-0" : "w-20 -translate-x-full lg:translate-x-0"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
+              <ChefHat className="h-5 w-5" />
+            </div>
+            {sidebarOpen && (
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold leading-tight">{restaurant.name}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Business dashboard ·{" "}
+                  <span className={restaurant.isOpen === "1" ? "text-success font-semibold" : "text-destructive font-semibold"}>
+                    {restaurant.isOpen === "1" ? "Open now" : "Closed"}
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label={sidebarOpen ? "Collapse navigation" : "Expand navigation"}
+            onClick={() => setSidebarOpen((open) => !open)}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <nav className="flex-1 space-y-1 px-3 py-4">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => {
+                setTab(t.id);
+                if (typeof window !== "undefined" && window.innerWidth < 1024) setSidebarOpen(false);
+              }}
+              className={`flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition ${
+                tab === t.id
+                  ? "bg-gradient-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              } ${sidebarOpen ? "justify-start" : "justify-center"}`}
+            >
+              <t.icon className="h-4 w-4 shrink-0" />
+              {sidebarOpen && <span>{t.label}</span>}
+            </button>
+          ))}
+        </nav>
+
+        <div className="border-t border-border p-3">
+          <button
+            onClick={() => { logout(); nav({ to: "/" }); }}
+            className={`flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive ${
+              sidebarOpen ? "justify-start" : "justify-center"
+            }`}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {sidebarOpen && <span>Sign out</span>}
+          </button>
+        </div>
+      </aside>
+
       {/* Header */}
       <header className="sticky top-0 z-30 glass border-b border-border/40">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-label="Open navigation"
+              onClick={() => setSidebarOpen(true)}
+              className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground lg:hidden"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
               <ChefHat className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-bold leading-tight">{restaurant.name}</p>
+              <p className="text-sm font-bold leading-tight">{activeTab.label}</p>
               <p className="text-[11px] text-muted-foreground">
                 Business dashboard ·{" "}
                 <span className={restaurant.isOpen === "1" ? "text-success font-semibold" : "text-destructive font-semibold"}>
@@ -74,13 +170,12 @@ function BusinessDashboard() {
               </p>
             </div>
           </div>
-          <button onClick={() => { logout(); nav({ to: "/" }); }}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted transition">
-            <LogOut className="h-3.5 w-3.5" /> Sign out
-          </button>
+          <span className={restaurant.isOpen === "1" ? "rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-bold text-success" : "rounded-full bg-destructive/15 px-2.5 py-1 text-[11px] font-bold text-destructive"}>
+            {restaurant.isOpen === "1" ? "Open" : "Closed"}
+          </span>
         </div>
 
-        <div className="no-scrollbar mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 pb-2">
+        <div className="hidden">
           {tabs.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition ${
@@ -93,7 +188,7 @@ function BusinessDashboard() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-5">
-        {tab === "overview" && <Overview restaurant={restaurant} orders={orders} meals={meals} discounts={discounts} />}
+          {tab === "overview" && <Overview restaurant={restaurant} orders={orders} meals={meals} discounts={discounts} refresh={refresh} />}
         {tab === "orders" && <OrdersTab orders={orders} refresh={refresh} />}
         {tab === "menu" && <MenuTab restaurantId={restaurant.id} meals={meals} refresh={refresh} />}
         {tab === "discounts" && <DiscountsTab restaurantId={restaurant.id} discounts={discounts} refresh={refresh} />}
@@ -104,7 +199,19 @@ function BusinessDashboard() {
 }
 
 /* ---------------- OVERVIEW ---------------- */
-function Overview({ restaurant, orders, meals, discounts }: { restaurant: Restaurant; orders: Order[]; meals: Meal[]; discounts: Discount[] }) {
+function Overview({
+  restaurant,
+  orders,
+  meals,
+  discounts,
+  refresh,
+}: {
+  restaurant: Restaurant;
+  orders: Order[];
+  meals: Meal[];
+  discounts: Discount[];
+  refresh: () => void;
+}) {
   const completed = orders.filter((o) => o.status === "completed");
   const revenue = completed.reduce((s, o) => s + Number(o.total), 0);
   const today = new Date().toDateString();
@@ -112,6 +219,12 @@ function Overview({ restaurant, orders, meals, discounts }: { restaurant: Restau
   const active = orders.filter((o) => ["received", "preparing", "ready"].includes(o.status));
   const availMeals = meals.filter((m) => m.available === "1").length;
   const activeDisc = discounts.filter((d) => d.active === "1").length;
+  const toggleOpen = () => {
+    const next = restaurant.isOpen === "1" ? "0" : "1";
+    void backend.updateRestaurant(restaurant.id, { isOpen: next });
+    refresh();
+    toast.success(next === "1" ? "Restaurant is now open" : "Restaurant set to closed");
+  };
 
   // 7-day mini sparkline
   const trend = Array.from({ length: 7 }).map((_, i) => {
@@ -130,6 +243,31 @@ function Overview({ restaurant, orders, meals, discounts }: { restaurant: Restau
         <Kpi icon={Clock} label="Active queue" value={`${active.length}`} />
         <Kpi icon={UtensilsCrossed} label="Available dishes" value={`${availMeals} / ${meals.length}`} />
       </div>
+
+      <Card title="Restaurant status" subtitle="Control whether customers see you as available">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className={`text-sm font-bold ${restaurant.isOpen === "1" ? "text-success" : "text-destructive"}`}>
+              {restaurant.isOpen === "1" ? "Open now" : "Closed"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {restaurant.isOpen === "1"
+                ? "Customers can discover and order from your restaurant."
+                : "Your restaurant is marked closed for customers."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={toggleOpen}
+            className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white shadow-soft transition active:scale-95 ${
+              restaurant.isOpen === "1" ? "bg-destructive" : "bg-success"
+            }`}
+          >
+            <Power className="h-3.5 w-3.5" />
+            {restaurant.isOpen === "1" ? "Set closed" : "Open restaurant"}
+          </button>
+        </div>
+      </Card>
 
       <Card title="Revenue · last 7 days" subtitle={`${restaurant.name}`}>
         <div className="flex h-40 items-end gap-2">
@@ -188,13 +326,11 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const advance = (id: string, next: string) => {
-    updateRow(FILES.orders, (r) => r.id === id, { status: next });
-    refresh();
+    backend.updateOrder(id, { status: next }).then(refresh);
     toast.success(`Order → ${next}`);
   };
   const cancel = (id: string) => {
-    updateRow(FILES.orders, (r) => r.id === id, { status: "cancelled" });
-    refresh();
+    backend.updateOrder(id, { status: "cancelled" }).then(refresh);
     toast.info("Order cancelled");
   };
 
@@ -217,7 +353,7 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
       ) : (
         <div className="space-y-3">
           {filtered.map((o) => {
-            const items = JSON.parse(o.items) as { name: string; qty: number; price: number }[];
+            const items = JSON.parse(o.items) as { name: string; qty: number; price: number; servingUnit?: string; options?: { name: string; price: number }[] }[];
             const idx = flow.indexOf(o.status);
             const next = idx >= 0 && idx < flow.length - 1 ? flow[idx + 1] : null;
             return (
@@ -238,7 +374,17 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                 <ul className="mt-3 space-y-1 text-xs">
                   {items.map((it, i) => (
                     <li key={i} className="flex justify-between">
-                      <span>{it.qty}× {it.name}</span>
+                      <span>
+                        {it.qty}× {it.name}
+                        {it.servingUnit && (
+                          <span className="block text-[11px] text-muted-foreground">Base: per {it.servingUnit}</span>
+                        )}
+                        {it.options && it.options.length > 0 && (
+                          <span className="block text-[11px] text-muted-foreground">
+                            {it.options.map((option) => option.name).join(", ")}
+                          </span>
+                        )}
+                      </span>
                       <span className="text-muted-foreground">{naira(it.qty * it.price)}</span>
                     </li>
                   ))}
@@ -275,14 +421,12 @@ function MenuTab({ restaurantId, meals, refresh }: { restaurantId: string; meals
   const [editId, setEditId] = useState<string | null>(null);
 
   const toggleAvail = (id: string, cur: string) => {
-    updateRow(FILES.meals, (r) => r.id === id, { available: cur === "1" ? "0" : "1" });
-    refresh();
+    backend.updateMeal(id, { available: cur === "1" ? "0" : "1" }).then(refresh);
     toast.success(cur === "1" ? "Dish hidden" : "Dish available");
   };
   const remove = (id: string) => {
     if (!confirm("Remove this dish?")) return;
-    deleteRow(FILES.meals, (r) => r.id === id);
-    refresh();
+    backend.deleteMeal(id).then(refresh);
     toast.success("Dish removed");
   };
 
@@ -344,23 +488,27 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
     name: meal?.name ?? "",
     description: meal?.description ?? "",
     price: meal?.price ?? "",
-    image: meal?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=70",
+    servingUnit: meal?.servingUnit ?? "plate",
     category: meal?.category ?? "Rice",
     prepTime: meal?.prepTime ?? "15",
     availableFrom: meal?.availableFrom ?? "10",
     availableTo: meal?.availableTo ?? "22",
   });
+  const [options, setOptions] = useState<MealOption[]>(parseMealOptions(meal?.options));
 
   const save = () => {
     if (!form.name || !form.price) { toast.error("Name and price required"); return; }
+    const image = meal?.image || automaticMealImage(form.name || form.category);
     if (meal) {
-      updateRow(FILES.meals, (r) => r.id === meal.id, form);
+      void backend.updateMeal(meal.id, { ...form, image, options: stringifyMealOptions(options) });
       toast.success("Dish updated");
     } else {
-      appendRow(FILES.meals, {
+      void backend.addMeal({
         id: "m" + Date.now(),
         restaurantId,
         ...form,
+        image,
+        options: stringifyMealOptions(options),
         rating: "0", reviewCount: "0", popular: "0", available: "1",
       });
       toast.success("Dish added");
@@ -384,21 +532,81 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {F("name", "Name")}
+        <label className="block">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Serving unit</span>
+          <select
+            value={form.servingUnit}
+            onChange={(e) => setForm({ ...form, servingUnit: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          >
+            <option value="plate">Per plate</option>
+            <option value="spoon">Per spoon</option>
+            <option value="piece">Per piece</option>
+            <option value="wrap">Per wrap</option>
+            <option value="bowl">Per bowl</option>
+            <option value="portion">Per portion</option>
+          </select>
+        </label>
         {F("price", "Price (₦)", "number")}
         <label className="block md:col-span-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Description</span>
           <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
             className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" rows={2} />
         </label>
-        <label className="block md:col-span-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Image URL</span>
-          <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })}
-            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
-        </label>
         {F("category", "Category")}
         {F("prepTime", "Prep time (min)", "number")}
         {F("availableFrom", "Available from (hour 0-23)", "number")}
         {F("availableTo", "Available to (hour 0-23)", "number")}
+        <div className="md:col-span-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Add items and prices</p>
+              <p className="text-[11px] text-muted-foreground">Examples: extra spoon, with egg, with fish. Prices are in naira.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOptions((prev) => [...prev, { id: "opt" + Date.now(), name: "", price: 0 }])}
+              className="rounded-full border border-border px-3 py-1.5 text-[11px] font-bold hover:bg-muted"
+            >
+              Add item
+            </button>
+          </div>
+          <div className="mt-2 space-y-2">
+            {options.length === 0 && (
+              <div className="rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
+                No extra items yet. Customers will buy the base serving only.
+              </div>
+            )}
+            {options.map((option, index) => (
+              <div key={option.id} className="grid grid-cols-[1fr_110px_32px] gap-2">
+                <input
+                  value={option.name}
+                  onChange={(e) =>
+                    setOptions((prev) => prev.map((item, i) => (i === index ? { ...item, name: e.target.value } : item)))
+                  }
+                  placeholder="Item name"
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+                <input
+                  type="number"
+                  value={option.price}
+                  onChange={(e) =>
+                    setOptions((prev) => prev.map((item, i) => (i === index ? { ...item, price: Number(e.target.value) } : item)))
+                  }
+                  placeholder="₦ price"
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => setOptions((prev) => prev.filter((_, i) => i !== index))}
+                  className="grid h-9 w-9 place-items-center rounded-lg bg-muted text-destructive"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       <button onClick={save}
         className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-glow">
@@ -408,18 +616,21 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
   );
 }
 
+function automaticMealImage(seed: string): string {
+  const term = encodeURIComponent(seed.trim() || "restaurant food");
+  return `https://source.unsplash.com/900x600/?${term},food`;
+}
+
 /* ---------------- DISCOUNTS ---------------- */
 function DiscountsTab({ restaurantId, discounts, refresh }: { restaurantId: string; discounts: Discount[]; refresh: () => void }) {
   const [adding, setAdding] = useState(false);
 
   const toggle = (id: string, cur: string) => {
-    updateRow(FILES.discounts, (r) => r.id === id, { active: cur === "1" ? "0" : "1" });
-    refresh();
+    backend.updateDiscount(id, { active: cur === "1" ? "0" : "1" }).then(refresh);
   };
   const remove = (id: string) => {
     if (!confirm("Delete this discount?")) return;
-    deleteRow(FILES.discounts, (r) => r.id === id);
-    refresh();
+    backend.deleteDiscount(id).then(refresh);
     toast.success("Discount deleted");
   };
 
@@ -485,7 +696,7 @@ function DiscountForm({ restaurantId, onCancel, onSaved }: { restaurantId: strin
   });
   const save = () => {
     if (!form.code) { toast.error("Code required"); return; }
-    appendRow(FILES.discounts, {
+    void backend.addDiscount({
       id: "d" + Date.now(),
       restaurantId,
       code: form.code.toUpperCase(),
@@ -549,15 +760,13 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
   const [form, setForm] = useState(restaurant);
 
   const save = () => {
-    updateRow(FILES.restaurants, (r) => r.id === restaurant.id, form);
-    refresh();
+    backend.updateRestaurant(restaurant.id, form).then(refresh);
     toast.success("Profile updated");
   };
   const toggleOpen = () => {
     const next = form.isOpen === "1" ? "0" : "1";
     setForm({ ...form, isOpen: next });
-    updateRow(FILES.restaurants, (r) => r.id === restaurant.id, { isOpen: next });
-    refresh();
+    backend.updateRestaurant(restaurant.id, { isOpen: next }).then(refresh);
     toast.success(next === "1" ? "Restaurant is now open" : "Restaurant set to closed");
   };
 

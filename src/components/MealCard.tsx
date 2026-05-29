@@ -30,7 +30,10 @@ export function MealCard({ meal, restaurantName }: { meal: Meal; restaurantName?
             <span className="flex items-center gap-0.5"><Star className="h-3 w-3 fill-warning text-warning" />{meal.rating}</span>
             <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" />{meal.prepTime}m</span>
           </div>
-          <span className="text-sm font-bold text-primary">{naira(meal.price)}</span>
+          <span className="text-sm font-bold text-primary">
+            {naira(meal.price)}
+            {meal.servingUnit && <span className="text-[10px] font-semibold text-muted-foreground">/{meal.servingUnit}</span>}
+          </span>
         </div>
       </div>
     </Link>

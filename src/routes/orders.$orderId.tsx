@@ -50,7 +50,7 @@ function OrderDetail() {
 
   if (!order) return <div className="p-8 text-center text-sm">Order not found.</div>;
 
-  const items = JSON.parse(order.items) as { name: string; qty: number; price: number; notes?: string }[];
+  const items = JSON.parse(order.items) as { name: string; qty: number; price: number; servingUnit?: string; notes?: string; options?: { name: string; price: number }[] }[];
   const currentIdx = flow.indexOf(order.status as (typeof flow)[number]);
   const pickupMs = new Date(order.pickupTime).getTime() - Date.now();
   const mins = Math.max(0, Math.floor(pickupMs / 60000));
@@ -112,6 +112,12 @@ function OrderDetail() {
               <li key={i} className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-medium">{it.qty}× {it.name}</p>
+                  {it.servingUnit && <p className="text-[11px] text-muted-foreground">Base: per {it.servingUnit}</p>}
+                  {it.options && it.options.length > 0 && (
+                    <p className="text-[11px] text-muted-foreground">
+                      {it.options.map((option) => `${option.name} (+${naira(option.price)})`).join(", ")}
+                    </p>
+                  )}
                   {it.notes && <p className="text-[11px] text-muted-foreground">Note: {it.notes}</p>}
                 </div>
                 <span className="text-sm font-semibold">{naira(it.qty * it.price)}</span>

@@ -1,8 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search, TrendingUp, ChevronRight, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
-import { FILES, readTable } from "@/lib/csv-store";
+import { backend } from "@/lib/backend";
 import type { Meal, Restaurant } from "@/lib/seed";
+import {
+  distanceKm,
+  formatDistance,
+  getCurrentLocationDetails,
+  restaurantCoords,
+  type Coordinates,
+} from "@/lib/location";
 import { AppHeader } from "@/components/AppHeader";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { MealCard } from "@/components/MealCard";
@@ -24,22 +31,53 @@ function Discover() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [coords, setCoords] = useState<Coordinates | null>(null);
+  const [locationLabel, setLocationLabel] = useState("Lagos, Nigeria");
 
   useEffect(() => {
     const t = setTimeout(() => {
-      setRestaurants(readTable<Restaurant>(FILES.restaurants));
-      setMeals(readTable<Meal>(FILES.meals));
-      setLoading(false);
+      Promise.all([backend.restaurants(), backend.meals()]).then(([nextRestaurants, nextMeals]) => {
+        setRestaurants(nextRestaurants);
+        setMeals(nextMeals);
+        setLoading(false);
+      });
     }, 400);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    getCurrentLocationDetails()
+      .then((location) => {
+        setCoords({ lat: location.lat, lng: location.lng });
+        setLocationLabel(location.address.split(",").slice(0, 2).join(", "));
+      })
+      .catch(() => {
+        setLocationLabel("Lagos, Nigeria");
+      });
+  }, []);
+
+  const restaurantsByDistance = coords
+    ? [...restaurants].sort((a, b) => {
+        const aCoords = restaurantCoords(a);
+        const bCoords = restaurantCoords(b);
+        const aDistance = aCoords ? distanceKm(coords, aCoords) : Number.POSITIVE_INFINITY;
+        const bDistance = bCoords ? distanceKm(coords, bCoords) : Number.POSITIVE_INFINITY;
+        return aDistance - bDistance;
+      })
+    : restaurants;
+
+  const distanceFor = (restaurant: Restaurant) => {
+    if (!coords) return undefined;
+    const target = restaurantCoords(restaurant);
+    return target ? formatDistance(distanceKm(coords, target)) : undefined;
+  };
 
   const trending = meals.filter((m) => m.popular === "1").slice(0, 6);
   const recommended = meals.slice(0, 4);
 
   return (
     <>
-      <AppHeader />
+      <AppHeader subtitle={locationLabel} />
       <main className="space-y-6 px-4 pt-4">
         <Link to="/search" className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 shadow-soft animate-slide-up">
           <Search className="h-4 w-4 text-muted-foreground" />
@@ -50,10 +88,10 @@ function Discover() {
           <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
           <div className="relative">
             <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold backdrop-blur">
-              <Sparkles className="h-3 w-3" /> Limited time
+              <Sparkles className="h-3 w-3" /> Nearby
             </span>
             <h2 className="mt-2 text-xl font-bold leading-tight">Preorder lunch.<br />Skip the 30-min queue.</h2>
-            <p className="mt-1 text-xs text-white/85">Get 15% off your first preorder with code BITE15</p>
+            <p className="mt-1 text-xs text-white/85">Restaurants around you will appear as they join BitePass.</p>
           </div>
         </div>
 
@@ -109,7 +147,9 @@ function Discover() {
         <section>
           <h3 className="mb-3 text-base font-bold">Nearby restaurants</h3>
           <div className="grid grid-cols-2 gap-3">
-            {loading ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />) : restaurants.map((r) => <RestaurantCard key={r.id} r={r} />)}
+            {loading
+              ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+              : restaurantsByDistance.map((r) => <RestaurantCard key={r.id} r={r} distanceLabel={distanceFor(r)} />)}
           </div>
         </section>
 

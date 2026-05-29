@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Search as SearchIcon, ArrowLeft, Star, Clock, MapPin } from "lucide-react";
-import { FILES, readTable } from "@/lib/csv-store";
+import { backend } from "@/lib/backend";
 import type { Meal, Restaurant } from "@/lib/seed";
+import { distanceKm, formatDistance, getCurrentCoordinates, restaurantCoords, type Coordinates } from "@/lib/location";
 import { z } from "zod";
 
 const searchSchema = z.object({ q: z.string().optional() });
@@ -15,12 +16,21 @@ export const Route = createFileRoute("/search")({
 function SearchPage() {
   const { q: initial } = Route.useSearch();
   const [q, setQ] = useState(initial ?? "");
+  const [coords, setCoords] = useState<Coordinates | null>(null);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [meals, setMeals] = useState<Meal[]>([]);
 
-  const restaurants = useMemo(() => readTable<Restaurant>(FILES.restaurants), []);
-  const meals = useMemo(() => readTable<Meal>(FILES.meals), []);
   const term = q.trim().toLowerCase();
 
-  const results = !term
+  useEffect(() => {
+    getCurrentCoordinates().then(setCoords).catch(() => {});
+    Promise.all([backend.restaurants(), backend.meals()]).then(([nextRestaurants, nextMeals]) => {
+      setRestaurants(nextRestaurants);
+      setMeals(nextMeals);
+    });
+  }, []);
+
+  const matched = !term
     ? restaurants
     : restaurants.filter((r) => {
         const haystack = `${r.name} ${r.cuisine} ${r.tags} ${r.description}`.toLowerCase();
@@ -28,6 +38,16 @@ function SearchPage() {
         // also match if any of its meals match the term
         return meals.some((m) => m.restaurantId === r.id && (m.name + " " + m.category + " " + m.description).toLowerCase().includes(term));
       });
+
+  const results = coords
+    ? [...matched].sort((a, b) => {
+        const aCoords = restaurantCoords(a);
+        const bCoords = restaurantCoords(b);
+        const aDistance = aCoords ? distanceKm(coords, aCoords) : Number.POSITIVE_INFINITY;
+        const bDistance = bCoords ? distanceKm(coords, bCoords) : Number.POSITIVE_INFINITY;
+        return aDistance - bDistance;
+      })
+    : matched;
 
   return (
     <div>
@@ -72,7 +92,7 @@ function SearchPage() {
                   </div>
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" />{r.prepTime}m</span>
-                    <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{r.distance}km</span>
+                    <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{coords && restaurantCoords(r) ? formatDistance(distanceKm(coords, restaurantCoords(r)!)) : `${r.distance}km`}</span>
                     <span>· {r.reviews} reviews</span>
                   </div>
                 </div>

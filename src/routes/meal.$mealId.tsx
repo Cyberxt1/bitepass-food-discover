@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Star, Clock, Plus, Minus, ShoppingBag } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { FILES, readTable } from "@/lib/csv-store";
+import { backend } from "@/lib/backend";
 import type { Meal, Restaurant, Review } from "@/lib/seed";
 import { useCart } from "@/lib/cart";
 import { naira } from "@/lib/format";
+import { parseMealOptions, type MealOption } from "@/lib/meal-options";
 
 export const Route = createFileRoute("/meal/$mealId")({ component: MealPage });
 
@@ -15,23 +16,40 @@ function MealPage() {
   const { add } = useCart();
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState("");
+  const [meal, setMeal] = useState<Meal | undefined>();
+  const [restaurant, setRestaurant] = useState<Restaurant | undefined>();
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [selectedOptions, setSelectedOptions] = useState<MealOption[]>([]);
 
-  const meal = useMemo(() => readTable<Meal>(FILES.meals).find((m) => m.id === mealId), [mealId]);
-  const restaurant = useMemo(
-    () => (meal ? readTable<Restaurant>(FILES.restaurants).find((r) => r.id === meal.restaurantId) : undefined),
-    [meal],
-  );
-  const reviews = useMemo(
-    () => readTable<Review>(FILES.reviews).filter((r) => r.mealId === mealId),
-    [mealId],
-  );
+  useEffect(() => {
+    Promise.all([backend.meals(), backend.restaurants()]).then(([allMeals, restaurants]) => {
+      const nextMeal = allMeals.find((m) => m.id === mealId);
+      setMeal(nextMeal);
+      setRestaurant(nextMeal ? restaurants.find((r) => r.id === nextMeal.restaurantId) : undefined);
+    });
+    import("@/lib/csv-store").then(({ FILES, readTable }) => {
+      setReviews(readTable<Review>(FILES.reviews).filter((r) => r.mealId === mealId));
+    });
+  }, [mealId]);
 
   if (!meal) return <div className="p-8 text-center text-sm">Meal not found.</div>;
 
+  const options = parseMealOptions(meal.options);
+  const optionsTotal = selectedOptions.reduce((sum, option) => sum + option.price, 0);
+  const unitPrice = Number(meal.price) + optionsTotal;
+
+  const toggleOption = (option: MealOption) => {
+    setSelectedOptions((prev) =>
+      prev.some((item) => item.id === option.id)
+        ? prev.filter((item) => item.id !== option.id)
+        : [...prev, option],
+    );
+  };
+
   const addToCart = () => {
     add({
-      mealId: meal.id, name: meal.name, price: Number(meal.price), image: meal.image,
-      restaurantId: meal.restaurantId, restaurantName: restaurant?.name ?? "", qty, notes,
+      mealId: meal.id, name: meal.name, price: unitPrice, basePrice: Number(meal.price), servingUnit: meal.servingUnit, image: meal.image,
+      restaurantId: meal.restaurantId, restaurantName: restaurant?.name ?? "", qty, notes, options: selectedOptions,
     });
     toast.success(`${qty} × ${meal.name} added to cart`);
     nav({ to: "/cart" });
@@ -63,6 +81,36 @@ function MealPage() {
           <span className="flex items-center gap-1 text-muted-foreground"><Clock className="h-4 w-4" />{meal.prepTime} min</span>
         </div>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{meal.description}</p>
+        <div className="mt-4 rounded-2xl bg-card p-3 shadow-soft">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Base serving</p>
+          <p className="mt-1 text-sm font-bold text-primary">
+            {naira(meal.price)} per {meal.servingUnit ?? "serving"}
+          </p>
+        </div>
+
+        {options.length > 0 && (
+          <section className="mt-5">
+            <h3 className="text-sm font-bold">Servings and extras</h3>
+            <div className="mt-2 space-y-2">
+              {options.map((option) => {
+                const checked = selectedOptions.some((item) => item.id === option.id);
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => toggleOption(option)}
+                    className={`flex w-full items-center justify-between rounded-2xl border p-3 text-left transition ${
+                      checked ? "border-primary bg-primary/5" : "border-border bg-card"
+                    }`}
+                  >
+                    <span className="text-sm font-semibold">{option.name}</span>
+                    <span className="text-sm font-bold text-primary">+ {naira(option.price)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Quantity & notes */}
         <div className="mt-5 space-y-3">
@@ -124,7 +172,7 @@ function MealPage() {
           className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95"
         >
           <span className="flex items-center gap-2"><ShoppingBag className="h-4 w-4" /> Add to cart</span>
-          <span>{naira(Number(meal.price) * qty)}</span>
+          <span>{naira(unitPrice * qty)}</span>
         </button>
       </div>
     </div>

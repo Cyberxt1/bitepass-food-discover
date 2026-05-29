@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Star, Clock, MapPin } from "lucide-react";
 import type { Restaurant } from "@/lib/seed";
 
-export function RestaurantCard({ r }: { r: Restaurant }) {
+export function RestaurantCard({ r, distanceLabel }: { r: Restaurant; distanceLabel?: string }) {
   return (
     <Link
       to="/restaurant/$restaurantId"
@@ -32,7 +32,7 @@ export function RestaurantCard({ r }: { r: Restaurant }) {
         <p className="text-xs text-muted-foreground">{r.cuisine}</p>
         <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{r.prepTime} min</span>
-          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{r.distance} km</span>
+          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{distanceLabel ?? `${r.distance} km`}</span>
           <span>· {r.reviews} reviews</span>
         </div>
       </div>

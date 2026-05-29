@@ -57,7 +57,7 @@ function CartPage() {
       id: orderId,
       userId: user.id,
       restaurantId,
-      items: JSON.stringify(items.map((i) => ({ mealId: i.mealId, name: i.name, qty: i.qty, price: i.price, notes: i.notes }))),
+      items: JSON.stringify(items.map((i) => ({ mealId: i.mealId, name: i.name, qty: i.qty, price: i.price, servingUnit: i.servingUnit, notes: i.notes, options: i.options ?? [] }))),
       total: grand,
       status: "received",
       pickupTime: new Date(Date.now() + pickupMins * 60 * 1000).toISOString(),
@@ -101,7 +101,15 @@ function CartPage() {
                   <div className="flex-1">
                     <p className="text-sm font-semibold leading-tight">{it.name}</p>
                     <p className="text-[11px] text-muted-foreground">{it.restaurantName}</p>
-                    <p className="mt-1 text-sm font-bold text-primary">{naira(it.price)}</p>
+                    {it.options && it.options.length > 0 && (
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {it.options.map((option) => option.name).join(", ")}
+                      </p>
+                    )}
+                    <p className="mt-1 text-sm font-bold text-primary">
+                      {naira(it.price)}
+                      {it.servingUnit && <span className="text-[10px] font-semibold text-muted-foreground">/{it.servingUnit}</span>}
+                    </p>
                   </div>
                   <button onClick={() => remove(it.mealId)} className="grid h-8 w-8 place-items-center rounded-full bg-muted text-muted-foreground">
                     <Trash2 className="h-3.5 w-3.5" />

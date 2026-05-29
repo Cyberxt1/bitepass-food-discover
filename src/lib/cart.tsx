@@ -4,11 +4,14 @@ export type CartItem = {
   mealId: string;
   name: string;
   price: number;
+  basePrice?: number;
+  servingUnit?: string;
   image: string;
   restaurantId: string;
   restaurantName: string;
   qty: number;
   notes?: string;
+  options?: { id: string; name: string; price: number }[];
 };
 
 type CartCtx = {
