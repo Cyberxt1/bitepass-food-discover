@@ -13,7 +13,7 @@ import { MealPlaceholder } from "@/components/MealPlaceholder";
 export const Route = createFileRoute("/cart")({ component: CartPage });
 
 function CartPage() {
-  const { items, setQty, remove, total, clear, setNotes } = useCart();
+  const { items, setQty, remove, total, clear, setNotes, setOptionQty } = useCart();
   const { user } = useAuth();
   const nav = useNavigate();
   const [placing, setPlacing] = useState(false);
@@ -135,9 +135,33 @@ function CartPage() {
                     <p className="text-sm font-semibold leading-tight">{item.name}</p>
                     <p className="text-[11px] text-muted-foreground">{item.restaurantName}</p>
                     {item.options && item.options.length > 0 && (
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {item.options.map((option) => `${option.name}${option.qty && option.qty > 1 ? ` x${option.qty}` : ""}`).join(", ")}
-                      </p>
+                      <div className="mt-1 space-y-1.5">
+                        {item.options.map((option) => (
+                          <div key={option.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/60 px-2 py-1">
+                            <div className="min-w-0">
+                              <p className="truncate text-[11px] font-medium text-muted-foreground">{option.name}</p>
+                              <p className="text-[10px] text-muted-foreground">{naira(option.price)} each</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setOptionQty(item.id, option.id, (option.qty ?? 1) - 1)}
+                                className="grid h-6 w-6 place-items-center rounded-full border border-border"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </button>
+                              <span className="w-4 text-center text-xs font-bold">{option.qty ?? 1}</span>
+                              <button
+                                type="button"
+                                onClick={() => setOptionQty(item.id, option.id, (option.qty ?? 1) + 1)}
+                                className="grid h-6 w-6 place-items-center rounded-full bg-gradient-primary text-primary-foreground"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                     <p className="mt-1 text-sm font-bold text-primary">
                       {naira(item.price)}
