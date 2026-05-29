@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 export type CartItem = {
+  id: string;
   mealId: string;
   name: string;
   price: number;
@@ -11,15 +12,15 @@ export type CartItem = {
   restaurantName: string;
   qty: number;
   notes?: string;
-  options?: { id: string; name: string; price: number }[];
+  options?: { id: string; name: string; price: number; qty?: number }[];
 };
 
 type CartCtx = {
   items: CartItem[];
   add: (item: CartItem) => void;
-  remove: (mealId: string) => void;
-  setQty: (mealId: string, qty: number) => void;
-  setNotes: (mealId: string, notes: string) => void;
+  remove: (itemId: string) => void;
+  setQty: (itemId: string, qty: number) => void;
+  setNotes: (itemId: string, notes: string) => void;
   clear: () => void;
   total: number;
   count: number;
@@ -35,31 +36,35 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem(KEY);
     if (saved) setItems(JSON.parse(saved));
   }, []);
+
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify(items));
   }, [items]);
 
   const add = (item: CartItem) =>
     setItems((prev) => {
-      const ex = prev.find((p) => p.mealId === item.mealId);
-      if (ex) return prev.map((p) => (p.mealId === item.mealId ? { ...p, qty: p.qty + item.qty } : p));
+      const existing = prev.find((entry) => entry.id === item.id);
+      if (existing) {
+        return prev.map((entry) => (entry.id === item.id ? { ...entry, qty: entry.qty + item.qty } : entry));
+      }
       return [...prev, item];
     });
-  const remove = (mealId: string) => setItems((p) => p.filter((x) => x.mealId !== mealId));
-  const setQty = (mealId: string, qty: number) =>
-    setItems((p) => (qty <= 0 ? p.filter((x) => x.mealId !== mealId) : p.map((x) => (x.mealId === mealId ? { ...x, qty } : x))));
-  const setNotes = (mealId: string, notes: string) =>
-    setItems((p) => p.map((x) => (x.mealId === mealId ? { ...x, notes } : x)));
+
+  const remove = (itemId: string) => setItems((prev) => prev.filter((item) => item.id !== itemId));
+  const setQty = (itemId: string, qty: number) =>
+    setItems((prev) => (qty <= 0 ? prev.filter((item) => item.id !== itemId) : prev.map((item) => (item.id === itemId ? { ...item, qty } : item))));
+  const setNotes = (itemId: string, notes: string) =>
+    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, notes } : item)));
   const clear = () => setItems([]);
 
-  const total = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const count = items.reduce((s, i) => s + i.qty, 0);
+  const total = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const count = items.reduce((sum, item) => sum + item.qty, 0);
 
   return <Ctx.Provider value={{ items, add, remove, setQty, setNotes, clear, total, count }}>{children}</Ctx.Provider>;
 }
 
 export function useCart() {
-  const c = useContext(Ctx);
-  if (!c) throw new Error("useCart must be used within CartProvider");
-  return c;
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error("useCart must be used within CartProvider");
+  return ctx;
 }

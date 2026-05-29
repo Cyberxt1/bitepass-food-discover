@@ -21,7 +21,7 @@ export type Review = {
 export type Order = {
   id: string; userId: string; restaurantId: string; items: string;
   total: string; status: string; pickupTime: string; notes: string; createdAt: string;
-  discountCode: string;
+  discountCode: string; paymentStatus?: string;
 };
 export type User = {
   id: string; name: string; email: string; password: string; role: string; avatar: string;

@@ -62,6 +62,12 @@ function BusinessDashboard() {
     };
   }, [user, tick]);
 
+  useEffect(() => {
+    if (!user) return;
+    const timer = window.setInterval(() => setTick((x) => x + 1), 5000);
+    return () => window.clearInterval(timer);
+  }, [user]);
+
   if (!user || !restaurant) return null;
 
   const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
@@ -358,7 +364,7 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
       ) : (
         <div className="space-y-3">
           {filtered.map((o) => {
-            const items = JSON.parse(o.items) as { name: string; qty: number; price: number; servingUnit?: string; options?: { name: string; price: number }[] }[];
+            const items = JSON.parse(o.items) as { name: string; qty: number; price: number; servingUnit?: string; options?: { name: string; price: number; qty?: number }[] }[];
             const idx = flow.indexOf(o.status);
             const next = idx >= 0 && idx < flow.length - 1 ? flow[idx + 1] : null;
             return (
@@ -368,13 +374,18 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                     <p className="text-sm font-bold">Order #{o.id.slice(-5)}</p>
                     <p className="text-[11px] text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</p>
                   </div>
-                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${
-                    o.status === "completed" ? "bg-muted text-muted-foreground" :
-                    o.status === "ready" ? "bg-success/15 text-success" :
-                    o.status === "preparing" ? "bg-warning/15 text-warning" :
-                    o.status === "cancelled" ? "bg-destructive/15 text-destructive" :
-                    "bg-primary/15 text-primary"
-                  }`}>{o.status}</span>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {o.paymentStatus === "paid" && (
+                      <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-[11px] font-bold text-success">Paid</span>
+                    )}
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${
+                      o.status === "completed" ? "bg-muted text-muted-foreground" :
+                      o.status === "ready" ? "bg-success/15 text-success" :
+                      o.status === "preparing" ? "bg-warning/15 text-warning" :
+                      o.status === "cancelled" ? "bg-destructive/15 text-destructive" :
+                      "bg-primary/15 text-primary"
+                    }`}>{o.status}</span>
+                  </div>
                 </div>
                 <ul className="mt-3 space-y-1 text-xs">
                   {items.map((it, i) => (
@@ -386,7 +397,7 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                         )}
                         {it.options && it.options.length > 0 && (
                           <span className="block text-[11px] text-muted-foreground">
-                            {it.options.map((option) => option.name).join(", ")}
+                            {it.options.map((option) => `${option.name}${option.qty && option.qty > 1 ? ` x${option.qty}` : ""}`).join(", ")}
                           </span>
                         )}
                       </span>

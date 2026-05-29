@@ -28,13 +28,17 @@ function OrdersList() {
     let cancelled = false;
     async function loadOrders() {
       const list = (await backend.orders())
-        .filter((o) => o.userId === user.id)
+        .filter((order) => order.userId === user.id)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       if (!cancelled) setOrders(list);
     }
     void loadOrders();
+    const timer = window.setInterval(() => {
+      void loadOrders();
+    }, 5000);
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
     };
   }, [user, nav]);
 
@@ -43,36 +47,48 @@ function OrdersList() {
   return (
     <div>
       <header className="sticky top-0 z-30 glass border-b border-border/40">
-        <div className="px-4 py-3"><h1 className="text-base font-bold">Your orders</h1></div>
+        <div className="px-4 py-3">
+          <h1 className="text-base font-bold">Your orders</h1>
+        </div>
       </header>
 
       {orders.length === 0 ? (
         <div className="grid place-items-center px-6 pt-20 text-center">
           <Receipt className="h-12 w-12 text-muted-foreground" />
           <p className="mt-4 text-base font-semibold">No orders yet</p>
-          <Link to="/" className="mt-6 rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">Order something</Link>
+          <Link to="/" className="mt-6 rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">
+            Order something
+          </Link>
         </div>
       ) : (
         <main className="space-y-3 px-4 pt-4">
-          {orders.map((o) => {
-            const items = JSON.parse(o.items) as { name: string; qty: number }[];
+          {orders.map((order) => {
+            const items = JSON.parse(order.items) as { name: string; qty: number }[];
             return (
-              <Link key={o.id} to="/orders/$orderId" params={{ orderId: o.id }}
+              <Link
+                key={order.id}
+                to="/orders/$orderId"
+                params={{ orderId: order.id }}
                 className="block rounded-2xl bg-card p-4 shadow-soft transition hover:-translate-y-0.5"
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-semibold">Order #{o.id.slice(-5)}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</p>
+                    <p className="text-sm font-semibold">Order #{order.id.slice(-5)}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleString()}</p>
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${statusColors[o.status] ?? ""}`}>
-                    {o.status}
-                  </span>
+                  <div className="flex gap-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${statusColors[order.status] ?? ""}`}>
+                      {order.status}
+                    </span>
+                    {order.paymentStatus === "paid" && (
+                      <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">paid</span>
+                    )}
+                  </div>
                 </div>
                 <p className="mt-2 line-clamp-1 text-xs text-muted-foreground">
-                  {items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
+                  {items.map((item) => `${item.qty}x ${item.name}`).join(", ")}
                 </p>
-                <div className="mt-2 text-sm font-bold text-primary">{naira(o.total)}</div>
+                <div className="mt-2 text-sm font-bold text-primary">{naira(order.total)}</div>
               </Link>
             );
           })}
