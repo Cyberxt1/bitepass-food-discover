@@ -39,6 +39,24 @@ function CartPage() {
       return;
     }
 
+    if (pickupMode === "scheduled") {
+      if (!pickupAt) {
+        toast.error("Choose a pickup time");
+        return;
+      }
+
+      const scheduledPickup = new Date(pickupAt);
+      if (Number.isNaN(scheduledPickup.getTime())) {
+        toast.error("Choose a valid pickup time");
+        return;
+      }
+
+      if (scheduledPickup.getTime() < Date.now()) {
+        toast.error("Pickup time must be in the future");
+        return;
+      }
+    }
+
     setPlacing(true);
     try {
       const orderId = "o" + Date.now();
@@ -183,7 +201,7 @@ function CartPage() {
                   className={`rounded-2xl border px-3 py-3 text-left transition ${pickupMode === "asap" ? "border-primary bg-primary/10 text-foreground" : "border-border bg-muted/40 text-muted-foreground"}`}
                 >
                   <p className="text-sm font-semibold">ASAP</p>
-                  <p className="mt-1 text-xs">Send now and let the store prepare immediately.</p>
+                  <p className="mt-1 text-xs">Prepare right away</p>
                 </button>
                 <button
                   type="button"
@@ -191,7 +209,7 @@ function CartPage() {
                   className={`rounded-2xl border px-3 py-3 text-left transition ${pickupMode === "scheduled" ? "border-primary bg-primary/10 text-foreground" : "border-border bg-muted/40 text-muted-foreground"}`}
                 >
                   <p className="text-sm font-semibold">Set a time</p>
-                  <p className="mt-1 text-xs">Choose the pickup time you want.</p>
+                  <p className="mt-1 text-xs">Choose pickup time</p>
                 </button>
               </div>
               {pickupMode === "scheduled" && (
@@ -203,22 +221,16 @@ function CartPage() {
                     onChange={(event) => setPickupAt(event.target.value)}
                     className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">The store will see this requested pickup time.</p>
                 </div>
               )}
             </div>
 
             <div className="rounded-2xl bg-card p-4 shadow-soft">
-              <p className="text-sm font-semibold">Payment and fulfilment</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Once you pay, the order goes straight to the store. The store also sees that the order is already paid.
-              </p>
-              <p className="mt-2 rounded-xl bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
-                Paystack test mode is active. Use your Paystack test public key before going live.
-              </p>
+              <p className="text-sm font-semibold">Payment</p>
+              <p className="mt-1 text-xs text-muted-foreground">Checkout is powered by Paystack.</p>
               {!isPaystackConfigured() && (
                 <p className="mt-2 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
-                  Add `VITE_PAYSTACK_PUBLIC_KEY` to enable checkout.
+                  Paystack public key is missing. Add `VITE_PAYSTACK_PUBLIC_KEY` to enable checkout.
                 </p>
               )}
               {restaurantClosed && (
