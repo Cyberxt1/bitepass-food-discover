@@ -22,28 +22,25 @@ function RestaurantPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([backend.restaurants(), backend.meals(), backend.reviews()]).then(
-      ([restaurants, allMeals, allReviews]) => {
-        const restaurantMeals = allMeals.filter((m) => m.restaurantId === restaurantId);
-        const mealIds = new Set(restaurantMeals.map((m) => m.id));
-        setRestaurant(restaurants.find((r) => r.id === restaurantId));
-        setMeals(restaurantMeals);
-        setReviews(
-          allReviews
-            .filter((r) => r.restaurantId === restaurantId || mealIds.has(r.mealId))
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-        );
-      },
-    );
+    Promise.all([backend.restaurants(), backend.meals(), backend.reviews()]).then(([restaurants, allMeals, allReviews]) => {
+      const restaurantMeals = allMeals.filter((m) => m.restaurantId === restaurantId);
+      const mealIds = new Set(restaurantMeals.map((m) => m.id));
+      setRestaurant(restaurants.find((r) => r.id === restaurantId));
+      setMeals(restaurantMeals);
+      setReviews(
+        allReviews
+          .filter((r) => r.restaurantId === restaurantId || mealIds.has(r.mealId))
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      );
+    });
   }, [restaurantId]);
 
   if (!restaurant) return <div className="p-8 text-center text-sm">Restaurant not found.</div>;
 
-  const popular = meals.filter((m) => m.popular === "1");
-  const others = meals.filter((m) => m.popular !== "1");
   const avgRating = reviews.length
     ? (reviews.reduce((sum, review) => sum + Number(review.rating), 0) / reviews.length).toFixed(1)
     : restaurant.rating;
+  const closed = restaurant.isOpen === "0";
 
   const submitReview = async () => {
     if (!user) {
@@ -111,29 +108,32 @@ function RestaurantPage() {
             ))}
           </div>
           <div className="mt-4 flex gap-2">
-            <button onClick={() => setTab("menu")} className="flex-1 rounded-xl bg-gradient-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">View menu</button>
+            <button onClick={() => setTab("menu")} className="flex-1 rounded-xl bg-gradient-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">
+              View menu
+            </button>
             <button className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-card">
               <Phone className="h-4 w-4" />
             </button>
           </div>
+          {closed && (
+            <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+              This restaurant is closed. Ordering is disabled until it opens again.
+            </p>
+          )}
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-card p-1 shadow-soft">
           <button
             type="button"
             onClick={() => setTab("menu")}
-            className={`rounded-xl py-2 text-xs font-bold transition ${
-              tab === "menu" ? "bg-gradient-primary text-primary-foreground shadow-soft" : "text-muted-foreground"
-            }`}
+            className={`rounded-xl py-2 text-xs font-bold transition ${tab === "menu" ? "bg-gradient-primary text-primary-foreground shadow-soft" : "text-muted-foreground"}`}
           >
             Menu
           </button>
           <button
             type="button"
             onClick={() => setTab("reviews")}
-            className={`rounded-xl py-2 text-xs font-bold transition ${
-              tab === "reviews" ? "bg-gradient-primary text-primary-foreground shadow-soft" : "text-muted-foreground"
-            }`}
+            className={`rounded-xl py-2 text-xs font-bold transition ${tab === "reviews" ? "bg-gradient-primary text-primary-foreground shadow-soft" : "text-muted-foreground"}`}
           >
             Reviews ({reviews.length})
           </button>
@@ -147,7 +147,7 @@ function RestaurantPage() {
         )}
 
         {tab === "menu" ? (
-          <MenuSection popular={popular} others={others} meals={meals} />
+          <MenuSection meals={meals} closed={closed} />
         ) : (
           <ReviewsSection
             reviews={reviews}
@@ -164,32 +164,21 @@ function RestaurantPage() {
   );
 }
 
-function MenuSection({ popular, others, meals }: { popular: Meal[]; others: Meal[]; meals: Meal[] }) {
+function MenuSection({ meals, closed }: { meals: Meal[]; closed: boolean }) {
   return (
-    <>
-      {popular.length > 0 && (
-        <section className="mt-6">
-          <h3 className="mb-3 text-base font-bold">Popular dishes</h3>
-          <div className="space-y-2.5">
-            {popular.map((m) => <MealCard key={m.id} meal={m} />)}
-          </div>
-        </section>
+    <section className="mt-6">
+      <h3 className="mb-3 text-base font-bold">Menu</h3>
+      {meals.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
+          <p className="text-sm font-semibold">No menu items yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">This restaurant has not published a menu.</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {meals.map((m) => <MealCard key={m.id} meal={m} disabled={closed} />)}
+        </div>
       )}
-
-      <section className="mt-6">
-        <h3 className="mb-3 text-base font-bold">Full menu</h3>
-        {meals.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
-            <p className="text-sm font-semibold">No menu items yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">This restaurant has not published a menu.</p>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {[...popular, ...others].map((m) => <MealCard key={m.id} meal={m} />)}
-          </div>
-        )}
-      </section>
-    </>
+    </section>
   );
 }
 

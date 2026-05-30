@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { FILES, readFile, readTable, writeFile } from "./csv-store";
+import { readTable, writeFile, FILES } from "./csv-store";
 import { backend } from "./backend";
 import { getFirebase } from "./firebase";
+import { readSessionCookie, writeSessionCookie } from "./session-cookie";
 import type { Restaurant, User } from "./seed";
 
 type SignupOptions =
@@ -20,6 +21,7 @@ type SignupOptions =
 
 type AuthCtx = {
   user: User | null;
+  authReady: boolean;
   login: (email: string, password: string) => Promise<User>;
   signup: (name: string, email: string, password: string, options?: SignupOptions) => Promise<User>;
   logout: () => void;
@@ -29,6 +31,7 @@ const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     let unsub: undefined | (() => void);
@@ -37,21 +40,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         unsub = authSdk.onAuthStateChanged(auth, async (firebaseUser: { uid: string } | null) => {
           if (!firebaseUser) {
             setUser(null);
+            setAuthReady(true);
             return;
           }
           const u = (await backend.users()).find((x) => x.id === firebaseUser.uid);
           if (u) {
+            writeSessionCookie(u.id);
             writeFile(FILES.session, u.id);
             setUser(u);
           }
+          setAuthReady(true);
         }) as () => void;
       })
-      .catch(() => {
-        const sid = readFile(FILES.session);
+      .catch(async () => {
+        const sid = readSessionCookie();
         if (sid) {
-          const u = readTable<User>(FILES.users).find((x) => x.id === sid);
+          const u = (await backend.users()).find((x) => x.id === sid) ?? readTable<User>(FILES.users).find((x) => x.id === sid);
           if (u) setUser(u);
         }
+        setAuthReady(true);
       });
     return () => unsub?.();
   }, []);
@@ -61,9 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let u: User | undefined;
     try {
       const { auth, authSdk } = await getFirebase();
-      const credential = await authSdk.signInWithEmailAndPassword(auth, email, password) as {
-        user: { uid: string };
-      };
+      const credential = await authSdk.signInWithEmailAndPassword(auth, email, password) as { user: { uid: string } };
       u = (await backend.users()).find((x) => x.id === credential.user.uid);
     } catch {
       u = readTable<User>(FILES.users).find(
@@ -71,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
     if (!u) throw new Error("Invalid credentials");
+    writeSessionCookie(u.id);
     writeFile(FILES.session, u.id);
     setUser(u);
     return u;
@@ -79,16 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (name: string, email: string, password: string, options: SignupOptions = { role: "customer" }) => {
     await new Promise((r) => setTimeout(r, 600));
     const users = readTable<User>(FILES.users);
-    if (users.find((x) => x.email.toLowerCase() === email.toLowerCase())) {
-      throw new Error("Email already registered");
-    }
+    if (users.find((x) => x.email.toLowerCase() === email.toLowerCase())) throw new Error("Email already registered");
     const role = options.role === "restaurant" ? "restaurant" : "customer";
     let uid = "u" + Date.now();
     try {
       const { auth, authSdk } = await getFirebase();
-      const credential = await authSdk.createUserWithEmailAndPassword(auth, email, password) as {
-        user: { uid: string };
-      };
+      const credential = await authSdk.createUserWithEmailAndPassword(auth, email, password) as { user: { uid: string } };
       uid = credential.user.uid;
     } catch (error) {
       console.warn("Firebase Auth signup unavailable, using local account", error);
@@ -129,12 +131,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await backend.setRestaurant(restaurant);
     }
 
+    writeSessionCookie(u.id);
     writeFile(FILES.session, u.id);
     setUser(u);
     return u;
   };
 
   const logout = () => {
+    writeSessionCookie("");
     writeFile(FILES.session, "");
     setUser(null);
     getFirebase()
@@ -142,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => {});
   };
 
-  return <Ctx.Provider value={{ user, login, signup, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, authReady, login, signup, logout }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

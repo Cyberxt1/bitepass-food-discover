@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 
 import { ThemeProvider } from "@/lib/theme";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
 import { ensureSeed } from "@/lib/seed";
 import { BottomNav } from "@/components/BottomNav";
 import { Splash } from "@/components/Splash";
+import { RouteLoadingOverlay } from "@/components/RouteLoadingOverlay";
 
 function NotFoundComponent() {
   return (
@@ -85,19 +86,28 @@ function RootComponent() {
 
 function AppShell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const isLoading = useRouterState({ select: (s) => s.status === "pending" });
+  const { authReady } = useAuth();
   const fullWidth = path === "/" || path.startsWith("/business") || path.startsWith("/admin");
+  const showOverlay = isLoading || !authReady;
 
   if (fullWidth) {
     return (
-      <div className="min-h-screen bg-background">
-        <Outlet />
-      </div>
+      <>
+        <div className={`min-h-screen bg-background transition duration-200 ${showOverlay ? "blur-sm opacity-60" : ""}`}>
+          <Outlet />
+        </div>
+        <RouteLoadingOverlay visible={showOverlay} />
+      </>
     );
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-background pb-24">
-      <Outlet />
-    </div>
+    <>
+      <div className={`mx-auto min-h-screen max-w-md bg-background pb-24 transition duration-200 ${showOverlay ? "blur-sm opacity-60" : ""}`}>
+        <Outlet />
+      </div>
+      <RouteLoadingOverlay visible={showOverlay} />
+    </>
   );
 }

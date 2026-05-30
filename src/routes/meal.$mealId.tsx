@@ -8,6 +8,7 @@ import { useCart } from "@/lib/cart";
 import { naira } from "@/lib/format";
 import { parseMealOptions, type MealOption } from "@/lib/meal-options";
 import { MealPlaceholder } from "@/components/MealPlaceholder";
+import { RouteLoadingOverlay } from "@/components/RouteLoadingOverlay";
 
 type SelectedMealOption = MealOption & { qty: number };
 
@@ -23,19 +24,21 @@ function MealPage() {
   const [restaurant, setRestaurant] = useState<Restaurant | undefined>();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<SelectedMealOption[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([backend.meals(), backend.restaurants()]).then(([allMeals, restaurants]) => {
       const nextMeal = allMeals.find((entry) => entry.id === mealId);
       setMeal(nextMeal);
       setRestaurant(nextMeal ? restaurants.find((entry) => entry.id === nextMeal.restaurantId) : undefined);
+      setLoading(false);
     });
     import("@/lib/csv-store").then(({ FILES, readTable }) => {
       setReviews(readTable<Review>(FILES.reviews).filter((review) => review.mealId === mealId));
     });
   }, [mealId]);
 
-  if (!meal) return <div className="p-8 text-center text-sm">Meal not found.</div>;
+  if (loading || !meal) return <RouteLoadingOverlay visible />;
 
   const options = parseMealOptions(meal.options);
   const optionsTotal = selectedOptions.reduce((sum, option) => sum + option.price * option.qty, 0);
@@ -93,15 +96,13 @@ function MealPage() {
 
   return (
     <div className="pb-32">
-      <div className="relative h-64 overflow-hidden">
-        <MealPlaceholder name={meal.name} className="h-full w-full rounded-none text-7xl" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-black/20" />
+      <div className="relative h-24">
         <Link to="/discover" className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft">
           <ArrowLeft className="h-4 w-4 text-foreground" />
         </Link>
       </div>
 
-      <div className="-mt-8 rounded-t-3xl bg-background px-4 pt-5">
+      <div className="bg-background px-4 pt-2">
         <h1 className="text-2xl font-bold">{meal.name}</h1>
         {restaurant && (
           <Link to="/restaurant/$restaurantId" params={{ restaurantId: restaurant.id }} className="mt-1 inline-block text-sm text-primary">

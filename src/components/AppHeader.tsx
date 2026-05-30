@@ -1,11 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { MapPin, Moon, Sun, Bell } from "lucide-react";
-import { useTheme } from "@/lib/theme";
+import { MapPin, Bell } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { shortLocationLabel } from "@/lib/location";
 
 export function AppHeader({ subtitle, locationLabel }: { subtitle?: string; locationLabel?: string }) {
-  const { theme, toggle } = useTheme();
   const { user } = useAuth();
   const label = locationLabel ?? (user?.address ? shortLocationLabel(user.address) : "Lagos, Nigeria");
 
@@ -22,17 +20,7 @@ export function AppHeader({ subtitle, locationLabel }: { subtitle?: string; loca
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={toggle}
-            aria-label="Toggle theme"
-            className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card transition hover:scale-105"
-          >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <Link
-            to="/orders"
-            className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-card transition hover:scale-105"
-          >
+          <Link to="/orders" className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-card transition hover:scale-105">
             <Bell className="h-4 w-4" />
             <span className="absolute right-1.5 top-1.5 h-2 w-2 animate-pulse rounded-full bg-primary" />
           </Link>

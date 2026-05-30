@@ -56,7 +56,7 @@ function OrdersList() {
         <div className="grid place-items-center px-6 pt-20 text-center">
           <Receipt className="h-12 w-12 text-muted-foreground" />
           <p className="mt-4 text-base font-semibold">No orders yet</p>
-          <Link to="/" className="mt-6 rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">
+          <Link to="/discover" className="mt-6 rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">
             Order something
           </Link>
         </div>

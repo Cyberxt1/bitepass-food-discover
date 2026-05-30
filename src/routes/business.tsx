@@ -13,12 +13,12 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/business")({ component: BusinessDashboard });
 
-type Tab = "overview" | "orders" | "menu" | "discounts" | "profile";
+type Tab = "orders" | "menu" | "profile";
 
 function BusinessDashboard() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("orders");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tick, setTick] = useState(0);
   const refresh = () => setTick((x) => x + 1);
@@ -71,10 +71,8 @@ function BusinessDashboard() {
   if (!user || !restaurant) return null;
 
   const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
-    { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "orders", label: "Orders", icon: ShoppingBag },
     { id: "menu", label: "Menu", icon: UtensilsCrossed },
-    { id: "discounts", label: "Discounts", icon: Tag },
     { id: "profile", label: "Profile", icon: Store },
   ];
   const activeTab = tabs.find((t) => t.id === tab) ?? tabs[0];
@@ -199,10 +197,8 @@ function BusinessDashboard() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-5">
-          {tab === "overview" && <Overview restaurant={restaurant} orders={orders} meals={meals} discounts={discounts} refresh={refresh} />}
         {tab === "orders" && <OrdersTab orders={orders} refresh={refresh} />}
         {tab === "menu" && <MenuTab restaurantId={restaurant.id} meals={meals} refresh={refresh} />}
-        {tab === "discounts" && <DiscountsTab restaurantId={restaurant.id} discounts={discounts} refresh={refresh} />}
         {tab === "profile" && <ProfileTab restaurant={restaurant} refresh={refresh} />}
       </main>
     </div>

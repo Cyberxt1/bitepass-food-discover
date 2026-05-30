@@ -1,14 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Clock, Minus, Plus, Tag, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeft, Clock, Minus, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
-import { FILES, readTable, updateRow } from "@/lib/csv-store";
+import { FILES, readTable } from "@/lib/csv-store";
 import { backend } from "@/lib/backend";
-import type { Discount } from "@/lib/seed";
 import { MealPlaceholder } from "@/components/MealPlaceholder";
+import { MealPlaceholder } from "@/components/MealPlaceholder";
+import { isPaystackConfigured, startPaystackPayment } from "@/lib/paystack";
 
 export const Route = createFileRoute("/cart")({ component: CartPage });
 
@@ -19,42 +20,12 @@ function CartPage() {
   const [placing, setPlacing] = useState(false);
   const [pickupMode, setPickupMode] = useState<"asap" | "scheduled">("asap");
   const [pickupAt, setPickupAt] = useState(getDefaultPickupTime());
-  const [code, setCode] = useState("");
-  const [applied, setApplied] = useState<Discount | null>(null);
 
   const restaurantId = items[0]?.restaurantId ?? "";
-  const restaurantDiscounts = useMemo(
-    () => readTable<Discount>(FILES.discounts).filter((discount) => discount.restaurantId === restaurantId && discount.active === "1"),
-    [restaurantId],
-  );
-
-  const apply = () => {
-    const normalized = code.trim().toUpperCase();
-    if (!normalized) return;
-    const discount = restaurantDiscounts.find((item) => item.code.toUpperCase() === normalized);
-    if (!discount) {
-      toast.error("Invalid or expired code");
-      return;
-    }
-    if (Number(discount.minOrder) > total) {
-      toast.error(`Minimum order ${naira(discount.minOrder)}`);
-      return;
-    }
-    if (new Date(discount.expiresAt) < new Date()) {
-      toast.error("This code has expired");
-      return;
-    }
-    setApplied(discount);
-    toast.success(`${discount.code} applied`);
-  };
-
-  const discountAmount = applied
-    ? applied.type === "percent"
-      ? Math.round((total * Number(applied.value)) / 100)
-      : Math.min(total, Number(applied.value))
-    : 0;
+  const currentRestaurant = readTable<{ id: string; isOpen: string }>(FILES.restaurants).find((restaurant) => restaurant.id === restaurantId);
+  const restaurantClosed = currentRestaurant?.isOpen === "0";
   const fee = items.length > 0 ? 200 : 0;
-  const grand = Math.max(0, total - discountAmount) + fee;
+  const grand = total + fee;
 
   const place = async () => {
     if (!user) {
@@ -70,38 +41,49 @@ function CartPage() {
     }
 
     setPlacing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    const orderId = "o" + Date.now();
-    const pickupTime = pickupMode === "scheduled" && pickupAt ? new Date(pickupAt).toISOString() : new Date().toISOString();
-    await backend.addOrder({
-      id: orderId,
-      userId: user.id,
-      restaurantId,
-      items: JSON.stringify(
-        items.map((item) => ({
-          mealId: item.mealId,
-          name: item.name,
-          qty: item.qty,
-          price: item.price,
-          servingUnit: item.servingUnit,
-          notes: item.notes,
-          options: item.options ?? [],
-        })),
-      ),
-      total: String(grand),
-      status: "received",
-      pickupTime,
-      notes: "",
-      createdAt: new Date().toISOString(),
-      discountCode: applied?.code ?? "",
-      paymentStatus: "paid",
-    });
-    if (applied) {
-      updateRow(FILES.discounts, (row) => row.id === applied.id, { uses: String(Number(applied.uses) + 1) });
+    try {
+      const orderId = "o" + Date.now();
+      const paymentReference = await startPaystackPayment({
+        amountNaira: grand,
+        email: user.email,
+        name: user.name,
+        reference: `bitepass-${orderId}`,
+        address: user.address,
+      });
+      const pickupTime = pickupMode === "scheduled" && pickupAt ? new Date(pickupAt).toISOString() : new Date().toISOString();
+      await backend.addOrder({
+        id: orderId,
+        userId: user.id,
+        restaurantId,
+        items: JSON.stringify(
+          items.map((item) => ({
+            mealId: item.mealId,
+            name: item.name,
+            qty: item.qty,
+            price: item.price,
+            servingUnit: item.servingUnit,
+            notes: item.notes,
+            options: item.options ?? [],
+          })),
+        ),
+        total: String(grand),
+        status: "received",
+        pickupTime,
+        notes: "",
+        createdAt: new Date().toISOString(),
+        discountCode: "",
+        paymentStatus: "paid",
+        paymentReference,
+      });
+      clear();
+      toast.success("Payment successful, order sent to the store");
+      nav({ to: "/orders/$orderId", params: { orderId } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Payment could not be completed";
+      toast.error(message);
+    } finally {
+      setPlacing(false);
     }
-    clear();
-    toast.success("Payment successful, order sent to the store");
-    nav({ to: "/orders/$orderId", params: { orderId } });
   };
 
   return (
@@ -130,7 +112,7 @@ function CartPage() {
             {items.map((item) => (
               <div key={item.id} className="rounded-2xl bg-card p-3 shadow-soft animate-slide-up">
                 <div className="flex gap-3">
-                  <MealPlaceholder name={item.name} className="h-20 w-20 text-3xl" />
+                  <MealPlaceholder name={item.name} className="h-16 w-16 text-2xl" />
                   <div className="flex-1">
                     <p className="text-sm font-semibold leading-tight">{item.name}</p>
                     <p className="text-[11px] text-muted-foreground">{item.restaurantName}</p>
@@ -192,53 +174,6 @@ function CartPage() {
 
             <div className="rounded-2xl bg-card p-4 shadow-soft">
               <div className="flex items-center gap-2 text-sm font-semibold">
-                <Tag className="h-4 w-4 text-primary" />
-                Promo code
-              </div>
-              {applied ? (
-                <div className="mt-3 flex items-center justify-between rounded-xl bg-success/10 px-3 py-2">
-                  <div>
-                    <p className="font-mono text-sm font-bold text-success">{applied.code}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Saved {naira(discountAmount)} ({applied.type === "percent" ? `${applied.value}%` : "fixed"})
-                    </p>
-                  </div>
-                  <button onClick={() => { setApplied(null); setCode(""); }} className="grid h-7 w-7 place-items-center rounded-full bg-card">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="mt-2 flex gap-2">
-                    <input
-                      value={code}
-                      onChange={(event) => setCode(event.target.value)}
-                      placeholder="Enter code"
-                      className="flex-1 rounded-xl bg-muted px-3 py-2 text-sm font-mono uppercase outline-none placeholder:text-muted-foreground placeholder:normal-case placeholder:font-sans"
-                    />
-                    <button onClick={apply} className="rounded-xl bg-gradient-primary px-4 text-xs font-bold text-primary-foreground shadow-soft">
-                      Apply
-                    </button>
-                  </div>
-                  {restaurantDiscounts.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {restaurantDiscounts.slice(0, 3).map((discount) => (
-                        <button
-                          key={discount.id}
-                          onClick={() => { setCode(discount.code); }}
-                          className="rounded-full border border-dashed border-primary/40 px-2 py-0.5 text-[10px] font-mono font-bold text-primary hover:bg-primary/5 transition"
-                        >
-                          {discount.code}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className="rounded-2xl bg-card p-4 shadow-soft">
-              <div className="flex items-center gap-2 text-sm font-semibold">
                 <Clock className="h-4 w-4 text-primary" />
                 Pickup time
               </div>
@@ -279,11 +214,23 @@ function CartPage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 Once you pay, the order goes straight to the store. The store also sees that the order is already paid.
               </p>
+              <p className="mt-2 rounded-xl bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
+                Paystack test mode is active. Use your Paystack test public key before going live.
+              </p>
+              {!isPaystackConfigured() && (
+                <p className="mt-2 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+                  Add `VITE_PAYSTACK_PUBLIC_KEY` to enable checkout.
+                </p>
+              )}
+              {restaurantClosed && (
+                <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+                  This restaurant is closed. You cannot place this order until it reopens.
+                </p>
+              )}
             </div>
 
             <div className="rounded-2xl bg-card p-4 shadow-soft">
               <Row label="Subtotal" value={naira(total)} />
-              {applied && <Row label={`Discount (${applied.code})`} value={`- ${naira(discountAmount)}`} accent />}
               <Row label="Service fee" value={naira(fee)} />
               <div className="my-2 border-t border-border" />
               <Row label="Total" value={naira(grand)} bold />
@@ -293,7 +240,7 @@ function CartPage() {
           <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3">
             <button
               onClick={place}
-              disabled={placing}
+              disabled={placing || restaurantClosed || !isPaystackConfigured()}
               className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow active:scale-95 disabled:opacity-70"
             >
               <span>{placing ? "Processing payment..." : "Pay and place order"}</span>
@@ -306,10 +253,10 @@ function CartPage() {
   );
 }
 
-function Row({ label, value, bold, accent }: { label: string; value: string; bold?: boolean; accent?: boolean }) {
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <div className={`flex items-center justify-between py-1 text-sm ${bold ? "font-bold" : ""} ${accent ? "text-success font-semibold" : ""}`}>
-      <span className={bold || accent ? "" : "text-muted-foreground"}>{label}</span>
+    <div className={`flex items-center justify-between py-1 text-sm ${bold ? "font-bold" : ""}`}>
+      <span className={bold ? "" : "text-muted-foreground"}>{label}</span>
       <span>{value}</span>
     </div>
   );
