@@ -8,7 +8,6 @@ import { naira } from "@/lib/format";
 import { FILES, readTable } from "@/lib/csv-store";
 import { backend } from "@/lib/backend";
 import { MealPlaceholder } from "@/components/MealPlaceholder";
-import { MealPlaceholder } from "@/components/MealPlaceholder";
 import { isPaystackConfigured, startPaystackPayment } from "@/lib/paystack";
 
 export const Route = createFileRoute("/cart")({ component: CartPage });
