@@ -175,7 +175,7 @@ function MenuSection({ meals, closed }: { meals: Meal[]; closed: boolean }) {
         </div>
       ) : (
         <div className="space-y-2.5">
-          {meals.map((m) => <MealCard key={m.id} meal={m} disabled={closed} />)}
+          {meals.map((m) => <MealCard key={m.id} meal={m} hideImage />)}
         </div>
       )}
     </section>

@@ -4,6 +4,15 @@ import {
   ChefHat, LogOut, Store, ShoppingBag, UtensilsCrossed, Tag, BarChart3,
   Plus, Trash2, Power, TrendingUp, Clock, Pencil, Check, X, Menu, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { backend } from "@/lib/backend";
 import type { Discount, Meal, Order, Restaurant } from "@/lib/seed";
 import { useAuth } from "@/lib/auth";
@@ -13,12 +22,12 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/business")({ component: BusinessDashboard });
 
-type Tab = "orders" | "menu" | "profile";
+type Tab = "analytics" | "orders" | "menu" | "profile";
 
 function BusinessDashboard() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
-  const [tab, setTab] = useState<Tab>("orders");
+  const [tab, setTab] = useState<Tab>("analytics");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tick, setTick] = useState(0);
   const refresh = () => setTick((x) => x + 1);
@@ -71,6 +80,7 @@ function BusinessDashboard() {
   if (!user || !restaurant) return null;
 
   const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
+    { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "orders", label: "Orders", icon: ShoppingBag },
     { id: "menu", label: "Menu", icon: UtensilsCrossed },
     { id: "profile", label: "Profile", icon: Store },
@@ -197,6 +207,15 @@ function BusinessDashboard() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-5">
+        {tab === "analytics" && (
+          <Overview
+            restaurant={restaurant}
+            orders={orders}
+            meals={meals}
+            discounts={discounts}
+            refresh={refresh}
+          />
+        )}
         {tab === "orders" && <OrdersTab orders={orders} refresh={refresh} />}
         {tab === "menu" && <MenuTab restaurantId={restaurant.id} meals={meals} refresh={refresh} />}
         {tab === "profile" && <ProfileTab restaurant={restaurant} refresh={refresh} />}
@@ -233,14 +252,21 @@ function Overview({
     toast.success(next === "1" ? "Restaurant is now open" : "Restaurant set to closed");
   };
 
-  // 7-day mini sparkline
+  // 7-day revenue trend
   const trend = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (6 - i));
     const key = d.toDateString();
-    const rev = orders.filter((o) => new Date(o.createdAt).toDateString() === key).reduce((s, o) => s + Number(o.total), 0);
-    return { day: d.toLocaleDateString("en", { weekday: "short" }), rev };
+    const dayOrders = completed.filter((o) => new Date(o.createdAt).toDateString() === key);
+    const rev = dayOrders.reduce((s, o) => s + Number(o.total), 0);
+    return {
+      day: d.toLocaleDateString("en", { weekday: "short" }),
+      fullDate: d.toLocaleDateString("en-NG", { day: "numeric", month: "short" }),
+      rev,
+      orders: dayOrders.length,
+    };
   });
-  const max = Math.max(1, ...trend.map((t) => t.rev));
+  const averageRevenue = revenue / trend.length;
+  const bestDay = trend.reduce((best, current) => (current.rev > best.rev ? current : best), trend[0]);
 
   return (
     <div className="space-y-5">
@@ -276,17 +302,77 @@ function Overview({
         </div>
       </Card>
 
-      <Card title="Revenue · last 7 days" subtitle={`${restaurant.name}`}>
-        <div className="flex h-40 items-end gap-2">
-          {trend.map((t) => (
-            <div key={t.day} className="flex flex-1 flex-col items-center gap-1.5">
-              <div className="relative flex w-full flex-1 items-end">
-                <div className="w-full rounded-t-lg bg-gradient-primary transition-all duration-700 shadow-glow"
-                  style={{ height: `${(t.rev / max) * 100}%`, minHeight: t.rev > 0 ? 8 : 2 }} />
-              </div>
-              <span className="text-[10px] text-muted-foreground">{t.day}</span>
-            </div>
-          ))}
+      <Card title="Revenue - last 7 days" subtitle={restaurant.name}>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">This week</p>
+            <p className="mt-1 text-lg font-bold text-foreground">{naira(revenue)}</p>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Daily average</p>
+            <p className="mt-1 text-lg font-bold text-foreground">{naira(Math.round(averageRevenue))}</p>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Best day</p>
+            <p className="mt-1 text-lg font-bold text-foreground">{bestDay.rev > 0 ? bestDay.day : "No sales yet"}</p>
+            <p className="text-[11px] text-muted-foreground">{bestDay.rev > 0 ? naira(bestDay.rev) : "Complete orders to build a trend"}</p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-[28px] border border-border/60 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.14),transparent_48%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0))] p-3">
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trend} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="businessRevenueFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.68 0.19 35)" stopOpacity={0.45} />
+                    <stop offset="100%" stopColor="oklch(0.68 0.19 35)" stopOpacity={0.04} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="oklch(0.9 0.01 80)" strokeDasharray="4 4" />
+                <XAxis
+                  dataKey="day"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  stroke="oklch(0.5 0.02 50)"
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  width={42}
+                  stroke="oklch(0.5 0.02 50)"
+                  tickFormatter={(value: number) => compactNaira(value)}
+                />
+                <Tooltip
+                  cursor={{ stroke: "oklch(0.68 0.19 35 / 0.25)", strokeWidth: 1.5, strokeDasharray: "4 4" }}
+                  contentStyle={{
+                    borderRadius: 18,
+                    border: "1px solid oklch(0.92 0.008 80)",
+                    background: "rgba(255,255,255,0.96)",
+                    boxShadow: "0 18px 45px rgba(15, 23, 42, 0.12)",
+                    fontSize: 12,
+                  }}
+                  formatter={(value: number) => [naira(value), "Revenue"]}
+                  labelFormatter={(_, payload) => {
+                    const item = payload?.[0]?.payload as { fullDate?: string; orders?: number } | undefined;
+                    if (!item) return "";
+                    return `${item.fullDate} - ${item.orders ?? 0} order${item.orders === 1 ? "" : "s"}`;
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="rev"
+                  stroke="oklch(0.68 0.19 35)"
+                  strokeWidth={3}
+                  fill="url(#businessRevenueFill)"
+                  dot={{ r: 0 }}
+                  activeDot={{ r: 5, strokeWidth: 0, fill: "oklch(0.68 0.19 35)" }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </Card>
 
@@ -459,8 +545,7 @@ function MenuTab({ restaurantId, meals, refresh }: { restaurantId: string; meals
         {meals.map((m) => editId === m.id ? (
           <MealForm key={m.id} restaurantId={restaurantId} meal={m} onCancel={() => setEditId(null)} onSaved={() => { setEditId(null); refresh(); }} />
         ) : (
-          <div key={m.id} className="flex gap-3 rounded-2xl bg-card p-3 shadow-soft animate-slide-up">
-            <img src={m.image} alt={m.name} className="h-20 w-20 shrink-0 rounded-xl object-cover" />
+          <div key={m.id} className="rounded-2xl bg-card p-3 shadow-soft animate-slide-up">
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -498,14 +583,14 @@ function MenuTab({ restaurantId, meals, refresh }: { restaurantId: string; meals
 
 function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: string; meal?: Meal; onCancel: () => void; onSaved: () => void }) {
   const [form, setForm] = useState({
-    name: meal?.name ?? "",
-    description: meal?.description ?? "",
-    price: meal?.price ?? "",
-    servingUnit: meal?.servingUnit ?? "plate",
-    category: meal?.category ?? "Rice",
-    prepTime: meal?.prepTime ?? "15",
-    availableFrom: meal?.availableFrom ?? "10",
-    availableTo: meal?.availableTo ?? "22",
+    name: meal?.name || "",
+    description: meal?.description || "",
+    price: meal?.price || "",
+    servingUnit: meal?.servingUnit || "plate",
+    category: meal?.category || "Rice",
+    prepTime: meal?.prepTime || "15",
+    availableFrom: meal?.availableFrom || "10",
+    availableTo: meal?.availableTo || "22",
   });
   const [options, setOptions] = useState<MealOption[]>(parseMealOptions(meal?.options));
 
@@ -839,6 +924,13 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
 }
 
 /* ---------------- shared ---------------- */
+function compactNaira(value: number) {
+  const amount = Math.abs(value);
+  if (amount >= 1_000_000) return `N${(value / 1_000_000).toFixed(amount >= 10_000_000 ? 0 : 1)}m`;
+  if (amount >= 1_000) return `N${(value / 1_000).toFixed(amount >= 10_000 ? 0 : 1)}k`;
+  return `N${Math.round(value)}`;
+}
+
 function Kpi({ icon: Icon, label, value, accent }: { icon: typeof TrendingUp; label: string; value: string; accent?: boolean }) {
   return (
     <div className={`rounded-2xl p-3.5 shadow-soft ${accent ? "bg-gradient-primary text-primary-foreground" : "bg-card"}`}>
@@ -859,3 +951,9 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
     </div>
   );
 }
+
+
+
+
+
+

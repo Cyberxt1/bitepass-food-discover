@@ -7,7 +7,6 @@ import type { Meal, Restaurant, Review } from "@/lib/seed";
 import { useCart } from "@/lib/cart";
 import { naira } from "@/lib/format";
 import { parseMealOptions, type MealOption } from "@/lib/meal-options";
-import { MealPlaceholder } from "@/components/MealPlaceholder";
 import { RouteLoadingOverlay } from "@/components/RouteLoadingOverlay";
 
 type SelectedMealOption = MealOption & { qty: number };
