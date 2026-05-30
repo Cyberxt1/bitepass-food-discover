@@ -90,7 +90,7 @@ function Discover() {
             <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold backdrop-blur">
               <Sparkles className="h-3 w-3" /> Nearby
             </span>
-            <h2 className="mt-2 text-xl font-bold leading-tight">Bite and Pass<br />What's Available Near Me?</h2>
+            <h2 className="mt-2 text-xl font-bold leading-tight">Bite n Pass<br />What's Available Near Me?</h2>
             <p className="mt-1 text-xs text-white/85">Restaurants around you will appear as they join BitePass.</p>
           </div>
         </div>
