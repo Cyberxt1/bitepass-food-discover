@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Search as SearchIcon, ArrowLeft, Star, Clock, MapPin } from "lucide-react";
+import { Search as SearchIcon, ArrowLeft, Star, Clock, MapPin, LocateFixed } from "lucide-react";
+import { toast } from "sonner";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import type { Meal, Restaurant } from "@/lib/seed";
-import { distanceKm, formatDistance, getPreferredLocationDetails, restaurantCoords, type Coordinates } from "@/lib/location";
+import { distanceKm, formatDistance, getCurrentLocationDetails, getStoredLocation, restaurantCoords, type Coordinates } from "@/lib/location";
 import { z } from "zod";
 
 const searchSchema = z.object({ q: z.string().optional() });
@@ -21,16 +22,31 @@ function SearchPage() {
   const [coords, setCoords] = useState<Coordinates | null>(null);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
+  const [requestingLocation, setRequestingLocation] = useState(false);
 
   const term = q.trim().toLowerCase();
 
   useEffect(() => {
-    getPreferredLocationDetails(user).then((location) => setCoords({ lat: location.lat, lng: location.lng }));
+    const stored = getStoredLocation(user);
+    setCoords(stored ? { lat: stored.lat, lng: stored.lng } : null);
     Promise.all([backend.restaurants(), backend.meals()]).then(([nextRestaurants, nextMeals]) => {
       setRestaurants(nextRestaurants);
       setMeals(nextMeals);
     });
   }, [user]);
+
+  const enableLocation = async () => {
+    setRequestingLocation(true);
+    try {
+      const location = await getCurrentLocationDetails();
+      setCoords({ lat: location.lat, lng: location.lng });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not access your location";
+      toast.error(message);
+    } finally {
+      setRequestingLocation(false);
+    }
+  };
 
   const matched = !term
     ? restaurants
@@ -63,7 +79,20 @@ function SearchPage() {
       </header>
 
       <main className="px-4 pt-4">
-        <p className="text-xs text-muted-foreground">{results.length} {results.length === 1 ? "restaurant" : "restaurants"}</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">{results.length} {results.length === 1 ? "restaurant" : "restaurants"}</p>
+          {!coords && (
+            <button
+              type="button"
+              onClick={enableLocation}
+              disabled={requestingLocation}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground disabled:opacity-70"
+            >
+              <LocateFixed className="h-3 w-3" />
+              <span>{requestingLocation ? "Getting location..." : "Turn on location"}</span>
+            </button>
+          )}
+        </div>
         <div className="mt-3 space-y-3">
           {results.map((r) => {
             const items = meals.filter((m) => m.restaurantId === r.id);

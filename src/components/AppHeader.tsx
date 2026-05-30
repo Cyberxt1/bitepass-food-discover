@@ -5,7 +5,7 @@ import { shortLocationLabel } from "@/lib/location";
 
 export function AppHeader({ subtitle, locationLabel }: { subtitle?: string; locationLabel?: string }) {
   const { user } = useAuth();
-  const label = locationLabel ?? (user?.address ? shortLocationLabel(user.address) : "Lagos, Nigeria");
+  const label = locationLabel ?? (user?.address ? shortLocationLabel(user.address) : "Location off");
 
   return (
     <header className="sticky top-0 z-40 glass border-b border-border/40">

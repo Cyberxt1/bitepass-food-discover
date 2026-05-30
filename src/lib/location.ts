@@ -13,15 +13,6 @@ type LocationCarrier = {
   address?: string;
 };
 
-const LAGOS_CENTER: Coordinates = { lat: 6.5244, lng: 3.3792 };
-
-export function getFallbackLocation(): LocationDetails {
-  return {
-    ...LAGOS_CENTER,
-    address: "Lagos, Nigeria",
-  };
-}
-
 export function getStoredLocation(details?: LocationCarrier | null): LocationDetails | null {
   if (!details?.address) return null;
   const lat = Number(details.lat);
@@ -83,11 +74,7 @@ export async function getCurrentLocationDetails(): Promise<LocationDetails> {
 export async function getPreferredLocationDetails(details?: LocationCarrier | null): Promise<LocationDetails> {
   const stored = getStoredLocation(details);
   if (stored) return stored;
-  try {
-    return await getCurrentLocationDetails();
-  } catch {
-    return getFallbackLocation();
-  }
+  throw new Error("Location is not available");
 }
 
 export function shortLocationLabel(address: string): string {
