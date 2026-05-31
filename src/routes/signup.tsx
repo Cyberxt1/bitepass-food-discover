@@ -51,8 +51,8 @@ function SignupPage() {
     if (loading) return;
     setLoading(true);
     try {
-      if (!location) {
-        notify("error", accountType === "restaurant" ? "Pin your restaurant location before creating the account" : "Use your current location before creating your account", { id: "signup-location-required" });
+      if (accountType === "restaurant" && !location) {
+        notify("error", "Pin your restaurant location before creating the account", { id: "signup-location-required" });
         setLoading(false);
         return;
       }
@@ -76,11 +76,13 @@ function SignupPage() {
 
       await signup(name, email, password, {
         role: "customer",
-        location: {
-          address: location.address,
-          lat: location.lat,
-          lng: location.lng,
-        },
+        location: location
+          ? {
+              address: location.address,
+              lat: location.lat,
+              lng: location.lng,
+            }
+          : undefined,
       });
       notify("success", "Account created! Let's get you fed", { id: "signup-customer-success" });
       nav({ to: "/discover" });

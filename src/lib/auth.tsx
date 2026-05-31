@@ -29,6 +29,18 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function findLocalUserByCredentials(email: string, password: string) {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPassword = password.trim();
+  return readTable<User>(FILES.users).find(
+    (user) => normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
+  );
+}
+
 export function getDashboardPath(user: Pick<User, "role">): "/admin" | "/business" | "/discover" {
   return user.role === "admin" ? "/admin" : user.role === "restaurant" ? "/business" : "/discover";
 }
@@ -90,15 +102,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     await new Promise((r) => setTimeout(r, 600));
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedPassword = password.trim();
     let u: User | undefined;
     try {
       const { auth, authSdk } = await getFirebase();
-      const credential = await authSdk.signInWithEmailAndPassword(auth, email, password) as { user: { uid: string } };
-      u = (await backend.users()).find((x) => x.id === credential.user.uid);
+      const credential = await authSdk.signInWithEmailAndPassword(auth, normalizedEmail, normalizedPassword) as { user: { uid: string } };
+      const users = await backend.users();
+      u =
+        users.find((user) => user.id === credential.user.uid) ??
+        users.find(
+          (user) =>
+            normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
+        ) ??
+        findLocalUserByCredentials(normalizedEmail, normalizedPassword);
     } catch {
-      u = readTable<User>(FILES.users).find(
-        (x) => x.email.toLowerCase() === email.toLowerCase() && x.password === password,
-      );
+      const users = await backend.users();
+      u =
+        users.find(
+          (user) =>
+            normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
+        ) ??
+        findLocalUserByCredentials(normalizedEmail, normalizedPassword);
     }
     if (!u) throw new Error("Invalid credentials");
     writeSessionCookie(u.id);
@@ -109,13 +134,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (name: string, email: string, password: string, options: SignupOptions = { role: "customer" }) => {
     await new Promise((r) => setTimeout(r, 600));
-    const users = readTable<User>(FILES.users);
-    if (users.find((x) => x.email.toLowerCase() === email.toLowerCase())) throw new Error("Email already registered");
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedPassword = password.trim();
+    const users = await backend.users();
+    if (users.find((user) => normalizeEmail(user.email) === normalizedEmail)) throw new Error("Email already registered");
     const role = options.role === "restaurant" ? "restaurant" : "customer";
     let uid = "u" + Date.now();
     try {
       const { auth, authSdk } = await getFirebase();
-      const credential = await authSdk.createUserWithEmailAndPassword(auth, email, password) as { user: { uid: string } };
+      const credential = await authSdk.createUserWithEmailAndPassword(auth, normalizedEmail, normalizedPassword) as { user: { uid: string } };
       uid = credential.user.uid;
     } catch (error) {
       console.warn("Firebase Auth signup unavailable, using local account", error);
@@ -124,8 +151,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const u: User = {
       id: uid,
       name,
-      email,
-      password,
+      email: normalizedEmail,
+      password: normalizedPassword,
       role,
       avatar: name.charAt(0).toUpperCase(),
       address: options.role !== "restaurant" ? options.location?.address : undefined,
