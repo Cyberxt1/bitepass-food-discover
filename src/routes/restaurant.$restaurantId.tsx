@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Clock, MapPin, MessageSquare, Phone, Send, Star } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 
 import { MealCard } from "@/components/MealCard";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
+import { notify } from "@/lib/notifications";
 import type { Meal, Restaurant, Review } from "@/lib/seed";
 
 export const Route = createFileRoute("/restaurant/$restaurantId")({ component: RestaurantPage });
@@ -43,36 +43,42 @@ function RestaurantPage() {
   const closed = restaurant.isOpen === "0";
 
   const submitReview = async () => {
+    if (submitting) return;
     if (!user) {
-      toast.info("Please sign in to leave feedback");
+      notify("info", "Please sign in to leave feedback", { id: "review-login-required" });
       return;
     }
     if (!comment.trim()) {
-      toast.error("Write a short comment before sending feedback");
+      notify("error", "Write a short comment before sending feedback", { id: "review-comment-required" });
       return;
     }
 
     setSubmitting(true);
-    const review: Review = {
-      id: "rv" + Date.now(),
-      mealId: "",
-      restaurantId,
-      userId: user.id,
-      userName: user.name,
-      rating: String(rating),
-      taste: "",
-      portion: "",
-      spice: "",
-      waitTime: "",
-      comment: comment.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    await backend.addReview(review);
-    setReviews((prev) => [review, ...prev]);
-    setComment("");
-    setRating(5);
-    setSubmitting(false);
-    toast.success("Thanks for the feedback");
+    try {
+      const review: Review = {
+        id: "rv" + Date.now(),
+        mealId: "",
+        restaurantId,
+        userId: user.id,
+        userName: user.name,
+        rating: String(rating),
+        taste: "",
+        portion: "",
+        spice: "",
+        waitTime: "",
+        comment: comment.trim(),
+        createdAt: new Date().toISOString(),
+      };
+      await backend.addReview(review);
+      setReviews((prev) => [review, ...prev]);
+      setComment("");
+      setRating(5);
+      notify("success", "Thanks for the feedback", { id: `review-success:${restaurantId}` });
+    } catch {
+      notify("error", "Feedback could not be sent", { id: `review-error:${restaurantId}` });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

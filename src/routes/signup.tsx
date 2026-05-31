@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChefHat, LocateFixed, Lock, Mail, Store, User } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { getDashboardPath, useAuth } from "@/lib/auth";
 import { LocationPreview } from "@/components/LocationPreview";
 import { getCurrentLocationDetails, type LocationDetails } from "@/lib/location";
+import { notify } from "@/lib/notifications";
 
 export const Route = createFileRoute("/signup")({ component: SignupPage });
 
@@ -32,14 +32,15 @@ function SignupPage() {
   }, [authReady, nav, user]);
 
   const captureLocation = async () => {
+    if (locating) return;
     setLocating(true);
     try {
       const details = await getCurrentLocationDetails();
       setLocation(details);
       setConfirmingLocation(false);
-      toast.success(accountType === "restaurant" ? "Restaurant location pinned" : "Your location has been saved");
+      notify("success", accountType === "restaurant" ? "Restaurant location pinned" : "Your location has been saved", { id: "location-captured" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Location access failed");
+      notify("error", error instanceof Error ? error.message : "Location access failed", { id: "location-capture-error" });
     } finally {
       setLocating(false);
     }
@@ -47,10 +48,11 @@ function SignupPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     try {
       if (!location) {
-        toast.error(accountType === "restaurant" ? "Pin your restaurant location before creating the account" : "Use your current location before creating your account");
+        notify("error", accountType === "restaurant" ? "Pin your restaurant location before creating the account" : "Use your current location before creating your account", { id: "signup-location-required" });
         setLoading(false);
         return;
       }
@@ -67,7 +69,7 @@ function SignupPage() {
             lng: location.lng,
           },
         });
-        toast.success(`${user.name}, your restaurant is live on BitePass`);
+        notify("success", `${user.name}, your restaurant is live on BitePass`, { id: "signup-restaurant-success" });
         nav({ to: "/business" });
         return;
       }
@@ -80,10 +82,10 @@ function SignupPage() {
           lng: location.lng,
         },
       });
-      toast.success("Account created! Let's get you fed");
+      notify("success", "Account created! Let's get you fed", { id: "signup-customer-success" });
       nav({ to: "/discover" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Signup failed");
+      notify("error", err instanceof Error ? err.message : "Signup failed", { id: "signup-error" });
     } finally {
       setLoading(false);
     }

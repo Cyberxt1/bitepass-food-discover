@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ChefHat, Lock, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { getDashboardPath, useAuth } from "@/lib/auth";
+import { notify } from "@/lib/notifications";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -22,13 +22,14 @@ function LoginPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     try {
       const u = await login(email, password);
-      toast.success(`Welcome back, ${u.name.split(" ")[0]}!`);
+      notify("success", `Welcome back, ${u.name.split(" ")[0]}!`, { id: "login-success" });
       nav({ to: getDashboardPath(u) });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Login failed");
+      notify("error", err instanceof Error ? err.message : "Login failed", { id: "login-error" });
     } finally { setLoading(false); }
   };
 

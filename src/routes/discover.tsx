@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search, TrendingUp, ChevronRight, Sparkles, LocateFixed } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import type { Meal, Restaurant } from "@/lib/seed";
@@ -14,6 +13,7 @@ import {
   shortLocationLabel,
   type Coordinates,
 } from "@/lib/location";
+import { notify } from "@/lib/notifications";
 import { AppHeader } from "@/components/AppHeader";
 import { MealPlaceholder } from "@/components/MealPlaceholder";
 import { RestaurantCard } from "@/components/RestaurantCard";
@@ -22,6 +22,7 @@ import { SkeletonCard } from "@/components/SkeletonCard";
 
 export const Route = createFileRoute("/discover")({ component: Discover });
 const NEARBY_RADIUS_KM = 2;
+const DISCOVER_REFRESH_MS = 10000;
 
 const categories = [
   { name: "Jollof", emoji: "Rice" },
@@ -43,14 +44,28 @@ function Discover() {
   const [requestingLocation, setRequestingLocation] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      Promise.all([backend.restaurants(), backend.meals()]).then(([nextRestaurants, nextMeals]) => {
-        setRestaurants(nextRestaurants);
-        setMeals(nextMeals);
-        setLoading(false);
-      });
+    let cancelled = false;
+
+    const loadDiscoverData = async () => {
+      const [nextRestaurants, nextMeals] = await Promise.all([backend.restaurants(), backend.meals()]);
+      if (cancelled) return;
+      setRestaurants(nextRestaurants);
+      setMeals(nextMeals);
+      setLoading(false);
+    };
+
+    const timeout = window.setTimeout(() => {
+      void loadDiscoverData();
     }, 400);
-    return () => clearTimeout(t);
+    const interval = window.setInterval(() => {
+      void loadDiscoverData();
+    }, DISCOVER_REFRESH_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+      window.clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -66,6 +81,7 @@ function Discover() {
   }, [user]);
 
   const enableLocation = async () => {
+    if (requestingLocation) return;
     setRequestingLocation(true);
     try {
       const location = await getCurrentLocationDetails();
@@ -73,7 +89,7 @@ function Discover() {
       setLocationLabel(shortLocationLabel(location.address));
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not access your location";
-      toast.error(message);
+      notify("error", message, { id: "discover-location-error" });
     } finally {
       setRequestingLocation(false);
     }
@@ -95,6 +111,8 @@ function Discover() {
         .map(({ restaurant }) => restaurant)
     : [];
 
+  const nearbyRestaurantIds = new Set(nearbyRestaurants.map((restaurant) => restaurant.id));
+
   const distanceFor = (restaurant: Restaurant) => {
     if (!coords) return undefined;
     const target = restaurantCoords(restaurant);
@@ -102,7 +120,10 @@ function Discover() {
   };
 
   const trending = meals.filter((m) => m.popular === "1").slice(0, 6);
-  const recommended = meals.slice(0, 4);
+  const recommendedPool = coords
+    ? meals.filter((meal) => nearbyRestaurantIds.has(meal.restaurantId))
+    : meals;
+  const recommended = recommendedPool.slice(0, 4);
 
   return (
     <>
@@ -205,12 +226,18 @@ function Discover() {
 
         <section>
           <h3 className="mb-3 text-base font-bold">Recommended for you</h3>
-          <div className="space-y-2.5">
-            {(loading ? [] : recommended).map((m) => {
-              const rest = restaurants.find((r) => r.id === m.restaurantId);
-              return <MealCard key={m.id} meal={m} restaurantName={rest?.name} />;
-            })}
-          </div>
+          {coords && !loading && recommended.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              No recommended meals found within 2 km yet.
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {(loading ? [] : recommended).map((m) => {
+                const rest = restaurants.find((r) => r.id === m.restaurantId);
+                return <MealCard key={m.id} meal={m} restaurantName={rest?.name} />;
+              })}
+            </div>
+          )}
         </section>
       </main>
     </>

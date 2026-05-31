@@ -1,15 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, Link, createRootRouteWithContext, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Toaster } from "sonner";
 
 import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider, getDashboardPath, useAuth } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
+import { NotificationsProvider } from "@/lib/notifications";
 import { ensureSeed } from "@/lib/seed";
 import { BottomNav } from "@/components/BottomNav";
 import { Splash } from "@/components/Splash";
 import { RouteLoadingOverlay } from "@/components/RouteLoadingOverlay";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -73,10 +74,12 @@ function RootComponent() {
       <ThemeProvider>
         <AuthProvider>
           <CartProvider>
-            {ready && !splashDone && <Splash onDone={() => setSplashDone(true)} />}
-            <AppShell />
-            <BottomNav />
-            <Toaster position="top-center" richColors closeButton />
+            <NotificationsProvider>
+              {ready && !splashDone && <Splash onDone={() => setSplashDone(true)} />}
+              <AppShell />
+              <BottomNav />
+              <Toaster position="top-center" richColors closeButton offset={20} />
+            </NotificationsProvider>
           </CartProvider>
         </AuthProvider>
       </ThemeProvider>

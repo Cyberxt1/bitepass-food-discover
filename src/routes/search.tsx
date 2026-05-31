@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Search as SearchIcon, ArrowLeft, Star, Clock, MapPin, LocateFixed } from "lucide-react";
-import { toast } from "sonner";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import type { Meal, Restaurant } from "@/lib/seed";
 import { distanceKm, formatDistance, getCurrentLocationDetails, getStoredLocation, restaurantCoords, type Coordinates } from "@/lib/location";
 import { z } from "zod";
+import { notify } from "@/lib/notifications";
 
 const searchSchema = z.object({ q: z.string().optional() });
 
@@ -14,6 +14,7 @@ export const Route = createFileRoute("/search")({
   component: SearchPage,
   validateSearch: searchSchema,
 });
+const SEARCH_REFRESH_MS = 10000;
 
 function SearchPage() {
   const { user } = useAuth();
@@ -29,20 +30,35 @@ function SearchPage() {
   useEffect(() => {
     const stored = getStoredLocation(user);
     setCoords(stored ? { lat: stored.lat, lng: stored.lng } : null);
-    Promise.all([backend.restaurants(), backend.meals()]).then(([nextRestaurants, nextMeals]) => {
+
+    let cancelled = false;
+    const loadSearchData = async () => {
+      const [nextRestaurants, nextMeals] = await Promise.all([backend.restaurants(), backend.meals()]);
+      if (cancelled) return;
       setRestaurants(nextRestaurants);
       setMeals(nextMeals);
-    });
+    };
+
+    void loadSearchData();
+    const interval = window.setInterval(() => {
+      void loadSearchData();
+    }, SEARCH_REFRESH_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, [user]);
 
   const enableLocation = async () => {
+    if (requestingLocation) return;
     setRequestingLocation(true);
     try {
       const location = await getCurrentLocationDetails();
       setCoords({ lat: location.lat, lng: location.lng });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not access your location";
-      toast.error(message);
+      notify("error", message, { id: "search-location-error" });
     } finally {
       setRequestingLocation(false);
     }

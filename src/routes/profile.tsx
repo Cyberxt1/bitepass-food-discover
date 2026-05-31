@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { LogOut, Receipt, User as UserIcon, MapPin } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { toast } from "sonner";
+import { notify } from "@/lib/notifications";
 
 export const Route = createFileRoute("/profile")({ component: ProfilePage });
 
@@ -30,7 +30,7 @@ function ProfilePage() {
 
   const signOut = () => {
     logout();
-    toast.success("Signed out");
+    notify("success", "Signed out", { id: "signout-success" });
     nav({ to: "/" });
   };
 

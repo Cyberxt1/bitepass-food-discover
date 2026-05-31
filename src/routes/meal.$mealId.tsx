@@ -1,13 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Star, Clock, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { backend } from "@/lib/backend";
 import type { Meal, Restaurant, Review } from "@/lib/seed";
 import { useCart } from "@/lib/cart";
 import { naira } from "@/lib/format";
 import { parseMealOptions, type MealOption } from "@/lib/meal-options";
 import { RouteLoadingOverlay } from "@/components/RouteLoadingOverlay";
+import { notify } from "@/lib/notifications";
 
 type SelectedMealOption = MealOption & { qty: number };
 
@@ -24,6 +24,7 @@ function MealPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<SelectedMealOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
     Promise.all([backend.meals(), backend.restaurants()]).then(([allMeals, restaurants]) => {
@@ -61,10 +62,12 @@ function MealPage() {
   };
 
   const addToCart = () => {
+    if (addingToCart) return;
     if (restaurant?.isOpen === "0") {
-      toast.error("This restaurant is closed right now");
+      notify("error", "This restaurant is closed right now", { id: "meal-restaurant-closed" });
       return;
     }
+    setAddingToCart(true);
     const optionsSignature = selectedOptions
       .slice()
       .sort((a, b) => a.id.localeCompare(b.id))
@@ -85,8 +88,9 @@ function MealPage() {
       notes,
       options: selectedOptions,
     });
-    toast.success(`${qty} x ${meal.name} added to cart`);
+    notify("success", `${qty} x ${meal.name} added to cart`, { id: `cart-add:${meal.id}:${optionsSignature}:${noteSignature}` });
     nav({ to: "/cart" });
+    window.setTimeout(() => setAddingToCart(false), 300);
   };
 
   const avgRating = reviews.length
@@ -232,12 +236,12 @@ function MealPage() {
       <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3">
         <button
           onClick={addToCart}
-          disabled={restaurant?.isOpen === "0"}
-          className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95"
+          disabled={restaurant?.isOpen === "0" || addingToCart}
+          className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-70"
         >
           <span className="flex items-center gap-2">
             <ShoppingBag className="h-4 w-4" />
-            Add to cart
+            {addingToCart ? "Adding..." : "Add to cart"}
           </span>
           <span>{naira(unitPrice * qty)}</span>
         </button>

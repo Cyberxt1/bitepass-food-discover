@@ -1,14 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Clock, Minus, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
 import { FILES, readTable } from "@/lib/csv-store";
 import { backend } from "@/lib/backend";
 import { MealPlaceholder } from "@/components/MealPlaceholder";
-import { isPaystackConfigured, startPaystackPayment } from "@/lib/paystack";
+import { startPaystackPayment } from "@/lib/paystack";
+import { notify } from "@/lib/notifications";
 
 export const Route = createFileRoute("/cart")({ component: CartPage });
 
@@ -27,32 +27,33 @@ function CartPage() {
   const grand = total + fee;
 
   const place = async () => {
+    if (placing) return;
     if (!user) {
-      toast.info("Please sign in to checkout");
+      notify("info", "Please sign in to checkout", { id: "cart-login-required" });
       nav({ to: "/login" });
       return;
     }
 
     const restaurant = (await backend.restaurants()).find((entry) => entry.id === restaurantId);
     if (!restaurant || restaurant.isOpen === "0") {
-      toast.error("You can't place an order because this restaurant is closed");
+      notify("error", "You can't place an order because this restaurant is closed", { id: "cart-restaurant-closed" });
       return;
     }
 
     if (pickupMode === "scheduled") {
       if (!pickupAt) {
-        toast.error("Choose a pickup time");
+        notify("error", "Choose a pickup time", { id: "cart-pickup-required" });
         return;
       }
 
       const scheduledPickup = new Date(pickupAt);
       if (Number.isNaN(scheduledPickup.getTime())) {
-        toast.error("Choose a valid pickup time");
+        notify("error", "Choose a valid pickup time", { id: "cart-pickup-invalid" });
         return;
       }
 
       if (scheduledPickup.getTime() < Date.now()) {
-        toast.error("Pickup time must be in the future");
+        notify("error", "Pickup time must be in the future", { id: "cart-pickup-past" });
         return;
       }
     }
@@ -93,11 +94,11 @@ function CartPage() {
         paymentReference,
       });
       clear();
-      toast.success("Payment successful, order sent to the store");
+      notify("success", "Payment successful, order sent to the store", { id: `order-paid:${orderId}` });
       nav({ to: "/orders/$orderId", params: { orderId } });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Payment could not be completed";
-      toast.error(message);
+      notify("error", message, { id: `cart-payment-error:${message}` });
     } finally {
       setPlacing(false);
     }
@@ -228,11 +229,6 @@ function CartPage() {
             <div className="rounded-2xl bg-card p-4 shadow-soft">
               <p className="text-sm font-semibold">Payment</p>
               <p className="mt-1 text-xs text-muted-foreground">Checkout is powered by Paystack.</p>
-              {!isPaystackConfigured() && (
-                <p className="mt-2 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
-                  Paystack public key is missing. Add `VITE_PAYSTACK_PUBLIC_KEY` to enable checkout.
-                </p>
-              )}
               {restaurantClosed && (
                 <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
                   This restaurant is closed. You cannot place this order until it reopens.
@@ -251,7 +247,7 @@ function CartPage() {
           <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3">
             <button
               onClick={place}
-              disabled={placing || restaurantClosed || !isPaystackConfigured()}
+              disabled={placing || restaurantClosed}
               className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow active:scale-95 disabled:opacity-70"
             >
               <span>{placing ? "Processing payment..." : "Pay and place order"}</span>
