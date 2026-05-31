@@ -56,7 +56,7 @@ function Landing() {
           </div>
           <div className="flex items-center gap-2">
             <Link to="/login" className="hidden rounded-full px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition md:inline-flex">Sign in</Link>
-            <Link to="/discover" className="rounded-full bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95">
+            <Link to="/login" className="rounded-full bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95">
               Open app
             </Link>
           </div>
@@ -85,7 +85,7 @@ function Landing() {
               Preorder from the restaurants you love. Pay in seconds, track preparation live, and walk in to a meal that's already waiting.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link to="/discover" className="group inline-flex items-center gap-2 rounded-full bg-gradient-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-glow transition hover:shadow-card active:scale-95">
+              <Link to="/login" className="group inline-flex items-center gap-2 rounded-full bg-gradient-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-glow transition hover:shadow-card active:scale-95">
                 Start ordering
                 <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </Link>
@@ -230,7 +230,7 @@ function Landing() {
                 <span className="text-xs font-bold uppercase tracking-widest text-primary">Trending</span>
                 <h2 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">Restaurants people love</h2>
               </div>
-              <Link to="/discover" className="hidden items-center gap-1 text-sm font-semibold text-primary md:inline-flex">
+              <Link to="/login" className="hidden items-center gap-1 text-sm font-semibold text-primary md:inline-flex">
                 See all <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
@@ -242,7 +242,7 @@ function Landing() {
               { n: "Burger District", c: "American", r: "4.6", img: "photo-1568901346375-23c9450c58cd" },
             ].map((r, i) => (
               <Reveal key={r.n} delay={i * 100}>
-                <Link to="/discover" className="group block overflow-hidden rounded-3xl bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-card">
+                <Link to="/login" className="group block overflow-hidden rounded-3xl bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-card">
                   <div className="relative h-48 overflow-hidden">
                     <img src={`https://images.unsplash.com/${r.img}?auto=format&fit=crop&w=900&q=70`} alt={r.n}
                       className="h-full w-full object-cover transition duration-700 group-hover:scale-110" />
@@ -398,7 +398,7 @@ function Landing() {
               <div className="relative text-center">
                 <h2 className="text-3xl font-extrabold tracking-tight md:text-5xl">Your next meal is waiting.</h2>
                 <p className="mt-4 text-base opacity-80 md:text-lg">Open BitePass and preorder in under 60 seconds.</p>
-                <Link to="/discover" className="mt-7 inline-flex items-center gap-2 rounded-full bg-gradient-primary px-7 py-4 text-sm font-bold text-primary-foreground shadow-glow transition active:scale-95">
+                <Link to="/login" className="mt-7 inline-flex items-center gap-2 rounded-full bg-gradient-primary px-7 py-4 text-sm font-bold text-primary-foreground shadow-glow transition active:scale-95">
                   Start ordering <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>

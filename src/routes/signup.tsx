@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChefHat, LocateFixed, Lock, Mail, Store, User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
+import { getDashboardPath, useAuth } from "@/lib/auth";
 import { LocationPreview } from "@/components/LocationPreview";
 import { getCurrentLocationDetails, type LocationDetails } from "@/lib/location";
 
@@ -11,7 +11,7 @@ export const Route = createFileRoute("/signup")({ component: SignupPage });
 type AccountType = "customer" | "restaurant";
 
 function SignupPage() {
-  const { signup } = useAuth();
+  const { authReady, signup, user } = useAuth();
   const nav = useNavigate();
   const [accountType, setAccountType] = useState<AccountType>("customer");
   const [name, setName] = useState("");
@@ -24,6 +24,12 @@ function SignupPage() {
   const [confirmingLocation, setConfirmingLocation] = useState(false);
   const [locating, setLocating] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (authReady && user) {
+      nav({ to: getDashboardPath(user), replace: true });
+    }
+  }, [authReady, nav, user]);
 
   const captureLocation = async () => {
     setLocating(true);

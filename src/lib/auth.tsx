@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { readTable, writeFile, FILES } from "./csv-store";
 import { backend } from "./backend";
 import { getFirebase } from "./firebase";
-import { readSessionCookie, writeSessionCookie } from "./session-cookie";
+import { clearSession, hasActiveSession, readSessionCookie, writeSessionCookie } from "./session-cookie";
 import type { Restaurant, User } from "./seed";
 
 type SignupOptions =
@@ -29,6 +29,10 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
+export function getDashboardPath(user: Pick<User, "role">): "/admin" | "/business" | "/discover" {
+  return user.role === "admin" ? "/admin" : user.role === "restaurant" ? "/business" : "/discover";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -38,8 +42,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getFirebase()
       .then(({ auth, authSdk }) => {
         unsub = authSdk.onAuthStateChanged(auth, async (firebaseUser: { uid: string } | null) => {
-          if (!firebaseUser) {
+          if (!hasActiveSession()) {
+            clearSession();
+            writeFile(FILES.session, "");
             setUser(null);
+            if (firebaseUser) {
+              authSdk.signOut(auth).catch(() => {});
+            }
+            setAuthReady(true);
+            return;
+          }
+
+          if (!firebaseUser) {
+            const sid = readSessionCookie();
+            if (sid) {
+              const existingUser =
+                (await backend.users()).find((x) => x.id === sid) ??
+                readTable<User>(FILES.users).find((x) => x.id === sid);
+              if (existingUser) {
+                setUser(existingUser);
+                setAuthReady(true);
+                return;
+              }
+            }
             setAuthReady(true);
             return;
           }
@@ -53,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }) as () => void;
       })
       .catch(async () => {
-        const sid = readSessionCookie();
+        const sid = hasActiveSession() ? readSessionCookie() : "";
         if (sid) {
           const u = (await backend.users()).find((x) => x.id === sid) ?? readTable<User>(FILES.users).find((x) => x.id === sid);
           if (u) setUser(u);
@@ -138,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    writeSessionCookie("");
+    clearSession();
     writeFile(FILES.session, "");
     setUser(null);
     getFirebase()

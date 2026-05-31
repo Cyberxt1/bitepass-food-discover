@@ -1,18 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ChefHat, Lock, Mail } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
+import { getDashboardPath, useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
 function LoginPage() {
-  const { login } = useAuth();
+  const { authReady, login, user } = useAuth();
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (authReady && user) {
+      nav({ to: getDashboardPath(user), replace: true });
+    }
+  }, [authReady, nav, user]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,8 +26,7 @@ function LoginPage() {
     try {
       const u = await login(email, password);
       toast.success(`Welcome back, ${u.name.split(" ")[0]}!`);
-      const to = u.role === "admin" ? "/admin" : u.role === "restaurant" ? "/business" : "/discover";
-      nav({ to });
+      nav({ to: getDashboardPath(u) });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Login failed");
     } finally { setLoading(false); }

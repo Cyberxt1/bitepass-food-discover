@@ -21,6 +21,7 @@ import { MealCard } from "@/components/MealCard";
 import { SkeletonCard } from "@/components/SkeletonCard";
 
 export const Route = createFileRoute("/discover")({ component: Discover });
+const NEARBY_RADIUS_KM = 2;
 
 const categories = [
   { name: "Jollof", emoji: "Rice" },
@@ -78,15 +79,21 @@ function Discover() {
     }
   };
 
-  const restaurantsByDistance = coords
-    ? [...restaurants].sort((a, b) => {
-        const aCoords = restaurantCoords(a);
-        const bCoords = restaurantCoords(b);
-        const aDistance = aCoords ? distanceKm(coords, aCoords) : Number.POSITIVE_INFINITY;
-        const bDistance = bCoords ? distanceKm(coords, bCoords) : Number.POSITIVE_INFINITY;
-        return aDistance - bDistance;
-      })
-    : restaurants;
+  const restaurantsWithDistance = coords
+    ? restaurants
+        .map((restaurant) => {
+          const target = restaurantCoords(restaurant);
+          const distance = target ? distanceKm(coords, target) : Number.POSITIVE_INFINITY;
+          return { restaurant, distance };
+        })
+        .sort((a, b) => a.distance - b.distance)
+    : [];
+
+  const nearbyRestaurants = coords
+    ? restaurantsWithDistance
+        .filter(({ distance }) => distance <= NEARBY_RADIUS_KM)
+        .map(({ restaurant }) => restaurant)
+    : [];
 
   const distanceFor = (restaurant: Restaurant) => {
     if (!coords) return undefined;
@@ -183,11 +190,17 @@ function Discover() {
               Turn on location to sort restaurants near you.
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            {loading
-              ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
-              : restaurantsByDistance.map((r) => <RestaurantCard key={r.id} r={r} distanceLabel={distanceFor(r)} />)}
-          </div>
+          {coords && !loading && nearbyRestaurants.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              No restaurants found within 2 km of your location yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {loading
+                ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+                : nearbyRestaurants.map((r) => <RestaurantCard key={r.id} r={r} distanceLabel={distanceFor(r)} />)}
+            </div>
+          )}
         </section>
 
         <section>

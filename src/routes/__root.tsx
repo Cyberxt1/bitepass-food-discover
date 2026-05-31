@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, Link, createRootRouteWithContext, useRouter, useRouterState } from "@tanstack/react-router";
+import { Outlet, Link, createRootRouteWithContext, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 
 import { ThemeProvider } from "@/lib/theme";
-import { AuthProvider, useAuth } from "@/lib/auth";
+import { AuthProvider, getDashboardPath, useAuth } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
 import { ensureSeed } from "@/lib/seed";
 import { BottomNav } from "@/components/BottomNav";
@@ -87,9 +87,30 @@ function RootComponent() {
 function AppShell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isLoading = useRouterState({ select: (s) => s.status === "pending" });
-  const { authReady } = useAuth();
+  const nav = useNavigate();
+  const { authReady, user } = useAuth();
   const fullWidth = path === "/" || path.startsWith("/business") || path.startsWith("/admin");
   const showOverlay = isLoading || !authReady;
+  const isAuthPage = path === "/login" || path === "/signup";
+  const isPublicPage = path === "/" || isAuthPage;
+
+  useEffect(() => {
+    if (!authReady) return;
+
+    if (path === "/" && user) {
+      nav({ to: getDashboardPath(user), replace: true });
+      return;
+    }
+
+    if (isAuthPage && user) {
+      nav({ to: getDashboardPath(user), replace: true });
+      return;
+    }
+
+    if (!isPublicPage && !user) {
+      nav({ to: "/login", replace: true });
+    }
+  }, [authReady, isAuthPage, isPublicPage, nav, path, user]);
 
   if (fullWidth) {
     return (
