@@ -16,6 +16,7 @@ function CartPage() {
   const { user } = useAuth();
   const nav = useNavigate();
   const [placing, setPlacing] = useState(false);
+  const [checkoutStage, setCheckoutStage] = useState("Pay and place order");
   const [pickupMode, setPickupMode] = useState<"asap" | "scheduled">("asap");
   const [pickupAt, setPickupAt] = useState(getDefaultPickupTime());
   const [currentRestaurant, setCurrentRestaurant] = useState<Restaurant | undefined>();
@@ -75,6 +76,7 @@ function CartPage() {
     }
 
     setPlacing(true);
+    setCheckoutStage("Opening payment...");
     try {
       const orderId = "o" + Date.now();
       const paymentReference = await startPaystackPayment({
@@ -84,6 +86,7 @@ function CartPage() {
         reference: `bitepass-${orderId}`,
         address: user.address,
       });
+      setCheckoutStage("Sending order to kitchen...");
       const pickupTime = pickupMode === "scheduled" && pickupAt ? new Date(pickupAt).toISOString() : new Date().toISOString();
       await backend.addOrder({
         id: orderId,
@@ -109,6 +112,7 @@ function CartPage() {
         paymentStatus: "paid",
         paymentReference,
       });
+      setCheckoutStage("Order received...");
       clear();
       notify("success", "Payment successful, order sent to the store", { id: `order-paid:${orderId}` });
       nav({ to: "/orders/$orderId", params: { orderId } });
@@ -117,6 +121,7 @@ function CartPage() {
       notify("error", message, { id: `cart-payment-error:${message}` });
     } finally {
       setPlacing(false);
+      setCheckoutStage("Pay and place order");
     }
   };
 
@@ -274,7 +279,7 @@ function CartPage() {
               disabled={placing || restaurantClosed}
               className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow active:scale-95 disabled:opacity-70"
             >
-              <span>{placing ? "Processing payment..." : "Pay and place order"}</span>
+              <span>{placing ? checkoutStage : "Pay and place order"}</span>
               <span>{naira(grand)}</span>
             </button>
           </div>

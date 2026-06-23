@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChefHat, LogOut, Store, ShoppingBag, UtensilsCrossed, Tag, BarChart3,
   Plus, Trash2, Power, TrendingUp, Clock, Pencil, Check, X, Menu, PanelLeftClose, PanelLeftOpen, ImagePlus,
@@ -46,6 +46,7 @@ function BusinessDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [discounts, setDiscounts] = useState<Discount[]>([]);
+  const seenOrderIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     const currentUser = user;
@@ -53,7 +54,6 @@ function BusinessDashboard() {
     const activeUser = currentUser;
     let cancelled = false;
     async function loadDashboard() {
-      setDashboardLoaded(false);
       const allRestaurants = await backend.restaurants();
       const ownedRestaurant = activeUser.role === "admin"
         ? allRestaurants[0]
@@ -69,8 +69,30 @@ function BusinessDashboard() {
         backend.discounts(),
       ]);
       if (cancelled) return;
+      const restaurantOrders = allOrders.filter((o) => o.restaurantId === ownedRestaurant.id);
+      const paidQueue = restaurantOrders.filter((order) =>
+        order.paymentStatus === "paid" && ["received", "preparing", "ready"].includes(order.status),
+      );
+      const nextOrderIds = new Set(paidQueue.map((order) => order.id));
+
+      if (seenOrderIds.current) {
+        const newOrders = paidQueue.filter((order) => !seenOrderIds.current?.has(order.id));
+        if (newOrders.length > 0) {
+          setTab("orders");
+          setSidebarOpen(false);
+          toast.success(`${newOrders.length} new paid order${newOrders.length === 1 ? "" : "s"}`, {
+            id: `vendor-new-orders:${newOrders.map((order) => order.id).join(":")}`,
+            duration: 7000,
+          });
+          if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+            navigator.vibrate?.([180, 80, 180]);
+          }
+        }
+      }
+      seenOrderIds.current = nextOrderIds;
+
       setRestaurant(ownedRestaurant);
-      setOrders(allOrders.filter((o) => o.restaurantId === ownedRestaurant.id));
+      setOrders(restaurantOrders);
       setMeals(allMeals.filter((m) => m.restaurantId === ownedRestaurant.id));
       setDiscounts(allDiscounts.filter((d) => d.restaurantId === ownedRestaurant.id));
       setDashboardLoaded(true);
@@ -83,7 +105,7 @@ function BusinessDashboard() {
 
   useEffect(() => {
     if (!user) return;
-    const timer = window.setInterval(() => setTick((x) => x + 1), 5000);
+    const timer = window.setInterval(() => setTick((x) => x + 1), 2000);
     return () => window.clearInterval(timer);
   }, [user]);
 
@@ -675,14 +697,24 @@ function Overview({
 function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }) {
   const [filter, setFilter] = useState<"all" | "active" | "completed">("active");
   const flow = ["received", "preparing", "ready", "completed"];
+  const statusRank: Record<string, number> = { received: 0, preparing: 1, ready: 2, completed: 3, cancelled: 4 };
+  const actionLabel: Record<string, string> = {
+    preparing: "Accept & start",
+    ready: "Mark ready",
+    completed: "Complete pickup",
+  };
 
   const filtered = orders
     .filter((o) => filter === "all" ? true : filter === "active" ? ["received", "preparing", "ready"].includes(o.status) : o.status === "completed")
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => {
+      const rankDiff = (statusRank[a.status] ?? 9) - (statusRank[b.status] ?? 9);
+      if (filter === "active" && rankDiff !== 0) return rankDiff;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   const advance = (id: string, next: string) => {
     backend.updateOrder(id, { status: next }).then(refresh);
-    toast.success(`Order → ${next}`);
+    toast.success(next === "preparing" ? "Order accepted" : `Order set to ${next}`);
   };
   const cancel = (id: string) => {
     backend.updateOrder(id, { status: "cancelled" }).then(refresh);
@@ -711,11 +743,24 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
             const items = JSON.parse(o.items) as { name: string; qty: number; price: number; servingUnit?: string; options?: { name: string; price: number; qty?: number }[] }[];
             const idx = flow.indexOf(o.status);
             const next = idx >= 0 && idx < flow.length - 1 ? flow[idx + 1] : null;
+            const isNewPaid = o.paymentStatus === "paid" && o.status === "received";
             return (
-              <div key={o.id} className="rounded-2xl bg-card p-4 shadow-soft animate-slide-up">
+              <div
+                key={o.id}
+                className={`rounded-2xl border p-4 shadow-soft animate-slide-up ${
+                  isNewPaid ? "border-primary/45 bg-primary/8 ring-2 ring-primary/10" : "border-transparent bg-card"
+                }`}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold">Order #{o.id.slice(-5)}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-bold">Order #{o.id.slice(-5)}</p>
+                      {isNewPaid && (
+                        <span className="rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-primary-foreground">
+                          New paid order
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</p>
                     <p className="text-[11px] text-muted-foreground">Pickup: {new Date(o.pickupTime).toLocaleString()}</p>
                   </div>
@@ -736,7 +781,7 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                   {items.map((it, i) => (
                     <li key={i} className="flex justify-between">
                       <span>
-                        {it.qty}× {it.name}
+                        {it.qty} x {it.name}
                         {it.servingUnit && (
                           <span className="block text-[11px] text-muted-foreground">Base: per {it.servingUnit}</span>
                         )}
@@ -751,9 +796,9 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                   ))}
                 </ul>
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-                  <span className="text-sm font-bold">Total · {naira(o.total)}</span>
+                  <span className="text-sm font-bold">Total: {naira(o.total)}</span>
                   <div className="flex gap-2">
-                    {o.status !== "completed" && o.status !== "cancelled" && (
+                    {o.status !== "received" && o.status !== "completed" && o.status !== "cancelled" && (
                       <button onClick={() => cancel(o.id)}
                         className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive transition">
                         Cancel
@@ -762,7 +807,7 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                     {next && (
                       <button onClick={() => advance(o.id, next)}
                         className="rounded-full bg-gradient-primary px-4 py-1.5 text-xs font-bold text-primary-foreground shadow-soft transition active:scale-95">
-                        Mark as {next}
+                        {actionLabel[next] ?? `Set ${next}`}
                       </button>
                     )}
                   </div>
