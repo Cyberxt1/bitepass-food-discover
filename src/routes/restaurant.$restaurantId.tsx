@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Clock, MapPin, MessageSquare, Phone, Send, Star } from "lucide-react";
+import { ArrowLeft, Clock, Loader2, MapPin, MessageSquare, Phone, Send, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { MealCard } from "@/components/MealCard";
@@ -16,13 +16,17 @@ function RestaurantPage() {
   const [restaurant, setRestaurant] = useState<Restaurant | undefined>();
   const [meals, setMeals] = useState<Meal[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"menu" | "reviews">("menu");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
     Promise.all([backend.restaurants(), backend.meals(), backend.reviews()]).then(([restaurants, allMeals, allReviews]) => {
+      if (cancelled) return;
       const restaurantMeals = allMeals.filter((m) => m.restaurantId === restaurantId);
       const mealIds = new Set(restaurantMeals.map((m) => m.id));
       setRestaurant(restaurants.find((r) => r.id === restaurantId));
@@ -32,10 +36,26 @@ function RestaurantPage() {
           .filter((r) => r.restaurantId === restaurantId || mealIds.has(r.mealId))
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
       );
+      setLoading(false);
+    }).catch(() => {
+      if (!cancelled) setLoading(false);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [restaurantId]);
 
-  if (!restaurant) return <div className="p-8 text-center text-sm">Restaurant not found.</div>;
+  if (loading) return <RestaurantLoading />;
+  if (!restaurant) return (
+    <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
+      <div>
+        <p className="text-sm font-bold">Restaurant not found</p>
+        <Link to="/discover" className="mt-4 inline-flex rounded-full bg-gradient-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-glow">
+          Back to discover
+        </Link>
+      </div>
+    </div>
+  );
 
   const avgRating = reviews.length
     ? (reviews.reduce((sum, review) => sum + Number(review.rating), 0) / reviews.length).toFixed(1)
@@ -168,6 +188,17 @@ function RestaurantPage() {
             submitReview={submitReview}
           />
         )}
+      </div>
+    </div>
+  );
+}
+
+function RestaurantLoading() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
+      <div>
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+        <p className="mt-3 text-sm font-semibold">Loading restaurant...</p>
       </div>
     </div>
   );

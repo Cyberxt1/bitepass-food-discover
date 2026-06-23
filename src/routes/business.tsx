@@ -1018,8 +1018,8 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
         {F("availableFrom", "Available from (hour 0-23)", "number")}
         {F("availableTo", "Available to (hour 0-23)", "number")}
         <div className="md:col-span-2">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Add items and prices</p>
               <p className="text-[11px] text-muted-foreground">Examples: extra spoon, with egg, with fish. Prices are in naira.</p>
             </div>
@@ -1038,14 +1038,14 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
               </div>
             )}
             {options.map((option, index) => (
-              <div key={option.id} className="grid grid-cols-[1fr_110px_32px] gap-2">
+              <div key={option.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_86px_36px] gap-2 sm:grid-cols-[minmax(0,1fr)_110px_36px]">
                 <input
                   value={option.name}
                   onChange={(e) =>
                     setOptions((prev) => prev.map((item, i) => (i === index ? { ...item, name: e.target.value } : item)))
                   }
                   placeholder="Item name"
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 />
                 <input
                   type="number"
@@ -1054,7 +1054,7 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
                     setOptions((prev) => prev.map((item, i) => (i === index ? { ...item, price: Number(e.target.value) } : item)))
                   }
                   placeholder="₦ price"
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="min-w-0 rounded-lg border border-border bg-background px-2 py-2 text-sm outline-none focus:border-primary sm:px-3"
                 />
                 <button
                   type="button"

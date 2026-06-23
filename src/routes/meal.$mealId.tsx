@@ -102,7 +102,7 @@ function MealPage() {
     : meal.rating;
 
   return (
-    <div className="pb-32 lg:pb-10">
+    <div className="overflow-x-hidden pb-32 lg:pb-10">
       <div className="relative h-24">
         <Link to="/discover" className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft lg:left-8">
           <ArrowLeft className="h-4 w-4 text-foreground" />
@@ -150,14 +150,14 @@ function MealPage() {
                 return (
                   <div
                     key={option.id}
-                    className={`rounded-2xl border p-3 transition ${selected ? "border-primary bg-primary/5" : "border-border bg-card"}`}
+                    className={`min-w-0 rounded-2xl border p-3 transition ${selected ? "border-primary bg-primary/5" : "border-border bg-card"}`}
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <button type="button" onClick={() => toggleOption(option)} className="flex-1 text-left">
-                        <span className="text-sm font-semibold">{option.name}</span>
+                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <button type="button" onClick={() => toggleOption(option)} className="min-w-0 flex-1 text-left">
+                        <span className="block break-words text-sm font-semibold leading-5">{option.name}</span>
                         <span className="mt-1 block text-sm font-bold text-primary">+ {naira(option.price)} each</span>
                       </button>
-                      <div className="flex items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
                         <button
                           type="button"
                           onClick={() => setOptionQty(option, (selected?.qty ?? 0) - 1)}

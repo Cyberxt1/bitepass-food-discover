@@ -139,7 +139,7 @@ function Discover() {
     : [];
   const visibleNearbyRestaurants = nearbyRestaurants.filter((restaurant) => !mutedRestaurantIds.has(restaurant.id));
   const displayLimit = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches ? 6 : 4;
-  const displayRestaurants = (coords ? visibleNearbyRestaurants : restaurants).slice(0, displayLimit);
+  const displayRestaurants = (coords ? visibleNearbyRestaurants : []).slice(0, displayLimit);
 
   const nearbyRestaurantIds = new Set(nearbyRestaurants.map((restaurant) => restaurant.id));
 
@@ -282,7 +282,7 @@ function Discover() {
                   className="flex items-center gap-2 text-left text-base font-black sm:text-lg"
                 >
                   <Navigation className="h-4 w-4 text-primary" />
-                  {coords ? "Near you" : "Restaurants to explore"}
+                  Near you
                 </button>
                 {!coords && !loading && (
                   <button
@@ -305,8 +305,10 @@ function Discover() {
                 )}
               </div>
 
-              {coords && !loading && visibleNearbyRestaurants.length === 0 ? (
-                <EmptyPanel title="No restaurants within 40 km yet" detail="Try browsing all restaurants while more kitchens join your area." />
+              {!coords && !loading ? (
+                <EmptyPanel title="Set your location to see nearby restaurants" detail="Tap refresh above or use location here. Search stays available when you want to browse manually." />
+              ) : coords && !loading && visibleNearbyRestaurants.length === 0 ? (
+                <EmptyPanel title="No restaurants within 40 km yet" detail="Try searching while more kitchens join your area." />
               ) : (
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
                   {loading

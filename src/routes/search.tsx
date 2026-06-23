@@ -1,12 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, LocateFixed, Search as SearchIcon } from "lucide-react";
+import { ArrowLeft, Loader2, LocateFixed, Search as SearchIcon } from "lucide-react";
 import { z } from "zod";
 
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
-import { notify } from "@/lib/notifications";
 import type { Meal, Restaurant } from "@/lib/seed";
 import {
   distanceKm,
@@ -32,6 +31,8 @@ function SearchPage() {
   const [coords, setCoords] = useState<Coordinates | null>(null);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [requestingLocation, setRequestingLocation] = useState(false);
 
   useEffect(() => {
@@ -44,6 +45,7 @@ function SearchPage() {
       if (cancelled) return;
       setRestaurants(nextRestaurants);
       setMeals(nextMeals);
+      setLoading(false);
     };
 
     void loadSearchData();
@@ -56,6 +58,16 @@ function SearchPage() {
       window.clearInterval(interval);
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!q.trim()) {
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const timeout = window.setTimeout(() => setSearching(false), 450);
+    return () => window.clearTimeout(timeout);
+  }, [q]);
 
   const enableLocation = async () => {
     if (requestingLocation) return;
@@ -71,16 +83,16 @@ function SearchPage() {
         });
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "We could not access your location";
-      notify("error", message, { id: "search-location-error" });
+      console.warn(error instanceof Error ? error.message : "We could not access your location");
     } finally {
       setRequestingLocation(false);
     }
   };
 
   const term = q.trim().toLowerCase();
-  const matched = !term
-    ? restaurants
+  const hasSearch = term.length > 0;
+  const matched = !hasSearch
+    ? []
     : restaurants.filter((restaurant) => {
         const haystack = `${restaurant.name} ${restaurant.cuisine} ${restaurant.tags} ${restaurant.description}`.toLowerCase();
         if (haystack.includes(term)) return true;
@@ -126,7 +138,7 @@ function SearchPage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Search results</p>
             <h1 className="mt-1 text-xl font-black">
-              {results.length} {results.length === 1 ? "restaurant" : "restaurants"}
+              {!hasSearch ? "Start typing" : searching || loading ? "Searching..." : `${results.length} ${results.length === 1 ? "restaurant" : "restaurants"}`}
             </h1>
           </div>
           {!coords && (
@@ -142,28 +154,51 @@ function SearchPage() {
           )}
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {results.map((restaurant) => (
-            <RestaurantCard
-              key={restaurant.id}
-              r={restaurant}
-              distanceLabel={
-                coords && restaurantCoords(restaurant)
-                  ? formatDistance(distanceKm(coords, restaurantCoords(restaurant)!))
-                  : undefined
-              }
-            />
-          ))}
-        </div>
-
-        {results.length === 0 && (
+        {hasSearch && (searching || loading) ? (
+          <LoadingPanel label="Searching restaurants..." />
+        ) : hasSearch ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {results.map((restaurant) => (
+              <RestaurantCard
+                key={restaurant.id}
+                r={restaurant}
+                distanceLabel={
+                  coords && restaurantCoords(restaurant)
+                    ? formatDistance(distanceKm(coords, restaurantCoords(restaurant)!))
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        ) : (
           <div className="grid place-items-center px-6 pt-20 text-center">
-            <div className="text-5xl">Search</div>
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-muted text-muted-foreground">
+              <SearchIcon className="h-5 w-5" />
+            </div>
+            <p className="mt-3 text-sm font-semibold">Search for a restaurant, dish, or cuisine</p>
+            <p className="mt-1 text-xs text-muted-foreground">Results will appear after you type.</p>
+          </div>
+        )}
+
+        {hasSearch && !searching && !loading && results.length === 0 && (
+          <div className="grid place-items-center px-6 pt-20 text-center">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-muted text-muted-foreground">
+              <SearchIcon className="h-5 w-5" />
+            </div>
             <p className="mt-3 text-sm font-semibold">No restaurants match "{q}"</p>
             <p className="mt-1 text-xs text-muted-foreground">Try a different cuisine or dish name.</p>
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function LoadingPanel({ label }: { label: string }) {
+  return (
+    <div className="grid place-items-center px-6 pt-20 text-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="mt-3 text-sm font-semibold">{label}</p>
     </div>
   );
 }
