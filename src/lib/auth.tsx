@@ -9,7 +9,7 @@ type SignupOptions =
   | { role?: "customer"; location?: { address: string; lat: number; lng: number } }
   | {
       role: "restaurant";
-      restaurant: {
+      restaurant?: {
         name: string;
         cuisine: string;
         phone: string;
@@ -208,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     if (!useSupabaseAuth || !supabase) {
-      throw new Error("Google sign in needs Supabase configuration");
+      throw new Error("Supabase is missing on this build. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.");
     }
 
     const { error } = await supabase.auth.signInWithOAuth({
@@ -259,7 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     await backend.setUser(u);
 
-    if (options.role === "restaurant") {
+    if (options.role === "restaurant" && options.restaurant) {
       const restaurant: Restaurant = {
         id: "r" + Date.now(),
         ownerId: u.id,

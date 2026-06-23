@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   ChefHat, LogOut, Store, ShoppingBag, UtensilsCrossed, Tag, BarChart3,
   Plus, Trash2, Power, TrendingUp, Clock, Pencil, Check, X, Menu, PanelLeftClose, PanelLeftOpen, ImagePlus,
+  User, Mail, Phone, MapPin, ArrowRight, ArrowLeft, Loader2,
 } from "lucide-react";
 import {
   Area,
@@ -19,6 +20,8 @@ import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
 import { parseMealOptions, stringifyMealOptions, type MealOption } from "@/lib/meal-options";
 import { compressImageFile } from "@/lib/image-upload";
+import { getCurrentLocationDetails } from "@/lib/location";
+import { LocationPreview } from "@/components/LocationPreview";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/business")({ component: BusinessDashboard });
@@ -39,6 +42,7 @@ function BusinessDashboard() {
   }, [user, nav]);
 
   const [restaurant, setRestaurant] = useState<Restaurant | undefined>();
+  const [dashboardLoaded, setDashboardLoaded] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [discounts, setDiscounts] = useState<Discount[]>([]);
@@ -49,12 +53,14 @@ function BusinessDashboard() {
     const activeUser = currentUser;
     let cancelled = false;
     async function loadDashboard() {
+      setDashboardLoaded(false);
       const allRestaurants = await backend.restaurants();
       const ownedRestaurant = activeUser.role === "admin"
         ? allRestaurants[0]
         : allRestaurants.find((r) => r.ownerId === activeUser.id);
       if (!ownedRestaurant || cancelled) {
         if (!cancelled) setRestaurant(undefined);
+        if (!cancelled) setDashboardLoaded(true);
         return;
       }
       const [allOrders, allMeals, allDiscounts] = await Promise.all([
@@ -67,6 +73,7 @@ function BusinessDashboard() {
       setOrders(allOrders.filter((o) => o.restaurantId === ownedRestaurant.id));
       setMeals(allMeals.filter((m) => m.restaurantId === ownedRestaurant.id));
       setDiscounts(allDiscounts.filter((d) => d.restaurantId === ownedRestaurant.id));
+      setDashboardLoaded(true);
     }
     void loadDashboard();
     return () => {
@@ -80,7 +87,8 @@ function BusinessDashboard() {
     return () => window.clearInterval(timer);
   }, [user]);
 
-  if (!user || !restaurant) return null;
+  if (!user || !dashboardLoaded) return null;
+  if (!restaurant) return <RestaurantOnboarding userId={user.id} ownerName={user.name} refresh={refresh} logout={logout} />;
 
   const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
     { id: "analytics", label: "Analytics", icon: BarChart3 },
@@ -224,6 +232,257 @@ function BusinessDashboard() {
         {tab === "profile" && <ProfileTab restaurant={restaurant} refresh={refresh} />}
       </main>
     </div>
+  );
+}
+
+function RestaurantOnboarding({
+  userId,
+  ownerName,
+  refresh,
+  logout,
+}: {
+  userId: string;
+  ownerName: string;
+  refresh: () => void;
+  logout: () => void;
+}) {
+  const nav = useNavigate();
+  const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [form, setForm] = useState({
+    owner: ownerName,
+    restaurant: "",
+    intro: "",
+    cuisine: "Nigerian",
+    phone: "",
+    address: "",
+    lat: "",
+    lng: "",
+  });
+
+  const coords = form.lat && form.lng ? { lat: Number(form.lat), lng: Number(form.lng) } : null;
+  const canContinue =
+    step === 0
+      ? form.owner.trim().length > 1 && form.restaurant.trim().length > 1
+      : step === 1
+        ? form.intro.trim().length > 0 && form.phone.trim().length > 5
+        : Boolean(form.address && form.lat && form.lng);
+
+  const update = (key: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const useCurrentLocation = async () => {
+    setLocating(true);
+    try {
+      const location = await getCurrentLocationDetails();
+      setForm((current) => ({
+        ...current,
+        address: location.address,
+        lat: String(location.lat),
+        lng: String(location.lng),
+      }));
+      toast.success("Restaurant location pinned");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Location could not be set");
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const save = async () => {
+    if (!canContinue) return;
+    setSaving(true);
+    try {
+      const restaurant: Restaurant = {
+        id: "r" + Date.now(),
+        ownerId: userId,
+        name: form.restaurant.trim(),
+        cuisine: form.cuisine.trim() || "Food",
+        rating: "0",
+        reviews: "0",
+        prepTime: "15",
+        distance: "0",
+        image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=70",
+        tags: `${form.intro.trim()}|${form.cuisine.trim() || "Food"}|New`,
+        isOpen: "1",
+        description: form.intro.trim(),
+        address: form.address,
+        phone: form.phone.trim(),
+        lat: form.lat,
+        lng: form.lng,
+      };
+      await backend.setRestaurant(restaurant);
+      toast.success("Restaurant profile created");
+      refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Restaurant setup failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const steps = [
+    { label: "Owner", title: "Who runs this kitchen?" },
+    { label: "Details", title: "Keep the profile sharp" },
+    { label: "Location", title: "Pin the pickup spot" },
+  ];
+
+  return (
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-hero px-5 py-16">
+      <button
+        type="button"
+        onClick={() => {
+          logout();
+          nav({ to: "/" });
+        }}
+        className="absolute right-5 top-6 inline-flex items-center gap-2 rounded-full bg-card px-4 py-2 text-xs font-bold text-muted-foreground shadow-soft transition hover:text-destructive"
+      >
+        <LogOut className="h-3.5 w-3.5" />
+        Sign out
+      </button>
+
+      <div className="w-full max-w-md">
+        <div className="rounded-[2rem] border border-border/80 bg-background/85 p-5 shadow-card backdrop-blur md:p-7">
+          <div className="text-center">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-glow">
+              <ChefHat className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <h1 className="mt-4 text-2xl font-bold">Set up your restaurant</h1>
+            <p className="mt-1 text-sm text-muted-foreground">A few quick details so nearby shoppers can find you.</p>
+          </div>
+
+          <div className="mt-6 grid grid-cols-3 gap-2">
+            {steps.map((item, index) => (
+              <div
+                key={item.label}
+                className={`rounded-2xl px-3 py-2 text-center text-[11px] font-bold ${
+                  index === step ? "bg-gradient-primary text-primary-foreground shadow-soft" : "bg-card text-muted-foreground"
+                }`}
+              >
+                {item.label}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{steps[step].title}</p>
+
+            {step === 0 && (
+              <div className="mt-3 space-y-3">
+                <OnboardingField icon={User}>
+                  <input
+                    value={form.owner}
+                    onChange={(event) => update("owner", event.target.value)}
+                    placeholder="Owner name"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  />
+                </OnboardingField>
+                <OnboardingField icon={Store}>
+                  <input
+                    value={form.restaurant}
+                    onChange={(event) => update("restaurant", event.target.value)}
+                    placeholder="Restaurant name"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    autoFocus
+                  />
+                </OnboardingField>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="mt-3 space-y-3">
+                <OnboardingField icon={Mail}>
+                  <input
+                    value={form.intro}
+                    onChange={(event) => update("intro", event.target.value.split(/\s+/)[0] ?? "")}
+                    placeholder="One-word intro, e.g. Smoky"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    autoFocus
+                  />
+                </OnboardingField>
+                <OnboardingField icon={Store}>
+                  <input
+                    value={form.cuisine}
+                    onChange={(event) => update("cuisine", event.target.value)}
+                    placeholder="Cuisine"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  />
+                </OnboardingField>
+                <OnboardingField icon={Phone}>
+                  <input
+                    value={form.phone}
+                    onChange={(event) => update("phone", event.target.value)}
+                    placeholder="Phone number"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  />
+                </OnboardingField>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="mt-3 space-y-3">
+                <LocationPreview
+                  coords={Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng) ? coords : null}
+                  address={form.address}
+                  emptyText="Pin your restaurant location."
+                />
+                <button
+                  type="button"
+                  onClick={useCurrentLocation}
+                  disabled={locating}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card py-3.5 text-sm font-semibold shadow-soft transition hover:bg-muted disabled:opacity-60"
+                >
+                  {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                  {locating ? "Getting location..." : "Use current location"}
+                </button>
+                <textarea
+                  value={form.address}
+                  onChange={(event) => update("address", event.target.value)}
+                  placeholder="Address"
+                  rows={2}
+                  className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-primary"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 flex items-center gap-2">
+            {step > 0 && (
+              <button
+                type="button"
+                onClick={() => setStep((value) => value - 1)}
+                className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-border bg-card shadow-soft transition hover:bg-muted"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={!canContinue || saving}
+              onClick={() => {
+                if (step < steps.length - 1) setStep((value) => value + 1);
+                else void save();
+              }}
+              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 text-sm font-bold text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-60"
+            >
+              {saving ? "Creating..." : step === steps.length - 1 ? "Finish setup" : "Continue"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OnboardingField({ icon: Icon, children }: { icon: typeof Store; children: React.ReactNode }) {
+  return (
+    <label className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 focus-within:border-primary">
+      <Icon className="h-4 w-4 text-muted-foreground" />
+      {children}
+    </label>
   );
 }
 

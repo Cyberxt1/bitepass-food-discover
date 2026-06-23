@@ -15,9 +15,6 @@ function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [restaurantName, setRestaurantName] = useState("");
-  const [cuisine, setCuisine] = useState("Nigerian");
-  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -34,13 +31,8 @@ function SignupPage() {
       if (accountType === "restaurant") {
         const user = await signup(name, email, password, {
           role: "restaurant",
-          restaurant: {
-            name: restaurantName || `${name}'s Kitchen`,
-            cuisine,
-            phone,
-          },
         });
-        notify("success", `${user.name}, your restaurant is live on BitePass`, {
+        notify("success", `${user.name}, finish your restaurant setup`, {
           id: "signup-restaurant-success",
         });
         nav({ to: "/business" });
@@ -77,7 +69,7 @@ function SignupPage() {
             <h1 className="mt-4 text-2xl font-bold">Create your account</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {accountType === "restaurant"
-                ? "Create your kitchen profile. Location can come later."
+                ? "Create your owner login. Restaurant details come next."
                 : "Location is optional. You can add it later for nearby picks."}
             </p>
           </div>
@@ -142,36 +134,6 @@ function SignupPage() {
                 minLength={4}
               />
             </Field>
-
-            {accountType === "restaurant" && (
-              <div className="space-y-3">
-                <Field icon={Store}>
-                  <input
-                    value={restaurantName}
-                    onChange={(e) => setRestaurantName(e.target.value)}
-                    placeholder="Restaurant name"
-                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                    required
-                  />
-                </Field>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    value={cuisine}
-                    onChange={(e) => setCuisine(e.target.value)}
-                    placeholder="Cuisine"
-                    className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
-                    required
-                  />
-                  <input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Phone"
-                    className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
-                    required
-                  />
-                </div>
-              </div>
-            )}
 
             <button
               type="submit"

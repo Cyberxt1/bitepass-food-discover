@@ -11,6 +11,22 @@ This project uses Supabase Auth and Supabase Postgres for the main backend, with
 5. Google sign-in is optional. If enabled, configure Google under Authentication > Providers.
 6. Copy Project URL and anon public key into `.env.local`.
 
+## Netlify Setup
+
+The Supabase URL and anon key are public browser values, so `netlify.toml` includes them for Netlify builds. After changing `netlify.toml`, redeploy the site so Vite bakes the env values into the frontend bundle.
+
+For Google sign-in on Netlify, add your deployed Netlify URL in two places:
+
+1. Supabase dashboard:
+   - Authentication > URL Configuration
+   - Site URL: `https://your-site.netlify.app`
+   - Redirect URLs: `https://your-site.netlify.app/**`
+2. Google Cloud OAuth client:
+   - Authorized JavaScript origins: `https://your-site.netlify.app`
+   - Authorized redirect URI: `https://vvtydnkcsicmtqztvqmw.supabase.co/auth/v1/callback`
+
+The Google redirect URI stays as the Supabase callback URL. Your Netlify URL belongs in JavaScript origins and Supabase redirect allow-list.
+
 ## Environment
 
 Use `.env.example` as the template:
