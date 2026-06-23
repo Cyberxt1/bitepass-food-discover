@@ -1213,10 +1213,30 @@ function DiscountForm({ restaurantId, onCancel, onSaved }: { restaurantId: strin
 /* ---------------- PROFILE ---------------- */
 function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: () => void }) {
   const [form, setForm] = useState(restaurant);
+  const [locating, setLocating] = useState(false);
+  const coords = form.lat && form.lng ? { lat: Number(form.lat), lng: Number(form.lng) } : null;
 
   const save = () => {
     backend.updateRestaurant(restaurant.id, form).then(refresh);
     toast.success("Profile updated");
+  };
+  const useCurrentLocation = async () => {
+    setLocating(true);
+    try {
+      const location = await getCurrentLocationDetails();
+      setForm((current) => ({
+        ...current,
+        address: location.address,
+        lat: String(location.lat),
+        lng: String(location.lng),
+        distance: "0",
+      }));
+      toast.success("Restaurant location pinned");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Location could not be set");
+    } finally {
+      setLocating(false);
+    }
   };
   const toggleOpen = () => {
     const next = form.isOpen === "1" ? "0" : "1";
@@ -1257,9 +1277,34 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
           {F("cuisine", "Cuisine")}
           {F("tags", "Tags (pipe-separated)")}
           {F("prepTime", "Avg prep time (min)", "number")}
-          {F("distance", "Distance from center (km)", "number")}
           {F("phone", "Phone")}
-          {F("address", "Address")}
+          <div className="md:col-span-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Location</span>
+            <div className="mt-1 space-y-3">
+              <LocationPreview
+                coords={Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng) ? coords : null}
+                address={form.address}
+                emptyText="Pin your restaurant location."
+              />
+              <button
+                type="button"
+                onClick={useCurrentLocation}
+                disabled={locating}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background py-2.5 text-sm font-semibold transition hover:bg-muted disabled:opacity-60 sm:w-auto sm:px-4"
+              >
+                {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                {locating ? "Getting location..." : "Use current location"}
+              </button>
+              <textarea
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                rows={2}
+              />
+            </div>
+          </div>
+          {F("lat", "Latitude")}
+          {F("lng", "Longitude")}
           <label className="block md:col-span-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Description</span>
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
