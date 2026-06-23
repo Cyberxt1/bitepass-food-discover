@@ -1,14 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-} from "firebase/auth";
 import { readTable, writeFile, FILES } from "./csv-store";
 import { backend } from "./backend";
-import { auth, googleProvider } from "./firebase";
+import { isSupabaseConfigured, supabase } from "./supabase";
 import { clearSession, hasActiveSession, readSessionCookie, writeSessionCookie } from "./session-cookie";
 import type { Restaurant, User } from "./seed";
 
@@ -37,9 +30,14 @@ type AuthCtx = {
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
+const useSupabaseAuth = import.meta.env.VITE_AUTH_BACKEND === "supabase" && isSupabaseConfigured;
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+function createLocalId(prefix = "u") {
+  return `${prefix}${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function findLocalUserByCredentials(email: string, password: string) {
@@ -50,7 +48,7 @@ function findLocalUserByCredentials(email: string, password: string) {
   );
 }
 
-function userFromFirebase(params: {
+function userFromAuth(params: {
   id: string;
   name?: string | null;
   email?: string | null;
@@ -67,16 +65,16 @@ function userFromFirebase(params: {
   };
 }
 
-async function getOrCreateFirebaseProfile(params: {
+async function getOrCreateAuthProfile(params: {
   id: string;
   name?: string | null;
   email?: string | null;
   role?: string;
 }) {
   const users = await backend.users();
-  const existing = users.find((entry) => entry.id === params.id);
+  const existing = users.find((entry) => entry.id === params.id || normalizeEmail(entry.email) === normalizeEmail(params.email ?? ""));
   if (existing) return existing;
-  const user = userFromFirebase(params);
+  const user = userFromAuth(params);
   await backend.setUser(user);
   return user;
 }
@@ -90,59 +88,117 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          const profile = await getOrCreateFirebaseProfile({
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName,
-            email: firebaseUser.email,
+    let cancelled = false;
+
+    async function restoreLocalSession() {
+      const sid = hasActiveSession() ? readSessionCookie() : "";
+      if (!sid) {
+        setUser(null);
+        return;
+      }
+
+      const existingUser = (await backend.users()).find((entry) => entry.id === sid);
+      if (cancelled) return;
+
+      if (existingUser) {
+        setUser(existingUser);
+      } else {
+        clearSession();
+        setUser(null);
+      }
+    }
+
+    async function restoreSession() {
+      if (useSupabaseAuth && supabase) {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        const authUser = data.session?.user;
+
+        if (authUser) {
+          const profile = await getOrCreateAuthProfile({
+            id: authUser.id,
+            name: authUser.user_metadata?.name as string | undefined,
+            email: authUser.email,
+            role: authUser.user_metadata?.role as string | undefined,
           });
+          if (cancelled) return;
           writeSessionCookie(profile.id);
           writeFile(FILES.session, profile.id);
           setUser(profile);
           return;
         }
+      }
 
-        const sid = hasActiveSession() ? readSessionCookie() : "";
-        if (sid) {
-          const existingUser = (await backend.users()).find((entry) => entry.id === sid);
-          if (existingUser) setUser(existingUser);
-          else clearSession();
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
+      await restoreLocalSession();
+    }
+
+    restoreSession()
+      .catch((error) => {
+        if (cancelled) return;
         console.warn("Auth restore failed", error);
         clearSession();
         setUser(null);
-      } finally {
-        setAuthReady(true);
-      }
-    });
+      })
+      .finally(() => {
+        if (!cancelled) setAuthReady(true);
+      });
 
-    return () => unsub();
+    const subscription = useSupabaseAuth && supabase
+      ? supabase.auth.onAuthStateChange((_event, session) => {
+          const authUser = session?.user;
+          if (!authUser) return;
+
+          void getOrCreateAuthProfile({
+            id: authUser.id,
+            name: authUser.user_metadata?.name as string | undefined,
+            email: authUser.email,
+            role: authUser.user_metadata?.role as string | undefined,
+          }).then((profile) => {
+            if (cancelled) return;
+            writeSessionCookie(profile.id);
+            writeFile(FILES.session, profile.id);
+            setUser(profile);
+            setAuthReady(true);
+          });
+        }).data.subscription
+      : null;
+
+    return () => {
+      cancelled = true;
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     const normalizedEmail = normalizeEmail(email);
     const normalizedPassword = password.trim();
-    let u: User | undefined;
-    try {
-      const credential = await signInWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
-      u = await getOrCreateFirebaseProfile({
-        id: credential.user.uid,
-        name: credential.user.displayName,
-        email: credential.user.email,
+
+    if (useSupabaseAuth && supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: normalizedPassword,
       });
-    } catch {
-      const users = await backend.users();
-      u =
-        users.find(
-          (user) =>
-            normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
-        ) ?? findLocalUserByCredentials(normalizedEmail, normalizedPassword);
+      if (error) throw error;
+      if (!data.user) throw new Error("Login failed");
+
+      const u = await getOrCreateAuthProfile({
+        id: data.user.id,
+        name: data.user.user_metadata?.name as string | undefined,
+        email: data.user.email,
+        role: data.user.user_metadata?.role as string | undefined,
+      });
+      writeSessionCookie(u.id);
+      writeFile(FILES.session, u.id);
+      setUser(u);
+      return u;
     }
+
+    const users = await backend.users();
+    const u =
+      users.find(
+        (user) => normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
+      ) ?? findLocalUserByCredentials(normalizedEmail, normalizedPassword);
+
     if (!u) throw new Error("Invalid credentials");
     writeSessionCookie(u.id);
     writeFile(FILES.session, u.id);
@@ -151,32 +207,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithGoogle = async () => {
-    const credential = await signInWithPopup(auth, googleProvider);
-    const u = await getOrCreateFirebaseProfile({
-      id: credential.user.uid,
-      name: credential.user.displayName,
-      email: credential.user.email,
+    if (!useSupabaseAuth || !supabase) {
+      throw new Error("Google sign in needs Supabase configuration");
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin + "/discover",
+      },
     });
-    writeSessionCookie(u.id);
-    writeFile(FILES.session, u.id);
-    setUser(u);
-    return u;
+    if (error) throw error;
+
+    return new Promise<User>(() => {});
   };
 
   const signup = async (name: string, email: string, password: string, options: SignupOptions = { role: "customer" }) => {
     const normalizedEmail = normalizeEmail(email);
     const normalizedPassword = password.trim();
-    const users = await backend.users();
-    if (users.find((user) => normalizeEmail(user.email) === normalizedEmail)) throw new Error("Email already registered");
     const role = options.role === "restaurant" ? "restaurant" : "customer";
-    const credential = await createUserWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
-    const uid = credential.user.uid;
+    let id = createLocalId(role === "restaurant" ? "owner" : "u");
+
+    if (useSupabaseAuth && supabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password: normalizedPassword,
+        options: {
+          data: {
+            name,
+            role,
+          },
+        },
+      });
+      if (error) throw error;
+      if (data.user) id = data.user.id;
+    } else {
+      const users = await backend.users();
+      if (users.find((user) => normalizeEmail(user.email) === normalizedEmail)) throw new Error("Email already registered");
+    }
 
     const u: User = {
-      id: uid,
+      id,
       name,
       email: normalizedEmail,
-      password: normalizedPassword,
+      password: useSupabaseAuth ? "" : normalizedPassword,
       role,
       avatar: name.charAt(0).toUpperCase(),
       address: options.role !== "restaurant" ? options.location?.address : undefined,
@@ -217,7 +291,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSession();
     writeFile(FILES.session, "");
     setUser(null);
-    signOut(auth).catch(() => {});
+    if (useSupabaseAuth && supabase) {
+      void supabase.auth.signOut();
+    }
   };
 
   const updateProfile = async (patch: Partial<User>) => {

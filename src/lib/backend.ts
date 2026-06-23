@@ -1,17 +1,11 @@
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  type DocumentData,
-} from "firebase/firestore";
 import { FILES, appendRow, deleteRow, readTable, updateRow } from "./csv-store";
-import { db } from "./firebase";
+import { isSupabaseConfigured, supabase } from "./supabase";
 import type { Discount, Meal, Order, Restaurant, Review, User } from "./seed";
 
 type CollectionName = "users" | "restaurants" | "meals" | "orders" | "discounts" | "reviews";
+type Row = { id: string } & Record<string, unknown>;
+
+const useSupabase = import.meta.env.VITE_DATA_BACKEND === "supabase" && isSupabaseConfigured;
 
 const fileFor: Record<CollectionName, string> = {
   users: FILES.users,
@@ -22,7 +16,7 @@ const fileFor: Record<CollectionName, string> = {
   reviews: FILES.reviews,
 };
 
-const seededCollections = new Set<CollectionName>();
+const seededTables = new Set<CollectionName>();
 
 function upsertLocal<T extends { id: string }>(file: string, item: T) {
   const rows = readTable<T>(file);
@@ -31,61 +25,79 @@ function upsertLocal<T extends { id: string }>(file: string, item: T) {
   else appendRow(file, item);
 }
 
-async function seedCollectionIfEmpty<T extends { id: string }>(name: CollectionName) {
-  if (seededCollections.has(name)) return;
-  seededCollections.add(name);
+function cleanRow<T extends Row>(item: T): Row {
+  return Object.fromEntries(Object.entries(item).filter(([, value]) => value !== undefined)) as Row;
+}
+
+async function seedSupabaseTableIfEmpty<T extends Row>(name: CollectionName) {
+  if (!useSupabase || !supabase || seededTables.has(name)) return;
+  seededTables.add(name);
 
   const fallbackRows = readTable<T>(fileFor[name]);
   if (fallbackRows.length === 0) return;
 
-  const snap = await getDocs(collection(db, name));
-  if (!snap.empty) return;
+  const { count, error } = await supabase.from(name).select("id", { count: "exact", head: true });
+  if (error) throw error;
+  if ((count ?? 0) > 0) return;
 
-  await Promise.all(
-    fallbackRows.map((row) => setDoc(doc(db, name, row.id), sanitizeForFirestore(row))),
-  );
+  const { error: upsertError } = await supabase.from(name).upsert(fallbackRows.map(cleanRow));
+  if (upsertError) throw upsertError;
 }
 
-function sanitizeForFirestore<T extends Record<string, unknown>>(item: T): DocumentData {
-  return Object.fromEntries(Object.entries(item).filter(([, value]) => value !== undefined));
+async function readSupabaseTable<T extends Row>(name: CollectionName): Promise<T[]> {
+  if (!supabase) return [];
+  await seedSupabaseTableIfEmpty<T>(name);
+
+  const { data, error } = await supabase.from(name).select("*");
+  if (error) throw error;
+
+  const rows = (data ?? []) as T[];
+  rows.forEach((row) => upsertLocal(fileFor[name], row));
+  return rows;
 }
 
-async function allDocs<T extends { id: string }>(name: CollectionName): Promise<T[]> {
-  await seedCollectionIfEmpty<T>(name);
-  const snap = await getDocs(collection(db, name));
-  return snap.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as T);
-}
-
-async function readCollection<T extends { id: string }>(name: CollectionName): Promise<T[]> {
-  try {
-    const rows = await allDocs<T>(name);
-    if (rows.length > 0) return rows;
-  } catch (error) {
-    console.warn(`Firestore ${name} read failed, using local fallback`, error);
+async function readCollection<T extends Row>(name: CollectionName): Promise<T[]> {
+  if (useSupabase) {
+    try {
+      const rows = await readSupabaseTable<T>(name);
+      if (rows.length > 0) return rows;
+    } catch (error) {
+      console.warn(`Supabase ${name} read failed, using local fallback`, error);
+    }
   }
+
   return readTable<T>(fileFor[name]);
 }
 
-async function setCollectionDoc<T extends { id: string }>(name: CollectionName, item: T) {
+async function setCollectionDoc<T extends Row>(name: CollectionName, item: T) {
   upsertLocal(fileFor[name], item);
-  await setDoc(doc(db, name, item.id), sanitizeForFirestore(item));
+  if (useSupabase && supabase) {
+    const { error } = await supabase.from(name).upsert(cleanRow(item));
+    if (error) throw error;
+  }
 }
 
 async function patchCollectionDoc(name: CollectionName, id: string, patch: Record<string, unknown>) {
   updateRow(fileFor[name], (row) => row.id === id, patch);
-  await updateDoc(doc(db, name, id), sanitizeForFirestore(patch));
+  if (useSupabase && supabase) {
+    const { error } = await supabase.from(name).update(cleanRow({ id, ...patch })).eq("id", id);
+    if (error) throw error;
+  }
 }
 
 async function deleteCollectionDoc(name: CollectionName, id: string) {
   deleteRow(fileFor[name], (row) => row.id === id);
-  await deleteDoc(doc(db, name, id));
+  if (useSupabase && supabase) {
+    const { error } = await supabase.from(name).delete().eq("id", id);
+    if (error) throw error;
+  }
 }
 
 async function writeWithFallback(action: () => Promise<void>) {
   try {
     await action();
   } catch (error) {
-    console.warn("Firestore write failed after local write", error);
+    console.warn("Remote write failed after local write", error);
   }
 }
 

@@ -8,9 +8,9 @@ BitePass lets customers find nearby restaurants, preorder food, pay before picku
 
 ### Account
 
-- Sign up with name, email, password, and optional phone number.
+- Sign up with Supabase email/password using name, email, password, and optional phone number.
 - Sign in and stay signed in across reloads.
-- Reset password through Firebase Auth.
+- Reset password through Supabase Auth.
 - Sign out.
 - Edit profile basics: name, phone, default pickup location.
 - Save or update current location using browser geolocation.
@@ -127,32 +127,30 @@ BitePass lets customers find nearby restaurants, preorder food, pay before picku
 - View reported/cancelled orders.
 - Manage featured restaurants/categories.
 
-## Firebase Backend
+## Supabase Backend
 
-### Collections
+### Postgres Tables
 
 - `users`
 - `restaurants`
-- `restaurants/{restaurantId}/meals`
+- `meals`
 - `orders`
 - `reviews`
 - `discounts`
 - `notifications`
 
-### Cloud Functions
+### Auth
 
-- `verifyPaystackPayment`
-- `createPaidOrder`
-- `sendOrderReadyNotification`
-- `updateRestaurantStats`
-- `updateMealRating`
-- `updateRestaurantRating`
+- Supabase Auth handles email/password accounts.
+- Google sign-in is optional.
+- Phone/SMS auth is not used for the MVP.
+- App data is stored in Supabase Postgres with local fallback.
 
 ### Storage
 
-- Restaurant cover images.
-- Meal images.
-- User avatars, optional after MVP.
+- Restaurant and meal images use external URLs for the MVP.
+- Supabase Storage is not required unless file uploads are added later.
+- Restaurant and meal images stay as URL fields for the MVP.
 
 ### Location
 
@@ -175,10 +173,10 @@ BitePass lets customers find nearby restaurants, preorder food, pay before picku
 
 ## Build Order
 
-1. Replace current Firebase CDN loader with Firebase npm SDK.
-2. Add typed Firebase models.
-3. Replace CSV/local fallback backend with Firebase services.
+1. Add Supabase client setup.
+2. Add Postgres tables and RLS policies.
+3. Use Supabase Auth plus Postgres on the Free plan.
 4. Rebuild auth and profile flow.
 5. Rebuild customer discover, restaurant, meal, cart, checkout, and orders.
-6. Rebuild restaurant dashboard around realtime orders.
-7. Rebuild admin dashboard from Firestore.
+6. Rebuild restaurant dashboard around Supabase orders.
+7. Rebuild admin dashboard from Supabase tables.

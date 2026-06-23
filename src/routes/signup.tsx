@@ -40,7 +40,9 @@ function SignupPage() {
             phone,
           },
         });
-        notify("success", `${user.name}, your restaurant is live on BitePass`, { id: "signup-restaurant-success" });
+        notify("success", `${user.name}, your restaurant is live on BitePass`, {
+          id: "signup-restaurant-success",
+        });
         nav({ to: "/business" });
         return;
       }
@@ -62,136 +64,165 @@ function SignupPage() {
     setLoading(true);
     try {
       const u = await loginWithGoogle();
-      notify("success", `Welcome to BitePass, ${u.name.split(" ")[0]}!`, { id: "google-signup-success" });
+      notify("success", `Welcome to BitePass, ${u.name.split(" ")[0]}!`, {
+        id: "google-signup-success",
+      });
       nav({ to: getDashboardPath(u) });
     } catch (err) {
-      notify("error", err instanceof Error ? err.message : "Google signup failed", { id: "google-signup-error" });
+      notify("error", err instanceof Error ? err.message : "Google signup failed", {
+        id: "google-signup-error",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-hero px-5 pt-6">
-      <Link to="/login" className="grid h-10 w-10 place-items-center rounded-full bg-card shadow-soft">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-hero px-5 py-16">
+      <Link
+        to="/login"
+        className="absolute left-5 top-6 grid h-10 w-10 place-items-center rounded-full bg-card shadow-soft"
+      >
         <ArrowLeft className="h-4 w-4" />
       </Link>
-      <div className="mt-8 text-center animate-slide-up">
-        <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-primary shadow-glow">
-          <ChefHat className="h-7 w-7 text-primary-foreground" />
-        </div>
-        <h1 className="mt-4 text-2xl font-bold">Create your account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {accountType === "restaurant" ? "Create your kitchen profile. Location can come later." : "Location is optional. You can add it later for nearby picks."}
-        </p>
-      </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-card p-1 shadow-soft animate-slide-up">
-        <button
-          type="button"
-          onClick={() => setAccountType("customer")}
-          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition ${
-            accountType === "customer" ? "bg-gradient-primary text-primary-foreground shadow-soft" : "text-muted-foreground"
-          }`}
-        >
-          <User className="h-3.5 w-3.5" /> Customer
-        </button>
-        <button
-          type="button"
-          onClick={() => setAccountType("restaurant")}
-          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition ${
-            accountType === "restaurant" ? "bg-gradient-primary text-primary-foreground shadow-soft" : "text-muted-foreground"
-          }`}
-        >
-          <Store className="h-3.5 w-3.5" /> Restaurant
-        </button>
-      </div>
+      <div className="w-full max-w-md">
+        <div className="rounded-[2rem] border border-border/80 bg-background/80 p-5 shadow-card backdrop-blur md:p-7">
+          <div className="text-center animate-slide-up">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-glow">
+              <ChefHat className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <h1 className="mt-4 text-2xl font-bold">Create your account</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {accountType === "restaurant"
+                ? "Create your kitchen profile. Location can come later."
+                : "Location is optional. You can add it later for nearby picks."}
+            </p>
+          </div>
 
-      <form onSubmit={submit} className="mt-5 space-y-3 animate-slide-up" style={{ animationDelay: "100ms" }}>
-        <Field icon={User}>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={accountType === "restaurant" ? "Owner full name" : "Full name"}
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            required
-          />
-        </Field>
-        <Field icon={Mail}>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            required
-          />
-        </Field>
-        <Field icon={Lock}>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            required
-            minLength={4}
-          />
-        </Field>
+          <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-card p-1 shadow-soft animate-slide-up">
+            <button
+              type="button"
+              onClick={() => setAccountType("customer")}
+              className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition ${
+                accountType === "customer"
+                  ? "bg-gradient-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <User className="h-3.5 w-3.5" /> Customer
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountType("restaurant")}
+              className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition ${
+                accountType === "restaurant"
+                  ? "bg-gradient-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <Store className="h-3.5 w-3.5" /> Restaurant
+            </button>
+          </div>
 
-        {accountType === "restaurant" && (
-          <div className="space-y-3">
-            <Field icon={Store}>
+          <form
+            onSubmit={submit}
+            className="mt-5 space-y-3 animate-slide-up"
+            style={{ animationDelay: "100ms" }}
+          >
+            <Field icon={User}>
               <input
-                value={restaurantName}
-                onChange={(e) => setRestaurantName(e.target.value)}
-                placeholder="Restaurant name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={accountType === "restaurant" ? "Owner full name" : "Full name"}
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 required
               />
             </Field>
-            <div className="grid grid-cols-2 gap-2">
+            <Field icon={Mail}>
               <input
-                value={cuisine}
-                onChange={(e) => setCuisine(e.target.value)}
-                placeholder="Cuisine"
-                className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 required
               />
+            </Field>
+            <Field icon={Lock}>
               <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Phone"
-                className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 required
+                minLength={4}
               />
-            </div>
-          </div>
-        )}
+            </Field>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-2xl bg-gradient-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-60"
-        >
-          {loading ? "Creating account..." : accountType === "restaurant" ? "Create restaurant account" : "Create account"}
-        </button>
-      </form>
+            {accountType === "restaurant" && (
+              <div className="space-y-3">
+                <Field icon={Store}>
+                  <input
+                    value={restaurantName}
+                    onChange={(e) => setRestaurantName(e.target.value)}
+                    placeholder="Restaurant name"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    required
+                  />
+                </Field>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={cuisine}
+                    onChange={(e) => setCuisine(e.target.value)}
+                    placeholder="Cuisine"
+                    className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
+                    required
+                  />
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Phone"
+                    className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
+                    required
+                  />
+                </div>
+              </div>
+            )}
 
-      {accountType === "customer" && (
-        <button
-          type="button"
-          onClick={googleSignup}
-          disabled={loading}
-          className="mt-3 w-full rounded-2xl border border-border bg-card py-3.5 text-sm font-semibold text-foreground shadow-soft transition hover:bg-muted disabled:opacity-60"
-        >
-          Continue with Google
-        </button>
-      )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-2xl bg-gradient-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-60"
+            >
+              {loading
+                ? "Creating account..."
+                : accountType === "restaurant"
+                  ? "Create restaurant account"
+                  : "Create account"}
+            </button>
+          </form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        Already have an account? <Link to="/login" className="font-semibold text-primary">Sign in</Link>
-      </p>
+          {accountType === "customer" && (
+            <button
+              type="button"
+              onClick={googleSignup}
+              disabled={loading}
+              className="mt-3 w-full rounded-2xl border border-border bg-card py-3.5 text-sm font-semibold text-foreground shadow-soft transition hover:bg-muted disabled:opacity-60"
+            >
+              Continue with Google
+            </button>
+          )}
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link to="/login" className="font-semibold text-primary">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
