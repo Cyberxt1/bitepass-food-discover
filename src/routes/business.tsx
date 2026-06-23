@@ -59,8 +59,10 @@ function BusinessDashboard() {
         ? allRestaurants[0]
         : allRestaurants.find((r) => r.ownerId === activeUser.id);
       if (!ownedRestaurant || cancelled) {
-        if (!cancelled) setRestaurant(undefined);
-        if (!cancelled) setDashboardLoaded(true);
+        if (!cancelled) {
+          setRestaurant((current) => current ? undefined : current);
+          setDashboardLoaded(true);
+        }
         return;
       }
       const [allOrders, allMeals, allDiscounts] = await Promise.all([
@@ -104,10 +106,10 @@ function BusinessDashboard() {
   }, [user, tick]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !restaurant?.id) return;
     const timer = window.setInterval(() => setTick((x) => x + 1), 2000);
     return () => window.clearInterval(timer);
-  }, [user]);
+  }, [user, restaurant?.id]);
 
   if (!user || !dashboardLoaded) return null;
   if (!restaurant) return <RestaurantOnboarding userId={user.id} ownerName={user.name} refresh={refresh} logout={logout} />;

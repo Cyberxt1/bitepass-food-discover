@@ -270,12 +270,20 @@ function Discover() {
                   See all <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
                 {loading
-                  ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
+                  ? Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink">
+                        <SkeletonCard />
+                      </div>
+                    ))
                   : trending.slice(0, 3).map((m) => {
                       const rest = restaurants.find((r) => r.id === m.restaurantId);
-                      return <MealCard key={m.id} meal={m} restaurantName={rest?.name} />;
+                      return (
+                        <div key={m.id} className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink">
+                          <MealCard meal={m} restaurantName={rest?.name} />
+                        </div>
+                      );
                     })}
               </div>
             </section>
