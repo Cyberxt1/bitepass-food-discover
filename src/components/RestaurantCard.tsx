@@ -9,8 +9,15 @@ export function RestaurantCard({ r, distanceLabel }: { r: Restaurant; distanceLa
       params={{ restaurantId: r.id }}
       className="group block overflow-hidden rounded-2xl bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-card"
     >
-      <div className="relative border-b border-border bg-muted/45 p-3">
-        <p className="line-clamp-2 min-h-10 text-base font-black leading-tight">{r.name}</p>
+      {r.image && (
+        <div className="relative aspect-[5/3] overflow-hidden bg-muted">
+          <img src={r.image} alt={r.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/70 to-transparent" />
+          <p className="absolute bottom-3 left-3 right-3 line-clamp-1 text-sm font-black text-white">{r.name}</p>
+        </div>
+      )}
+      <div className="relative border-b border-border bg-muted/35 p-3">
+        {!r.image && <p className="line-clamp-2 min-h-10 text-base font-black leading-tight">{r.name}</p>}
         <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{r.description}</p>
         <div className="mt-3 flex flex-wrap gap-1">
           {r.tags.split("|").filter(Boolean).slice(0, 2).map((t) => (

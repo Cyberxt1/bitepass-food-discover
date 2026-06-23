@@ -18,6 +18,11 @@ export function MealCard({
       params={{ mealId: meal.id }}
       className="group block rounded-2xl bg-card p-3 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card"
     >
+      {!hideImage && meal.image && (
+        <div className="mb-3 aspect-[4/3] overflow-hidden rounded-xl bg-muted">
+          <img src={meal.image} alt={meal.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+        </div>
+      )}
       <div className="flex min-w-0 flex-col justify-between py-0.5">
         <div>
           <div className="flex items-start justify-between gap-2">

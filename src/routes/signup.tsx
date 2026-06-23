@@ -9,7 +9,7 @@ export const Route = createFileRoute("/signup")({ component: SignupPage });
 type AccountType = "customer" | "restaurant";
 
 function SignupPage() {
-  const { authReady, loginWithGoogle, signup, user } = useAuth();
+  const { authReady, signup, user } = useAuth();
   const nav = useNavigate();
   const [accountType, setAccountType] = useState<AccountType>("customer");
   const [name, setName] = useState("");
@@ -54,24 +54,6 @@ function SignupPage() {
       nav({ to: "/discover" });
     } catch (err) {
       notify("error", err instanceof Error ? err.message : "Signup failed", { id: "signup-error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const googleSignup = async () => {
-    if (loading) return;
-    setLoading(true);
-    try {
-      const u = await loginWithGoogle();
-      notify("success", `Welcome to BitePass, ${u.name.split(" ")[0]}!`, {
-        id: "google-signup-success",
-      });
-      nav({ to: getDashboardPath(u) });
-    } catch (err) {
-      notify("error", err instanceof Error ? err.message : "Google signup failed", {
-        id: "google-signup-error",
-      });
     } finally {
       setLoading(false);
     }
@@ -203,17 +185,6 @@ function SignupPage() {
                   : "Create account"}
             </button>
           </form>
-
-          {accountType === "customer" && (
-            <button
-              type="button"
-              onClick={googleSignup}
-              disabled={loading}
-              className="mt-3 w-full rounded-2xl border border-border bg-card py-3.5 text-sm font-semibold text-foreground shadow-soft transition hover:bg-muted disabled:opacity-60"
-            >
-              Continue with Google
-            </button>
-          )}
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
