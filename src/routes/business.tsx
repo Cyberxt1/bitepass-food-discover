@@ -43,13 +43,15 @@ function BusinessDashboard() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
 
   useEffect(() => {
-    if (!user) return;
+    const currentUser = user;
+    if (!currentUser) return;
+    const activeUser = currentUser;
     let cancelled = false;
     async function loadDashboard() {
       const allRestaurants = await backend.restaurants();
-      const ownedRestaurant = user.role === "admin"
+      const ownedRestaurant = activeUser.role === "admin"
         ? allRestaurants[0]
-        : allRestaurants.find((r) => r.ownerId === user.id);
+        : allRestaurants.find((r) => r.ownerId === activeUser.id);
       if (!ownedRestaurant || cancelled) {
         if (!cancelled) setRestaurant(undefined);
         return;
@@ -596,7 +598,7 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
 
   const save = () => {
     if (!form.name || !form.price) { toast.error("Name and price required"); return; }
-    const image = meal?.image || automaticMealImage(form.name || form.category);
+    const image = meal?.image || "";
     if (meal) {
       void backend.updateMeal(meal.id, { ...form, image, options: stringifyMealOptions(options) });
       toast.success("Dish updated");
@@ -712,11 +714,6 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
       </button>
     </div>
   );
-}
-
-function automaticMealImage(seed: string): string {
-  const term = encodeURIComponent(seed.trim() || "restaurant food");
-  return `https://source.unsplash.com/900x600/?${term},food`;
 }
 
 /* ---------------- DISCOUNTS ---------------- */
@@ -878,22 +875,18 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-2xl bg-card shadow-soft">
-        <div className="relative h-44 bg-muted">
-          <img src={form.image} alt={form.name} className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
-            <div className="text-white">
-              <p className="text-lg font-bold drop-shadow">{form.name}</p>
-              <p className="text-xs opacity-90">{form.cuisine}</p>
-            </div>
-            <button onClick={toggleOpen}
-              className={`rounded-full px-4 py-1.5 text-xs font-bold shadow-glow transition ${
-                form.isOpen === "1" ? "bg-success text-white" : "bg-destructive text-white"
-              }`}>
-              {form.isOpen === "1" ? "OPEN" : "CLOSED"}
-            </button>
+      <div className="rounded-2xl bg-card p-4 shadow-soft">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-lg font-bold">{form.name}</p>
+            <p className="text-xs text-muted-foreground">{form.cuisine}</p>
           </div>
+          <button onClick={toggleOpen}
+            className={`rounded-full px-4 py-1.5 text-xs font-bold shadow-glow transition ${
+              form.isOpen === "1" ? "bg-success text-white" : "bg-destructive text-white"
+            }`}>
+            {form.isOpen === "1" ? "OPEN" : "CLOSED"}
+          </button>
         </div>
       </div>
 
@@ -902,7 +895,6 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           {F("name", "Name")}
           {F("cuisine", "Cuisine")}
-          {F("image", "Cover image URL")}
           {F("tags", "Tags (pipe-separated)")}
           {F("prepTime", "Avg prep time (min)", "number")}
           {F("distance", "Distance from center (km)", "number")}

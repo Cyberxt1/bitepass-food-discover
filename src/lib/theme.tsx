@@ -1,26 +1,56 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-type Theme = "light" | "dark";
-const Ctx = createContext<{ theme: Theme; toggle: () => void } | null>(null);
+export type Theme = "light" | "dark" | "system";
+
+type ThemeContextValue = {
+  theme: Theme;
+  resolvedTheme: "light" | "dark";
+  setTheme: (theme: Theme) => void;
+  toggle: () => void;
+};
+
+const Ctx = createContext<ThemeContextValue | null>(null);
+const STORAGE_KEY = "bitepass:theme";
+
+function systemTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("light");
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    const saved = (localStorage.getItem("bitepass:theme") as Theme | null) ?? "light";
-    setTheme(saved);
+    const saved = (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "light";
+    setThemeState(saved);
   }, []);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("bitepass:theme", theme);
+    const apply = () => {
+      const next = theme === "system" ? systemTheme() : theme;
+      setResolvedTheme(next);
+      document.documentElement.classList.toggle("dark", next === "dark");
+      localStorage.setItem(STORAGE_KEY, theme);
+    };
+
+    apply();
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
   }, [theme]);
 
-  return (
-    <Ctx.Provider value={{ theme, toggle: () => setTheme((t) => (t === "dark" ? "light" : "dark")) }}>
-      {children}
-    </Ctx.Provider>
+  const value = useMemo<ThemeContextValue>(
+    () => ({
+      theme,
+      resolvedTheme,
+      setTheme: setThemeState,
+      toggle: () => setThemeState((current) => (current === "dark" ? "light" : "dark")),
+    }),
+    [resolvedTheme, theme],
   );
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useTheme() {

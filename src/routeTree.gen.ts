@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as CartRouteImport } from './routes/cart'
@@ -36,6 +37,11 @@ const SearchRoute = SearchRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/cart': typeof CartRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/cart': typeof CartRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/cart': typeof CartRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/discover'
     | '/login'
+    | '/notifications'
     | '/profile'
     | '/search'
     | '/signup'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/discover'
     | '/login'
+    | '/notifications'
     | '/profile'
     | '/search'
     | '/signup'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/discover'
     | '/login'
+    | '/notifications'
     | '/profile'
     | '/search'
     | '/signup'
@@ -190,6 +202,7 @@ export interface RootRouteChildren {
   CartRoute: typeof CartRoute
   DiscoverRoute: typeof DiscoverRoute
   LoginRoute: typeof LoginRoute
+  NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   SearchRoute: typeof SearchRoute
   SignupRoute: typeof SignupRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/discover': {
@@ -302,6 +322,7 @@ const rootRouteChildren: RootRouteChildren = {
   CartRoute: CartRoute,
   DiscoverRoute: DiscoverRoute,
   LoginRoute: LoginRoute,
+  NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   SearchRoute: SearchRoute,
   SignupRoute: SignupRoute,

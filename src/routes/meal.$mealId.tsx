@@ -16,7 +16,7 @@ export const Route = createFileRoute("/meal/$mealId")({ component: MealPage });
 function MealPage() {
   const { mealId } = Route.useParams();
   const nav = useNavigate();
-  const { add } = useCart();
+  const { add, items } = useCart();
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState("");
   const [meal, setMeal] = useState<Meal | undefined>();
@@ -27,14 +27,12 @@ function MealPage() {
   const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
-    Promise.all([backend.meals(), backend.restaurants()]).then(([allMeals, restaurants]) => {
+    Promise.all([backend.meals(), backend.restaurants(), backend.reviews()]).then(([allMeals, restaurants, allReviews]) => {
       const nextMeal = allMeals.find((entry) => entry.id === mealId);
       setMeal(nextMeal);
       setRestaurant(nextMeal ? restaurants.find((entry) => entry.id === nextMeal.restaurantId) : undefined);
+      setReviews(allReviews.filter((review) => review.mealId === mealId));
       setLoading(false);
-    });
-    import("@/lib/csv-store").then(({ FILES, readTable }) => {
-      setReviews(readTable<Review>(FILES.reviews).filter((review) => review.mealId === mealId));
     });
   }, [mealId]);
 
@@ -65,6 +63,12 @@ function MealPage() {
     if (addingToCart) return;
     if (restaurant?.isOpen === "0") {
       notify("error", "This restaurant is closed right now", { id: "meal-restaurant-closed" });
+      return;
+    }
+    if (items.length > 0 && items.some((item) => item.restaurantId !== meal.restaurantId)) {
+      notify("error", "Finish or clear your current cart before ordering from another restaurant", {
+        id: "meal-mixed-restaurant-cart",
+      });
       return;
     }
     setAddingToCart(true);
@@ -98,14 +102,15 @@ function MealPage() {
     : meal.rating;
 
   return (
-    <div className="pb-32">
+    <div className="pb-32 lg:pb-10">
       <div className="relative h-24">
-        <Link to="/discover" className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft">
+        <Link to="/discover" className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft lg:left-8">
           <ArrowLeft className="h-4 w-4 text-foreground" />
         </Link>
       </div>
 
-      <div className="bg-background px-4 pt-2">
+      <div className="mx-auto max-w-3xl bg-background px-4 pt-2 sm:px-6 lg:px-8">
+        <main className="min-w-0">
         <h1 className="text-2xl font-bold">{meal.name}</h1>
         {restaurant && (
           <Link to="/restaurant/$restaurantId" params={{ restaurantId: restaurant.id }} className="mt-1 inline-block text-sm text-primary">
@@ -231,9 +236,10 @@ function MealPage() {
             </div>
           )}
         </section>
+        </main>
       </div>
 
-      <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3">
+      <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3 lg:bottom-6 lg:left-auto lg:right-8 lg:max-w-sm lg:translate-x-0">
         <button
           onClick={addToCart}
           disabled={restaurant?.isOpen === "0" || addingToCart}

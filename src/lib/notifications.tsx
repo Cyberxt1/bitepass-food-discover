@@ -11,6 +11,12 @@ export type AppNotification = {
   read: boolean;
 };
 
+export type NotificationPreferences = {
+  enabled: boolean;
+  orderUpdates: boolean;
+  promos: boolean;
+};
+
 type NotifyOptions = {
   id?: string;
   persist?: boolean;
@@ -18,19 +24,23 @@ type NotifyOptions = {
 
 type NotificationsContextValue = {
   notifications: AppNotification[];
+  preferences: NotificationPreferences;
   unreadCount: number;
+  updatePreferences: (patch: Partial<NotificationPreferences>) => void;
   markAllRead: () => void;
   markRead: (id: string) => void;
   clearAll: () => void;
 };
 
 const STORAGE_KEY = "bitepass:notifications";
+const PREFS_KEY = "bitepass:notification-preferences";
 const DEDUPE_WINDOW_MS = 1800;
 const MAX_NOTIFICATIONS = 40;
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 
 let notificationsStore: AppNotification[] = [];
+let preferencesStore: NotificationPreferences = { enabled: true, orderUpdates: true, promos: true };
 let hasLoadedStore = false;
 const listeners = new Set<() => void>();
 const recentEvents = new Map<string, number>();
@@ -45,6 +55,10 @@ function loadNotifications() {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     notificationsStore = raw ? (JSON.parse(raw) as AppNotification[]) : [];
+    const rawPrefs = window.localStorage.getItem(PREFS_KEY);
+    preferencesStore = rawPrefs
+      ? { ...preferencesStore, ...(JSON.parse(rawPrefs) as Partial<NotificationPreferences>) }
+      : preferencesStore;
   } catch {
     notificationsStore = [];
   }
@@ -53,6 +67,11 @@ function loadNotifications() {
 function saveNotifications() {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notificationsStore));
+}
+
+function savePreferences() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(PREFS_KEY, JSON.stringify(preferencesStore));
 }
 
 function pushNotification(notification: AppNotification) {
@@ -70,6 +89,8 @@ function shouldSuppress(eventKey: string) {
 }
 
 export function notify(level: NotificationLevel, title: string, options: NotifyOptions = {}) {
+  loadNotifications();
+  if (!preferencesStore.enabled) return;
   const eventKey = options.id ?? `${level}:${title}`;
   if (shouldSuppress(eventKey)) return;
 
@@ -91,19 +112,31 @@ export function notify(level: NotificationLevel, title: string, options: NotifyO
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [preferences, setPreferences] = useState<NotificationPreferences>(preferencesStore);
 
   useEffect(() => {
     loadNotifications();
-    const sync = () => setNotifications([...notificationsStore]);
+    const sync = () => {
+      setNotifications([...notificationsStore]);
+      setPreferences({ ...preferencesStore });
+    };
     sync();
     listeners.add(sync);
-    return () => listeners.delete(sync);
+    return () => {
+      listeners.delete(sync);
+    };
   }, []);
 
   const value = useMemo<NotificationsContextValue>(
     () => ({
       notifications,
+      preferences,
       unreadCount: notifications.filter((notification) => !notification.read).length,
+      updatePreferences: (patch) => {
+        preferencesStore = { ...preferencesStore, ...patch };
+        savePreferences();
+        emitNotifications();
+      },
       markAllRead: () => {
         notificationsStore = notificationsStore.map((notification) => ({ ...notification, read: true }));
         saveNotifications();
@@ -122,7 +155,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         emitNotifications();
       },
     }),
-    [notifications],
+    [notifications, preferences],
   );
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;

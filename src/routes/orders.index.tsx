@@ -21,14 +21,16 @@ function OrdersList() {
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    if (!user) {
+    const currentUser = user;
+    if (!currentUser) {
       nav({ to: "/login" });
       return;
     }
+    const activeUser = currentUser;
     let cancelled = false;
     async function loadOrders() {
       const list = (await backend.orders())
-        .filter((order) => order.userId === user.id)
+        .filter((order) => order.userId === activeUser.id)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       if (!cancelled) setOrders(list);
     }
@@ -47,7 +49,7 @@ function OrdersList() {
   return (
     <div>
       <header className="sticky top-0 z-30 glass border-b border-border/40">
-        <div className="px-4 py-3">
+        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 lg:px-8">
           <h1 className="text-base font-bold">Your orders</h1>
         </div>
       </header>
@@ -61,7 +63,7 @@ function OrdersList() {
           </Link>
         </div>
       ) : (
-        <main className="space-y-3 px-4 pt-4">
+        <main className="mx-auto grid max-w-6xl gap-3 px-4 pt-4 sm:px-6 md:grid-cols-2 lg:px-8 lg:pt-8 xl:grid-cols-3">
           {orders.map((order) => {
             const items = JSON.parse(order.items) as { name: string; qty: number }[];
             return (

@@ -1,46 +1,17 @@
+import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCRtfuOl-lArLd-1sfVn4y3H20nVkzCgXo",
-  authDomain: "bitepass-51358.firebaseapp.com",
-  projectId: "bitepass-51358",
-  storageBucket: "bitepass-51358.firebasestorage.app",
-  messagingSenderId: "1074368767309",
-  appId: "1:1074368767309:web:64463c518e5f1d11594304",
-  measurementId: "G-Z6PC07XY98",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? "AIzaSyCNtbwFu8ahai8q1ydrTtdGVhvUUPGMIq4",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? "bitepass-3b65d.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "bitepass-3b65d",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? "bitepass-3b65d.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? "967235486212",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID ?? "1:967235486212:web:399fef7b0b57f5c748eb51",
 };
 
-type FirebaseRuntime = {
-  auth: unknown;
-  db: unknown;
-  authSdk: Record<string, (...args: unknown[]) => unknown>;
-  firestoreSdk: Record<string, (...args: unknown[]) => unknown>;
-};
-
-let runtimePromise: Promise<FirebaseRuntime> | null = null;
-
-export async function getFirebase(): Promise<FirebaseRuntime> {
-  if (typeof window === "undefined") {
-    throw new Error("Firebase is only available in the browser");
-  }
-
-  runtimePromise ??= Promise.all([
-    import(/* @vite-ignore */ "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"),
-    import(/* @vite-ignore */ "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"),
-    import(/* @vite-ignore */ "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js"),
-  ]).then(async ([appSdk, authSdk, firestoreSdk]) => {
-    const existing = appSdk.getApps();
-    const app = existing.length ? existing[0] : appSdk.initializeApp(firebaseConfig);
-
-    import(/* @vite-ignore */ "https://www.gstatic.com/firebasejs/10.14.1/firebase-analytics.js")
-      .then((analyticsSdk) => analyticsSdk.isSupported().then((ok: boolean) => ok && analyticsSdk.getAnalytics(app)))
-      .catch(() => {});
-
-    return {
-      auth: authSdk.getAuth(app),
-      db: firestoreSdk.getFirestore(app),
-      authSdk,
-      firestoreSdk,
-    };
-  });
-
-  return runtimePromise;
-}
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const googleProvider = new GoogleAuthProvider();

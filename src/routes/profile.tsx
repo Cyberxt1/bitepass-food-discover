@@ -1,23 +1,31 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { LogOut, Receipt, User as UserIcon, MapPin } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { notify } from "@/lib/notifications";
+import { Bell, LocateFixed, LogOut, Moon, Receipt, Settings, Sun, User as UserIcon } from "lucide-react";
+import { useState } from "react";
+import { getDashboardPath, useAuth } from "@/lib/auth";
+import { getCurrentLocationDetails, shortLocationLabel } from "@/lib/location";
+import { notify, useNotifications } from "@/lib/notifications";
+import { useTheme, type Theme } from "@/lib/theme";
 
 export const Route = createFileRoute("/profile")({ component: ProfilePage });
 
 function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
+  const { preferences, updatePreferences } = useNotifications();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const nav = useNavigate();
+  const [locating, setLocating] = useState(false);
 
   if (!user) {
     return (
       <div>
         <header className="sticky top-0 z-30 glass border-b border-border/40">
-          <div className="px-4 py-3"><h1 className="text-base font-bold">Profile</h1></div>
+          <div className="px-4 py-3"><h1 className="text-base font-bold">Settings</h1></div>
         </header>
         <main className="px-4 pt-4">
           <div className="rounded-2xl bg-card p-6 text-center shadow-soft">
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-muted"><UserIcon className="h-6 w-6 text-muted-foreground" /></div>
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-muted">
+              <UserIcon className="h-6 w-6 text-muted-foreground" />
+            </div>
             <p className="mt-3 text-sm font-semibold">You're not signed in</p>
             <Link to="/login" className="mt-4 inline-block rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">
               Sign in
@@ -34,108 +42,144 @@ function ProfilePage() {
     nav({ to: "/" });
   };
 
+  const refreshLocation = async () => {
+    if (locating) return;
+    setLocating(true);
+    try {
+      const location = await getCurrentLocationDetails();
+      await updateProfile({
+        address: location.address,
+        lat: String(location.lat),
+        lng: String(location.lng),
+      });
+      notify("success", "Location updated", { id: "settings-location-updated" });
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Location update failed", { id: "settings-location-error" });
+    } finally {
+      setLocating(false);
+    }
+  };
+
   return (
     <div>
       <header className="sticky top-0 z-30 glass border-b border-border/40">
-        <div className="mx-auto max-w-6xl px-4 py-3"><h1 className="text-base font-bold">Profile</h1></div>
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          <div>
+            <h1 className="text-base font-bold">Settings</h1>
+            <p className="text-xs text-muted-foreground">Account, theme, location, alerts</p>
+          </div>
+          <Settings className="h-5 w-5 text-muted-foreground" />
+        </div>
       </header>
 
-      <main className="px-4 pt-4 lg:mx-auto lg:max-w-6xl lg:pt-8">
-        <div className="lg:hidden">
-          <MobileProfile user={user} signOut={signOut} />
-        </div>
-        <div className="hidden lg:grid lg:grid-cols-[320px_1fr] lg:gap-6">
-          <aside className="space-y-4">
-            <div className="rounded-3xl bg-gradient-warm p-6 text-white shadow-glow">
-              <div className="grid h-16 w-16 place-items-center rounded-full bg-white/20 text-3xl backdrop-blur">{user.avatar}</div>
-              <p className="mt-4 text-xl font-bold">{user.name}</p>
-              <p className="text-sm opacity-90">{user.email}</p>
-              {user.address && (
-                <p className="mt-3 flex items-start gap-2 text-sm opacity-90">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>{user.address}</span>
-                </p>
-              )}
-              <span className="mt-4 inline-flex rounded-full bg-white/25 px-3 py-1 text-xs font-semibold uppercase">{user.role}</span>
-            </div>
-            <button
-              onClick={signOut}
-              className="flex w-full items-center justify-center gap-3 rounded-2xl border border-destructive/20 bg-card px-4 py-3.5 text-sm font-medium text-destructive shadow-soft hover:bg-destructive/5"
-            >
-              <LogOut className="h-4 w-4" /> Sign out
-            </button>
-          </aside>
-
-          <section className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <DesktopAction to="/orders" icon={<Receipt className="h-5 w-5" />} title="Orders" description="Track current and past orders." />
-            </div>
-
-            <div className="rounded-3xl bg-card p-6 shadow-soft">
-              <p className="text-lg font-bold">Account details</p>
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <InfoRow label="Full name" value={user.name} />
-                <InfoRow label="Email" value={user.email} />
-                <InfoRow label="Role" value={user.role} />
-                <InfoRow label="Location" value={user.address ?? "No saved location"} />
-              </div>
-            </div>
+      <main className="mx-auto grid max-w-6xl gap-4 px-4 pt-4 sm:px-6 lg:grid-cols-[320px_1fr] lg:px-8 lg:pt-8">
+        <aside className="space-y-4">
+          <section className="rounded-3xl bg-gradient-warm p-5 text-white shadow-glow">
+            <div className="grid h-14 w-14 place-items-center rounded-full bg-white/20 text-2xl font-black backdrop-blur">{user.avatar}</div>
+            <p className="mt-4 text-xl font-bold">{user.name}</p>
+            <p className="text-sm opacity-90">{user.email}</p>
+            <span className="mt-4 inline-flex rounded-full bg-white/25 px-3 py-1 text-xs font-semibold uppercase">{user.role}</span>
           </section>
-        </div>
+
+          <button
+            onClick={signOut}
+            className="flex w-full items-center justify-center gap-3 rounded-2xl border border-destructive/20 bg-card px-4 py-3.5 text-sm font-medium text-destructive shadow-soft hover:bg-destructive/5"
+          >
+            <LogOut className="h-4 w-4" /> Sign out
+          </button>
+        </aside>
+
+        <section className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Link to="/orders" className="rounded-3xl bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card">
+              <div className="mb-4 inline-flex rounded-2xl bg-muted p-3"><Receipt className="h-5 w-5" /></div>
+              <p className="text-lg font-bold">Orders</p>
+              <p className="mt-1 text-sm text-muted-foreground">Track current and past orders.</p>
+            </Link>
+            <Link to="/notifications" className="rounded-3xl bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card">
+              <div className="mb-4 inline-flex rounded-2xl bg-muted p-3"><Bell className="h-5 w-5" /></div>
+              <p className="text-lg font-bold">Notifications</p>
+              <p className="mt-1 text-sm text-muted-foreground">Review alerts and order updates.</p>
+            </Link>
+          </div>
+
+          <SettingsCard title="Appearance" detail={`Current theme: ${resolvedTheme}`}>
+            <div className="grid grid-cols-3 gap-2">
+              {(["light", "dark", "system"] as Theme[]).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setTheme(item)}
+                  className={`rounded-2xl border px-3 py-3 text-sm font-bold capitalize transition ${
+                    theme === item ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground"
+                  }`}
+                >
+                  {item === "light" && <Sun className="mx-auto mb-1 h-4 w-4" />}
+                  {item === "dark" && <Moon className="mx-auto mb-1 h-4 w-4" />}
+                  {item === "system" && <Settings className="mx-auto mb-1 h-4 w-4" />}
+                  {item}
+                </button>
+              ))}
+            </div>
+          </SettingsCard>
+
+          <SettingsCard title="Location" detail={user.address ? shortLocationLabel(user.address) : "No saved location"}>
+            <button
+              type="button"
+              onClick={refreshLocation}
+              disabled={locating}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-glow disabled:opacity-70 sm:w-auto"
+            >
+              <LocateFixed className="h-4 w-4" />
+              {locating ? "Updating location..." : "Use current location"}
+            </button>
+          </SettingsCard>
+
+          <SettingsCard title="Notification Preferences" detail="Control what BitePass can alert you about.">
+            <div className="space-y-2">
+              <PreferenceRow label="In-app notifications" checked={preferences.enabled} onChange={(checked) => updatePreferences({ enabled: checked })} />
+              <PreferenceRow label="Order updates" checked={preferences.orderUpdates} onChange={(checked) => updatePreferences({ orderUpdates: checked })} />
+              <PreferenceRow label="Promos and discounts" checked={preferences.promos} onChange={(checked) => updatePreferences({ promos: checked })} />
+            </div>
+          </SettingsCard>
+
+          <SettingsCard title="Account Details" detail="Your active BitePass profile.">
+            <div className="grid gap-3 md:grid-cols-2">
+              <InfoRow label="Full name" value={user.name} />
+              <InfoRow label="Email" value={user.email} />
+              <InfoRow label="Role" value={user.role} />
+              <InfoRow label="Location" value={user.address ?? "No saved location"} />
+            </div>
+          </SettingsCard>
+        </section>
       </main>
     </div>
   );
 }
 
-function MobileProfile({
-  user,
-  signOut,
-}: {
-  user: NonNullable<ReturnType<typeof useAuth>["user"]>;
-  signOut: () => void;
-}) {
+function SettingsCard({ title, detail, children }: { title: string; detail: string; children: React.ReactNode }) {
   return (
-    <>
-      <div className="flex items-center gap-3 rounded-2xl bg-gradient-warm p-4 text-white shadow-glow">
-        <div className="grid h-14 w-14 place-items-center rounded-full bg-white/20 text-2xl backdrop-blur">{user.avatar}</div>
-        <div>
-          <p className="text-base font-bold">{user.name}</p>
-          <p className="text-xs opacity-85">{user.email}</p>
-          {user.address && <p className="mt-1 text-[11px] opacity-85">{user.address}</p>}
-          <span className="mt-1 inline-block rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-semibold uppercase">{user.role}</span>
-        </div>
+    <section className="rounded-3xl bg-card p-5 shadow-soft">
+      <div className="mb-4">
+        <h2 className="text-base font-bold">{title}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
       </div>
-
-      <div className="mt-4 overflow-hidden rounded-2xl bg-card shadow-soft">
-        <Link to="/orders" className="flex items-center justify-between px-4 py-3.5 hover:bg-muted/50">
-          <span className="flex items-center gap-3 text-sm font-medium"><Receipt className="h-4 w-4 text-muted-foreground" /> My orders</span>
-          <span className="text-muted-foreground">›</span>
-        </Link>
-        <button onClick={signOut} className="flex w-full items-center gap-3 border-t border-border px-4 py-3.5 text-sm font-medium text-destructive hover:bg-destructive/5">
-          <LogOut className="h-4 w-4" /> Sign out
-        </button>
-      </div>
-    </>
+      {children}
+    </section>
   );
 }
 
-function DesktopAction({
-  to,
-  icon,
-  title,
-  description,
-}: {
-  to: "/orders";
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) {
+function PreferenceRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
-    <Link to={to} className="rounded-3xl bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card">
-      <div className="mb-4 inline-flex rounded-2xl bg-muted p-3">{icon}</div>
-      <p className="text-lg font-bold">{title}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-    </Link>
+    <label className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3">
+      <span className="text-sm font-semibold">{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-5 w-5 accent-primary"
+      />
+    </label>
   );
 }
 
@@ -143,8 +187,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-muted/50 px-4 py-3">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-semibold">{value}</p>
+      <p className="mt-1 break-words text-sm font-semibold">{value}</p>
     </div>
   );
 }
-

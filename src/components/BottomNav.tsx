@@ -25,7 +25,7 @@ export function BottomNav() {
   if (hidden) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border/60 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border/60 pb-[env(safe-area-inset-bottom)] lg:hidden">
       <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
         {items.map(({ to, label, icon: Icon, badge }) => {
           const active = to === "/discover" ? path === "/discover" : path.startsWith(to);

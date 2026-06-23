@@ -1,7 +1,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+} from "firebase/auth";
 import { readTable, writeFile, FILES } from "./csv-store";
 import { backend } from "./backend";
-import { getFirebase } from "./firebase";
+import { auth, googleProvider } from "./firebase";
 import { clearSession, hasActiveSession, readSessionCookie, writeSessionCookie } from "./session-cookie";
 import type { Restaurant, User } from "./seed";
 
@@ -13,9 +20,9 @@ type SignupOptions =
         name: string;
         cuisine: string;
         phone: string;
-        address: string;
-        lat: number;
-        lng: number;
+        address?: string;
+        lat?: number;
+        lng?: number;
       };
     };
 
@@ -23,7 +30,9 @@ type AuthCtx = {
   user: User | null;
   authReady: boolean;
   login: (email: string, password: string) => Promise<User>;
+  loginWithGoogle: () => Promise<User>;
   signup: (name: string, email: string, password: string, options?: SignupOptions) => Promise<User>;
+  updateProfile: (patch: Partial<User>) => Promise<void>;
   logout: () => void;
 };
 
@@ -41,6 +50,37 @@ function findLocalUserByCredentials(email: string, password: string) {
   );
 }
 
+function userFromFirebase(params: {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  role?: string;
+}): User {
+  const name = params.name?.trim() || params.email?.split("@")[0] || "BitePass user";
+  return {
+    id: params.id,
+    name,
+    email: normalizeEmail(params.email ?? ""),
+    password: "",
+    role: params.role ?? "customer",
+    avatar: name.charAt(0).toUpperCase(),
+  };
+}
+
+async function getOrCreateFirebaseProfile(params: {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  role?: string;
+}) {
+  const users = await backend.users();
+  const existing = users.find((entry) => entry.id === params.id);
+  if (existing) return existing;
+  const user = userFromFirebase(params);
+  await backend.setUser(user);
+  return user;
+}
+
 export function getDashboardPath(user: Pick<User, "role">): "/admin" | "/business" | "/discover" {
   return user.role === "admin" ? "/admin" : user.role === "restaurant" ? "/business" : "/discover";
 }
@@ -50,80 +90,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    let unsub: undefined | (() => void);
-    getFirebase()
-      .then(({ auth, authSdk }) => {
-        unsub = authSdk.onAuthStateChanged(auth, async (firebaseUser: { uid: string } | null) => {
-          if (!hasActiveSession()) {
-            clearSession();
-            writeFile(FILES.session, "");
-            setUser(null);
-            if (firebaseUser) {
-              authSdk.signOut(auth).catch(() => {});
-            }
-            setAuthReady(true);
-            return;
-          }
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      try {
+        if (firebaseUser) {
+          const profile = await getOrCreateFirebaseProfile({
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName,
+            email: firebaseUser.email,
+          });
+          writeSessionCookie(profile.id);
+          writeFile(FILES.session, profile.id);
+          setUser(profile);
+          return;
+        }
 
-          if (!firebaseUser) {
-            const sid = readSessionCookie();
-            if (sid) {
-              const existingUser =
-                (await backend.users()).find((x) => x.id === sid) ??
-                readTable<User>(FILES.users).find((x) => x.id === sid);
-              if (existingUser) {
-                setUser(existingUser);
-                setAuthReady(true);
-                return;
-              }
-            }
-            setAuthReady(true);
-            return;
-          }
-          const u = (await backend.users()).find((x) => x.id === firebaseUser.uid);
-          if (u) {
-            writeSessionCookie(u.id);
-            writeFile(FILES.session, u.id);
-            setUser(u);
-          }
-          setAuthReady(true);
-        }) as () => void;
-      })
-      .catch(async () => {
         const sid = hasActiveSession() ? readSessionCookie() : "";
         if (sid) {
-          const u = (await backend.users()).find((x) => x.id === sid) ?? readTable<User>(FILES.users).find((x) => x.id === sid);
-          if (u) setUser(u);
+          const existingUser = (await backend.users()).find((entry) => entry.id === sid);
+          if (existingUser) setUser(existingUser);
+          else clearSession();
+        } else {
+          setUser(null);
         }
+      } catch (error) {
+        console.warn("Auth restore failed", error);
+        clearSession();
+        setUser(null);
+      } finally {
         setAuthReady(true);
-      });
-    return () => unsub?.();
+      }
+    });
+
+    return () => unsub();
   }, []);
 
   const login = async (email: string, password: string) => {
-    await new Promise((r) => setTimeout(r, 600));
     const normalizedEmail = normalizeEmail(email);
     const normalizedPassword = password.trim();
     let u: User | undefined;
     try {
-      const { auth, authSdk } = await getFirebase();
-      const credential = await authSdk.signInWithEmailAndPassword(auth, normalizedEmail, normalizedPassword) as { user: { uid: string } };
-      const users = await backend.users();
-      u =
-        users.find((user) => user.id === credential.user.uid) ??
-        users.find(
-          (user) =>
-            normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
-        ) ??
-        findLocalUserByCredentials(normalizedEmail, normalizedPassword);
+      const credential = await signInWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
+      u = await getOrCreateFirebaseProfile({
+        id: credential.user.uid,
+        name: credential.user.displayName,
+        email: credential.user.email,
+      });
     } catch {
       const users = await backend.users();
       u =
         users.find(
           (user) =>
             normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
-        ) ??
-        findLocalUserByCredentials(normalizedEmail, normalizedPassword);
+        ) ?? findLocalUserByCredentials(normalizedEmail, normalizedPassword);
     }
     if (!u) throw new Error("Invalid credentials");
     writeSessionCookie(u.id);
@@ -132,21 +150,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u;
   };
 
+  const loginWithGoogle = async () => {
+    const credential = await signInWithPopup(auth, googleProvider);
+    const u = await getOrCreateFirebaseProfile({
+      id: credential.user.uid,
+      name: credential.user.displayName,
+      email: credential.user.email,
+    });
+    writeSessionCookie(u.id);
+    writeFile(FILES.session, u.id);
+    setUser(u);
+    return u;
+  };
+
   const signup = async (name: string, email: string, password: string, options: SignupOptions = { role: "customer" }) => {
-    await new Promise((r) => setTimeout(r, 600));
     const normalizedEmail = normalizeEmail(email);
     const normalizedPassword = password.trim();
     const users = await backend.users();
     if (users.find((user) => normalizeEmail(user.email) === normalizedEmail)) throw new Error("Email already registered");
     const role = options.role === "restaurant" ? "restaurant" : "customer";
-    let uid = "u" + Date.now();
-    try {
-      const { auth, authSdk } = await getFirebase();
-      const credential = await authSdk.createUserWithEmailAndPassword(auth, normalizedEmail, normalizedPassword) as { user: { uid: string } };
-      uid = credential.user.uid;
-    } catch (error) {
-      console.warn("Firebase Auth signup unavailable, using local account", error);
-    }
+    const credential = await createUserWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
+    const uid = credential.user.uid;
 
     const u: User = {
       id: uid,
@@ -175,10 +199,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tags: `${options.restaurant.cuisine}|New`,
         isOpen: "1",
         description: `${options.restaurant.name} is now taking preorders on BitePass.`,
-        address: options.restaurant.address,
+        address: options.restaurant.address ?? "",
         phone: options.restaurant.phone,
-        lat: String(options.restaurant.lat),
-        lng: String(options.restaurant.lng),
+        lat: String(options.restaurant.lat ?? ""),
+        lng: String(options.restaurant.lng ?? ""),
       };
       await backend.setRestaurant(restaurant);
     }
@@ -193,12 +217,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSession();
     writeFile(FILES.session, "");
     setUser(null);
-    getFirebase()
-      .then(({ auth, authSdk }) => authSdk.signOut(auth))
-      .catch(() => {});
+    signOut(auth).catch(() => {});
   };
 
-  return <Ctx.Provider value={{ user, authReady, login, signup, logout }}>{children}</Ctx.Provider>;
+  const updateProfile = async (patch: Partial<User>) => {
+    const currentUser = user;
+    if (!currentUser) return;
+    await backend.updateUser(currentUser.id, patch);
+    setUser({ ...currentUser, ...patch });
+  };
+
+  return <Ctx.Provider value={{ user, authReady, login, loginWithGoogle, signup, updateProfile, logout }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

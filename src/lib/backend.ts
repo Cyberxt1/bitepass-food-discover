@@ -1,87 +1,117 @@
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  type DocumentData,
+} from "firebase/firestore";
 import { FILES, appendRow, deleteRow, readTable, updateRow } from "./csv-store";
-import { getFirebase } from "./firebase";
+import { db } from "./firebase";
 import type { Discount, Meal, Order, Restaurant, Review, User } from "./seed";
 
 type CollectionName = "users" | "restaurants" | "meals" | "orders" | "discounts" | "reviews";
 
-async function collectionDocs<T>(name: CollectionName): Promise<T[]> {
-  const { db, firestoreSdk } = await getFirebase();
-  const snap = await firestoreSdk.getDocs(firestoreSdk.collection(db, name)) as {
-    docs: { id: string; data: () => Record<string, unknown> }[];
-  };
-  return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as T);
+const fileFor: Record<CollectionName, string> = {
+  users: FILES.users,
+  restaurants: FILES.restaurants,
+  meals: FILES.meals,
+  orders: FILES.orders,
+  discounts: FILES.discounts,
+  reviews: FILES.reviews,
+};
+
+const seededCollections = new Set<CollectionName>();
+
+function upsertLocal<T extends { id: string }>(file: string, item: T) {
+  const rows = readTable<T>(file);
+  const exists = rows.some((row) => row.id === item.id);
+  if (exists) updateRow(file, (row) => row.id === item.id, item);
+  else appendRow(file, item);
 }
 
-async function setDoc<T extends { id: string }>(name: CollectionName, item: T): Promise<void> {
-  const { db, firestoreSdk } = await getFirebase();
-  await firestoreSdk.setDoc(firestoreSdk.doc(db, name, item.id), item);
+async function seedCollectionIfEmpty<T extends { id: string }>(name: CollectionName) {
+  if (seededCollections.has(name)) return;
+  seededCollections.add(name);
+
+  const fallbackRows = readTable<T>(fileFor[name]);
+  if (fallbackRows.length === 0) return;
+
+  const snap = await getDocs(collection(db, name));
+  if (!snap.empty) return;
+
+  await Promise.all(
+    fallbackRows.map((row) => setDoc(doc(db, name, row.id), sanitizeForFirestore(row))),
+  );
 }
 
-async function patchDoc(name: CollectionName, id: string, patch: Record<string, unknown>): Promise<void> {
-  const { db, firestoreSdk } = await getFirebase();
-  await firestoreSdk.updateDoc(firestoreSdk.doc(db, name, id), patch);
+function sanitizeForFirestore<T extends Record<string, unknown>>(item: T): DocumentData {
+  return Object.fromEntries(Object.entries(item).filter(([, value]) => value !== undefined));
 }
 
-async function removeDoc(name: CollectionName, id: string): Promise<void> {
-  const { db, firestoreSdk } = await getFirebase();
-  await firestoreSdk.deleteDoc(firestoreSdk.doc(db, name, id));
+async function allDocs<T extends { id: string }>(name: CollectionName): Promise<T[]> {
+  await seedCollectionIfEmpty<T>(name);
+  const snap = await getDocs(collection(db, name));
+  return snap.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as T);
 }
 
-function mergeById<T extends { id: string }>(cloudRows: T[], localRows: T[]): T[] {
-  const map = new Map<string, T>();
-  for (const row of localRows) map.set(row.id, row);
-  for (const row of cloudRows) map.set(row.id, row);
-  return Array.from(map.values());
-}
-
-async function mergedCollection<T extends { id: string }>(
-  cloud: () => Promise<T[]>,
-  local: () => T[],
-): Promise<T[]> {
+async function readCollection<T extends { id: string }>(name: CollectionName): Promise<T[]> {
   try {
-    return mergeById(await cloud(), local());
+    const rows = await allDocs<T>(name);
+    if (rows.length > 0) return rows;
   } catch (error) {
-    console.warn("Firebase unavailable, using local fallback", error);
-    return local();
+    console.warn(`Firestore ${name} read failed, using local fallback`, error);
   }
+  return readTable<T>(fileFor[name]);
 }
 
-async function writeThrough(cloud: () => Promise<void>, local: () => void): Promise<void> {
-  local();
+async function setCollectionDoc<T extends { id: string }>(name: CollectionName, item: T) {
+  upsertLocal(fileFor[name], item);
+  await setDoc(doc(db, name, item.id), sanitizeForFirestore(item));
+}
+
+async function patchCollectionDoc(name: CollectionName, id: string, patch: Record<string, unknown>) {
+  updateRow(fileFor[name], (row) => row.id === id, patch);
+  await updateDoc(doc(db, name, id), sanitizeForFirestore(patch));
+}
+
+async function deleteCollectionDoc(name: CollectionName, id: string) {
+  deleteRow(fileFor[name], (row) => row.id === id);
+  await deleteDoc(doc(db, name, id));
+}
+
+async function writeWithFallback(action: () => Promise<void>) {
   try {
-    await cloud();
+    await action();
   } catch (error) {
-    console.warn("Firebase write unavailable, saved locally", error);
+    console.warn("Firestore write failed after local write", error);
   }
 }
 
 export const backend = {
-  users: () => mergedCollection(() => collectionDocs<User>("users"), () => readTable<User>(FILES.users)),
-  restaurants: () => mergedCollection(() => collectionDocs<Restaurant>("restaurants"), () => readTable<Restaurant>(FILES.restaurants)),
-  meals: () => mergedCollection(() => collectionDocs<Meal>("meals"), () => readTable<Meal>(FILES.meals)),
-  orders: () => mergedCollection(() => collectionDocs<Order>("orders"), () => readTable<Order>(FILES.orders)),
-  reviews: () => mergedCollection(() => collectionDocs<Review>("reviews"), () => readTable<Review>(FILES.reviews)),
-  discounts: () => mergedCollection(() => collectionDocs<Discount>("discounts"), () => readTable<Discount>(FILES.discounts)),
+  users: () => readCollection<User>("users"),
+  restaurants: () => readCollection<Restaurant>("restaurants"),
+  meals: () => readCollection<Meal>("meals"),
+  orders: () => readCollection<Order>("orders"),
+  reviews: () => readCollection<Review>("reviews"),
+  discounts: () => readCollection<Discount>("discounts"),
 
-  setUser: (user: User) => writeThrough(() => setDoc("users", user), () => appendRow(FILES.users, user)),
-  setRestaurant: (restaurant: Restaurant) =>
-    writeThrough(() => setDoc("restaurants", restaurant), () => appendRow(FILES.restaurants, restaurant)),
-  addOrder: (order: Order) => writeThrough(() => setDoc("orders", order), () => appendRow(FILES.orders, order)),
-  addMeal: (meal: Meal) => writeThrough(() => setDoc("meals", meal), () => appendRow(FILES.meals, meal)),
-  addDiscount: (discount: Discount) => writeThrough(() => setDoc("discounts", discount), () => appendRow(FILES.discounts, discount)),
-  addReview: (review: Review) => writeThrough(() => setDoc("reviews", review), () => appendRow(FILES.reviews, review)),
+  setUser: (user: User) => writeWithFallback(() => setCollectionDoc("users", user)),
+  setRestaurant: (restaurant: Restaurant) => writeWithFallback(() => setCollectionDoc("restaurants", restaurant)),
+  addOrder: (order: Order) => writeWithFallback(() => setCollectionDoc("orders", order)),
+  addMeal: (meal: Meal) => writeWithFallback(() => setCollectionDoc("meals", meal)),
+  addDiscount: (discount: Discount) => writeWithFallback(() => setCollectionDoc("discounts", discount)),
+  addReview: (review: Review) => writeWithFallback(() => setCollectionDoc("reviews", review)),
 
+  updateUser: (id: string, patch: Partial<User>) => writeWithFallback(() => patchCollectionDoc("users", id, patch)),
   updateRestaurant: (id: string, patch: Partial<Restaurant>) =>
-    writeThrough(() => patchDoc("restaurants", id, patch), () => updateRow(FILES.restaurants, (row) => row.id === id, patch)),
-  updateOrder: (id: string, patch: Partial<Order>) =>
-    writeThrough(() => patchDoc("orders", id, patch), () => updateRow(FILES.orders, (row) => row.id === id, patch)),
-  updateMeal: (id: string, patch: Partial<Meal>) =>
-    writeThrough(() => patchDoc("meals", id, patch), () => updateRow(FILES.meals, (row) => row.id === id, patch)),
+    writeWithFallback(() => patchCollectionDoc("restaurants", id, patch)),
+  updateOrder: (id: string, patch: Partial<Order>) => writeWithFallback(() => patchCollectionDoc("orders", id, patch)),
+  updateMeal: (id: string, patch: Partial<Meal>) => writeWithFallback(() => patchCollectionDoc("meals", id, patch)),
   updateDiscount: (id: string, patch: Partial<Discount>) =>
-    writeThrough(() => patchDoc("discounts", id, patch), () => updateRow(FILES.discounts, (row) => row.id === id, patch)),
+    writeWithFallback(() => patchCollectionDoc("discounts", id, patch)),
 
-  deleteMeal: (id: string) =>
-    writeThrough(() => removeDoc("meals", id), () => deleteRow(FILES.meals, (row) => row.id === id)),
-  deleteDiscount: (id: string) =>
-    writeThrough(() => removeDoc("discounts", id), () => deleteRow(FILES.discounts, (row) => row.id === id)),
+  deleteMeal: (id: string) => writeWithFallback(() => deleteCollectionDoc("meals", id)),
+  deleteDiscount: (id: string) => writeWithFallback(() => deleteCollectionDoc("discounts", id)),
 };

@@ -1,14 +1,25 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { BarChart3, TrendingUp, Users, ShoppingBag, Star, LogOut, ChefHat, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BarChart3, ChefHat, Clock, LogOut, ShoppingBag, Star, TrendingUp, Users } from "lucide-react";
 import {
-  BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, LineChart, Line, PieChart, Pie, Cell,
+  Bar,
+  BarChart,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
-import { FILES, readTable, updateRow } from "@/lib/csv-store";
-import type { Meal, Order, Restaurant, User } from "@/lib/seed";
+import { toast } from "sonner";
+
+import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
-import { toast } from "sonner";
+import type { Meal, Order, Restaurant, User } from "@/lib/seed";
 
 export const Route = createFileRoute("/admin")({ component: AdminDashboard });
 
@@ -16,16 +27,37 @@ function AdminDashboard() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const [tick, setTick] = useState(0);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     if (!user) nav({ to: "/login" });
     else if (user.role !== "admin") nav({ to: "/" });
   }, [user, nav]);
 
-  const orders = useMemo(() => readTable<Order>(FILES.orders), [tick]);
-  const meals = useMemo(() => readTable<Meal>(FILES.meals), [tick]);
-  const restaurants = useMemo(() => readTable<Restaurant>(FILES.restaurants), []);
-  const users = useMemo(() => readTable<User>(FILES.users), []);
+  useEffect(() => {
+    if (!user || user.role !== "admin") return;
+    let cancelled = false;
+    async function loadAdminData() {
+      const [nextOrders, nextMeals, nextRestaurants, nextUsers] = await Promise.all([
+        backend.orders(),
+        backend.meals(),
+        backend.restaurants(),
+        backend.users(),
+      ]);
+      if (cancelled) return;
+      setOrders(nextOrders);
+      setMeals(nextMeals);
+      setRestaurants(nextRestaurants);
+      setUsers(nextUsers);
+    }
+    void loadAdminData();
+    return () => {
+      cancelled = true;
+    };
+  }, [tick, user]);
 
   if (!user || user.role !== "admin") return null;
 
@@ -36,47 +68,48 @@ function AdminDashboard() {
     ? Math.round((orders.filter((o) => o.status === "completed").length / orders.length) * 100)
     : 0;
 
-  // Top selling meals
   const mealSales: Record<string, { name: string; count: number; revenue: number }> = {};
-  orders.forEach((o) => {
-    const items = JSON.parse(o.items) as { mealId: string; name: string; qty: number; price: number }[];
-    items.forEach((it) => {
-      if (!mealSales[it.mealId]) mealSales[it.mealId] = { name: it.name, count: 0, revenue: 0 };
-      mealSales[it.mealId].count += it.qty;
-      mealSales[it.mealId].revenue += it.qty * it.price;
+  orders.forEach((order) => {
+    const items = JSON.parse(order.items) as { mealId: string; name: string; qty: number; price: number }[];
+    items.forEach((item) => {
+      if (!mealSales[item.mealId]) mealSales[item.mealId] = { name: item.name, count: 0, revenue: 0 };
+      mealSales[item.mealId].count += item.qty;
+      mealSales[item.mealId].revenue += item.qty * item.price;
     });
   });
   const topMeals = Object.values(mealSales).sort((a, b) => b.count - a.count).slice(0, 5);
 
-  // Busiest hours (mock distribution + real)
-  const hourBuckets = Array.from({ length: 24 }, (_, h) => ({ hour: `${h}:00`, orders: 0 }));
-  orders.forEach((o) => { const h = new Date(o.createdAt).getHours(); hourBuckets[h].orders++; });
-  const busyHours = hourBuckets.filter((_, i) => i >= 8 && i <= 22);
-
-  // Revenue trend (last 7 days)
-  const trend = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i));
-    const key = d.toDateString();
-    const rev = orders.filter((o) => new Date(o.createdAt).toDateString() === key).reduce((s, o) => s + Number(o.total), 0);
-    return { day: d.toLocaleDateString("en", { weekday: "short" }), revenue: Math.round(rev / 100) / 10 }; // in thousands
+  const busyHours = Array.from({ length: 24 }, (_, hour) => ({ hour: `${hour}:00`, orders: 0 }));
+  orders.forEach((order) => {
+    busyHours[new Date(order.createdAt).getHours()].orders++;
   });
 
-  // Repeat customers
+  const trend = Array.from({ length: 7 }).map((_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    const key = date.toDateString();
+    const revenue = orders
+      .filter((order) => new Date(order.createdAt).toDateString() === key)
+      .reduce((sum, order) => sum + Number(order.total), 0);
+    return { day: date.toLocaleDateString("en", { weekday: "short" }), revenue: Math.round(revenue / 100) / 10 };
+  });
+
   const userOrderCounts: Record<string, number> = {};
-  orders.forEach((o) => { userOrderCounts[o.userId] = (userOrderCounts[o.userId] ?? 0) + 1; });
-  const repeat = Object.values(userOrderCounts).filter((n) => n > 1).length;
+  orders.forEach((order) => {
+    userOrderCounts[order.userId] = (userOrderCounts[order.userId] ?? 0) + 1;
+  });
+  const repeat = Object.values(userOrderCounts).filter((count) => count > 1).length;
   const retention = users.length ? Math.round((repeat / Math.max(1, Object.keys(userOrderCounts).length)) * 100) : 0;
 
-  // Status distribution
-  const statusDist = ["received", "preparing", "ready", "completed"].map((s) => ({
-    name: s, value: orders.filter((o) => o.status === s).length,
+  const statusDist = ["received", "preparing", "ready", "completed"].map((status) => ({
+    name: status,
+    value: orders.filter((order) => order.status === status).length,
   }));
-  const COLORS = ["oklch(0.78 0.15 75)", "oklch(0.68 0.19 35)", "oklch(0.65 0.16 150)", "oklch(0.5 0.02 50)"];
+  const colors = ["oklch(0.78 0.15 75)", "oklch(0.68 0.19 35)", "oklch(0.65 0.16 150)", "oklch(0.5 0.02 50)"];
 
   const advance = (id: string, next: string) => {
-    updateRow(FILES.orders, (r) => r.id === id, { status: next });
-    setTick((x) => x + 1);
-    toast.success(`Order updated → ${next}`);
+    backend.updateOrder(id, { status: next }).then(() => setTick((value) => value + 1));
+    toast.success(`Order updated to ${next}`);
   };
 
   return (
@@ -89,7 +122,7 @@ function AdminDashboard() {
             </div>
             <div>
               <p className="text-sm font-bold leading-tight">Admin Dashboard</p>
-              <p className="text-[10px] text-muted-foreground">BitePass for Restaurants</p>
+              <p className="text-[10px] text-muted-foreground">BitePass operations</p>
             </div>
           </div>
           <button onClick={() => { logout(); nav({ to: "/" }); }} className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card">
@@ -99,7 +132,6 @@ function AdminDashboard() {
       </header>
 
       <main className="space-y-5 px-4 pt-4">
-        {/* KPIs */}
         <div className="grid grid-cols-2 gap-3">
           <Kpi icon={TrendingUp} label="Revenue" value={naira(totalRevenue)} accent="bg-gradient-primary" />
           <Kpi icon={ShoppingBag} label="Today" value={`${todayOrders} orders`} />
@@ -107,8 +139,7 @@ function AdminDashboard() {
           <Kpi icon={Star} label="Completion rate" value={`${completionRate}%`} />
         </div>
 
-        {/* Revenue trend */}
-        <Card title="Revenue trend (last 7 days)" subtitle="In thousands ₦">
+        <Card title="Revenue trend (last 7 days)" subtitle="In thousands NGN">
           <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trend}>
@@ -121,25 +152,23 @@ function AdminDashboard() {
           </div>
         </Card>
 
-        {/* Active orders */}
         <Card title="Active orders" subtitle={`${activeOrders.length} in queue`}>
           <div className="space-y-2">
             {activeOrders.length === 0 && <p className="text-xs text-muted-foreground">No active orders right now.</p>}
-            {activeOrders.slice(0, 5).map((o) => {
-              const items = JSON.parse(o.items) as { name: string; qty: number }[];
+            {activeOrders.slice(0, 5).map((order) => {
+              const items = JSON.parse(order.items) as { name: string; qty: number }[];
               const flow = ["received", "preparing", "ready", "completed"];
-              const nextStatus = flow[flow.indexOf(o.status) + 1] ?? "completed";
+              const nextStatus = flow[flow.indexOf(order.status) + 1] ?? "completed";
               return (
-                <div key={o.id} className="rounded-xl bg-muted/60 p-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold">#{o.id.slice(-5)} · {naira(o.total)}</p>
-                      <p className="text-[11px] text-muted-foreground">{items.map((i) => `${i.qty}× ${i.name}`).join(", ")}</p>
+                <div key={order.id} className="rounded-xl bg-muted/60 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold">#{order.id.slice(-5)} - {naira(order.total)}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{items.map((item) => `${item.qty}x ${item.name}`).join(", ")}</p>
                     </div>
-                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary">{o.status}</span>
+                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary">{order.status}</span>
                   </div>
-                  <button onClick={() => advance(o.id, nextStatus)}
-                    className="mt-2 w-full rounded-lg bg-gradient-primary py-1.5 text-[11px] font-semibold text-primary-foreground">
+                  <button onClick={() => advance(order.id, nextStatus)} className="mt-2 w-full rounded-lg bg-gradient-primary py-1.5 text-[11px] font-semibold text-primary-foreground">
                     Mark as {nextStatus}
                   </button>
                 </div>
@@ -148,14 +177,12 @@ function AdminDashboard() {
           </div>
         </Card>
 
-        {/* Top meals */}
         <Card title="Top-performing meals" subtitle="By units sold">
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topMeals} layout="vertical" margin={{ left: 8 }}>
                 <XAxis type="number" stroke="oklch(0.5 0.02 50)" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis dataKey="name" type="category" stroke="oklch(0.5 0.02 50)" fontSize={10} tickLine={false} axisLine={false} width={110}
-                  tickFormatter={(v) => (v.length > 14 ? v.slice(0, 14) + "…" : v)} />
+                <YAxis dataKey="name" type="category" stroke="oklch(0.5 0.02 50)" fontSize={10} tickLine={false} axisLine={false} width={110} tickFormatter={(value) => (value.length > 14 ? value.slice(0, 14) + "..." : value)} />
                 <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid oklch(0.92 0.008 80)", fontSize: 12 }} />
                 <Bar dataKey="count" fill="oklch(0.68 0.19 35)" radius={[0, 8, 8, 0]} />
               </BarChart>
@@ -163,12 +190,11 @@ function AdminDashboard() {
           </div>
         </Card>
 
-        {/* Busy hours + status distribution */}
         <div className="grid grid-cols-1 gap-3">
           <Card title="Busiest hours" subtitle="When orders peak">
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={busyHours}>
+                <BarChart data={busyHours.filter((_, index) => index >= 8 && index <= 22)}>
                   <XAxis dataKey="hour" stroke="oklch(0.5 0.02 50)" fontSize={9} tickLine={false} axisLine={false} interval={1} />
                   <YAxis hide />
                   <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid oklch(0.92 0.008 80)", fontSize: 12 }} />
@@ -184,16 +210,16 @@ function AdminDashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={statusDist} dataKey="value" innerRadius={32} outerRadius={56} paddingAngle={2}>
-                      {statusDist.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
+                      {statusDist.map((_, index) => <Cell key={index} fill={colors[index]} />)}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               <ul className="flex-1 space-y-1.5 text-xs">
-                {statusDist.map((s, i) => (
-                  <li key={s.name} className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 capitalize"><span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[i] }} />{s.name}</span>
-                    <span className="font-semibold">{s.value}</span>
+                {statusDist.map((status, index) => (
+                  <li key={status.name} className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 capitalize"><span className="h-2.5 w-2.5 rounded-full" style={{ background: colors[index] }} />{status.name}</span>
+                    <span className="font-semibold">{status.value}</span>
                   </li>
                 ))}
               </ul>
@@ -201,24 +227,25 @@ function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Menu management */}
         <Card title="Menu" subtitle={`${meals.length} items across ${restaurants.length} restaurants`}>
           <div className="space-y-2">
-            {meals.slice(0, 6).map((m) => (
-              <div key={m.id} className="flex items-center gap-3 rounded-xl bg-muted/60 p-2.5">
-                <img src={m.image} alt="" className="h-10 w-10 rounded-lg object-cover" />
-                <div className="flex-1">
-                  <p className="text-xs font-semibold">{m.name}</p>
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-2">
-                    <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{m.prepTime}m</span>
-                    <span>· ⭐ {m.rating}</span>
+            {meals.slice(0, 6).map((meal) => (
+              <div key={meal.id} className="flex items-center gap-3 rounded-xl bg-muted/60 p-2.5">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 px-1 text-center text-[9px] font-black leading-tight text-primary">
+                  {meal.name.split(" ").slice(0, 2).join(" ")}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold">{meal.name}</p>
+                  <p className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{meal.prepTime}m</span>
+                    <span>- Rating {meal.rating}</span>
                   </p>
                 </div>
-                <span className="text-xs font-bold text-primary">{naira(m.price)}</span>
+                <span className="text-xs font-bold text-primary">{naira(meal.price)}</span>
               </div>
             ))}
           </div>
-          <Link to="/" className="mt-2 block text-center text-xs font-semibold text-primary">View menu →</Link>
+          <Link to="/discover" className="mt-2 block text-center text-xs font-semibold text-primary">View menu</Link>
         </Card>
 
         <div className="h-4" />

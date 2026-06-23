@@ -1,0 +1,190 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc(request.auth.uid).data.role == "admin";
+    }
+
+    function isRestaurantOwner(restaurantId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/restaurants/$(restaurantId))
+        && get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
+    }
+
+    function ownsIncomingRestaurant() {
+      return signedIn()
+        && request.resource.data.ownerId == request.auth.uid;
+    }
+
+    function validUserRole(role) {
+      return role in ["customer", "restaurant"];
+    }
+
+    function validSeedUserRole(role) {
+      return role in ["customer", "restaurant", "admin"];
+    }
+
+    function isSeedUser(userId) {
+      return signedIn()
+        && userId in [
+          "u-customer-demo",
+          "u-admin-demo",
+          "u-r1",
+          "u-r2",
+          "u-r3",
+          "u-r4",
+          "u-r5",
+          "u-r6",
+          "u-r7",
+          "u-r8"
+        ]
+        && request.resource.data.id == userId
+        && validSeedUserRole(request.resource.data.role);
+    }
+
+    function isSeedRestaurant(restaurantId) {
+      return signedIn()
+        && restaurantId.matches("^r-.*")
+        && request.resource.data.id == restaurantId
+        && request.resource.data.ownerId.matches("^u-r[0-9]+$");
+    }
+
+    function isSeedMeal(mealId) {
+      return signedIn()
+        && mealId.matches("^m-.*")
+        && request.resource.data.id == mealId
+        && request.resource.data.restaurantId.matches("^r-.*");
+    }
+
+    function isSeedReview(reviewId) {
+      return signedIn()
+        && reviewId.matches("^rv-.*")
+        && request.resource.data.id == reviewId;
+    }
+
+    function isSeedDiscount(discountId) {
+      return signedIn()
+        && discountId.matches("^d-.*")
+        && request.resource.data.id == discountId
+        && request.resource.data.restaurantId.matches("^r-.*");
+    }
+
+    function validOrderStatus(status) {
+      return status in ["received", "preparing", "ready", "completed", "cancelled"];
+    }
+
+    function validPaymentStatus(status) {
+      return !("paymentStatus" in request.resource.data)
+        || request.resource.data.paymentStatus in ["paid", "pending", "failed", "refunded"];
+    }
+
+    match /users/{userId} {
+      allow create: if (
+          isSelf(userId)
+          && validUserRole(request.resource.data.role)
+          && request.resource.data.email is string
+        )
+        || isSeedUser(userId);
+
+      allow read: if isSelf(userId) || isAdmin();
+
+      allow update: if (isSelf(userId) || isAdmin())
+        && (!("role" in request.resource.data) || resource.data.role == request.resource.data.role || isAdmin());
+
+      allow delete: if isAdmin();
+    }
+
+    match /restaurants/{restaurantId} {
+      allow read: if signedIn();
+
+      allow create: if isAdmin() || ownsIncomingRestaurant() || isSeedRestaurant(restaurantId);
+
+      allow update, delete: if isAdmin() || isRestaurantOwner(restaurantId);
+    }
+
+    match /meals/{mealId} {
+      allow read: if signedIn();
+
+      allow create: if isSeedMeal(mealId)
+        || isAdmin()
+        || (signedIn()
+          && request.resource.data.restaurantId is string
+          && isRestaurantOwner(request.resource.data.restaurantId));
+
+      allow update, delete: if isAdmin()
+        || (resource.data.restaurantId is string && isRestaurantOwner(resource.data.restaurantId));
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid)
+        || (resource.data.restaurantId is string && isRestaurantOwner(resource.data.restaurantId));
+
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.restaurantId is string
+        && validOrderStatus(request.resource.data.status)
+        && validPaymentStatus(request.resource.data.paymentStatus);
+
+      allow update: if isAdmin()
+        || (resource.data.restaurantId is string
+          && isRestaurantOwner(resource.data.restaurantId)
+          && validOrderStatus(request.resource.data.status))
+        || (signedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(["notes"]));
+
+      allow delete: if isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if signedIn();
+
+      allow create: if isSeedReview(reviewId)
+        || (signedIn()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.rating is string
+          && request.resource.data.comment is string);
+
+      allow update, delete: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /discounts/{discountId} {
+      allow read: if signedIn();
+
+      allow create: if isSeedDiscount(discountId)
+        || isAdmin()
+        || (signedIn()
+          && request.resource.data.restaurantId is string
+          && isRestaurantOwner(request.resource.data.restaurantId));
+
+      allow update, delete: if isAdmin()
+        || (resource.data.restaurantId is string && isRestaurantOwner(resource.data.restaurantId));
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -133,7 +133,7 @@ function Landing() {
                     { name: "Beef Shawarma", price: "₦3,500", img: "photo-1561651823-34feb02250e4" },
                   ].map((m) => (
                     <div key={m.name} className="overflow-hidden rounded-xl bg-card shadow-soft">
-                      <div className="h-16 bg-cover bg-center" style={{ backgroundImage: `url(https://images.unsplash.com/${m.img}?auto=format&fit=crop&w=400&q=70)` }} />
+                      <div className="grid h-16 place-items-center bg-muted px-2 text-center text-[10px] font-black leading-tight">{m.name}</div>
                       <div className="p-2">
                         <p className="text-[10px] font-bold leading-tight">{m.name}</p>
                         <p className="text-[10px] font-bold text-primary">{m.price}</p>
@@ -244,8 +244,9 @@ function Landing() {
               <Reveal key={r.n} delay={i * 100}>
                 <Link to="/login" className="group block overflow-hidden rounded-3xl bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-card">
                   <div className="relative h-48 overflow-hidden">
-                    <img src={`https://images.unsplash.com/${r.img}?auto=format&fit=crop&w=900&q=70`} alt={r.n}
-                      className="h-full w-full object-cover transition duration-700 group-hover:scale-110" />
+                    <div className="flex h-full w-full items-end bg-muted p-4 text-lg font-black text-foreground transition duration-700 group-hover:bg-accent">
+                      {r.n}
+                    </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-xs font-bold text-foreground">
                       <Star className="h-3 w-3 fill-warning text-warning" />{r.r}

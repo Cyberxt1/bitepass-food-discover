@@ -1,9 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ChefHat, LocateFixed, Lock, Mail, Store, User } from "lucide-react";
+import { ArrowLeft, ChefHat, Lock, Mail, Store, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getDashboardPath, useAuth } from "@/lib/auth";
-import { LocationPreview } from "@/components/LocationPreview";
-import { getCurrentLocationDetails, type LocationDetails } from "@/lib/location";
 import { notify } from "@/lib/notifications";
 
 export const Route = createFileRoute("/signup")({ component: SignupPage });
@@ -11,7 +9,7 @@ export const Route = createFileRoute("/signup")({ component: SignupPage });
 type AccountType = "customer" | "restaurant";
 
 function SignupPage() {
-  const { authReady, signup, user } = useAuth();
+  const { authReady, loginWithGoogle, signup, user } = useAuth();
   const nav = useNavigate();
   const [accountType, setAccountType] = useState<AccountType>("customer");
   const [name, setName] = useState("");
@@ -20,9 +18,6 @@ function SignupPage() {
   const [restaurantName, setRestaurantName] = useState("");
   const [cuisine, setCuisine] = useState("Nigerian");
   const [phone, setPhone] = useState("");
-  const [location, setLocation] = useState<LocationDetails | null>(null);
-  const [confirmingLocation, setConfirmingLocation] = useState(false);
-  const [locating, setLocating] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -31,32 +26,11 @@ function SignupPage() {
     }
   }, [authReady, nav, user]);
 
-  const captureLocation = async () => {
-    if (locating) return;
-    setLocating(true);
-    try {
-      const details = await getCurrentLocationDetails();
-      setLocation(details);
-      setConfirmingLocation(false);
-      notify("success", accountType === "restaurant" ? "Restaurant location pinned" : "Your location has been saved", { id: "location-captured" });
-    } catch (error) {
-      notify("error", error instanceof Error ? error.message : "Location access failed", { id: "location-capture-error" });
-    } finally {
-      setLocating(false);
-    }
-  };
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
     try {
-      if (accountType === "restaurant" && !location) {
-        notify("error", "Pin your restaurant location before creating the account", { id: "signup-location-required" });
-        setLoading(false);
-        return;
-      }
-
       if (accountType === "restaurant") {
         const user = await signup(name, email, password, {
           role: "restaurant",
@@ -64,9 +38,6 @@ function SignupPage() {
             name: restaurantName || `${name}'s Kitchen`,
             cuisine,
             phone,
-            address: location.address,
-            lat: location.lat,
-            lng: location.lng,
           },
         });
         notify("success", `${user.name}, your restaurant is live on BitePass`, { id: "signup-restaurant-success" });
@@ -76,18 +47,25 @@ function SignupPage() {
 
       await signup(name, email, password, {
         role: "customer",
-        location: location
-          ? {
-              address: location.address,
-              lat: location.lat,
-              lng: location.lng,
-            }
-          : undefined,
       });
       notify("success", "Account created! Let's get you fed", { id: "signup-customer-success" });
       nav({ to: "/discover" });
     } catch (err) {
       notify("error", err instanceof Error ? err.message : "Signup failed", { id: "signup-error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const googleSignup = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const u = await loginWithGoogle();
+      notify("success", `Welcome to BitePass, ${u.name.split(" ")[0]}!`, { id: "google-signup-success" });
+      nav({ to: getDashboardPath(u) });
+    } catch (err) {
+      notify("error", err instanceof Error ? err.message : "Google signup failed", { id: "google-signup-error" });
     } finally {
       setLoading(false);
     }
@@ -104,7 +82,7 @@ function SignupPage() {
         </div>
         <h1 className="mt-4 text-2xl font-bold">Create your account</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {accountType === "restaurant" ? "Pin your kitchen and start receiving preorders" : "Use your location for the right restaurants near you"}
+          {accountType === "restaurant" ? "Create your kitchen profile. Location can come later." : "Location is optional. You can add it later for nearby picks."}
         </p>
       </div>
 
@@ -161,102 +139,54 @@ function SignupPage() {
           />
         </Field>
 
-        <div className="space-y-3">
-          {accountType === "restaurant" && (
-            <>
-              <Field icon={Store}>
-                <input
-                  value={restaurantName}
-                  onChange={(e) => setRestaurantName(e.target.value)}
-                  placeholder="Restaurant name"
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  required
-                />
-              </Field>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  value={cuisine}
-                  onChange={(e) => setCuisine(e.target.value)}
-                  placeholder="Cuisine"
-                  className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
-                  required
-                />
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Phone"
-                  className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
-                  required
-                />
-              </div>
-            </>
-          )}
-
-          <LocationPreview
-            coords={location}
-            address={location?.address}
-            emptyText={accountType === "restaurant" ? "Click below when you are physically at your restaurant." : "Use your current location so BitePass can recommend places close to you."}
-          />
-
-          <div className="rounded-2xl border border-border bg-card p-3 shadow-soft">
-            <button
-              type="button"
-              onClick={() => setConfirmingLocation(true)}
-              disabled={locating}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background py-2.5 text-xs font-bold transition hover:bg-muted disabled:opacity-60"
-            >
-              <LocateFixed className="h-3.5 w-3.5" />
-              {locating ? "Getting location..." : location ? "Update current location" : "Use my current location"}
-            </button>
+        {accountType === "restaurant" && (
+          <div className="space-y-3">
+            <Field icon={Store}>
+              <input
+                value={restaurantName}
+                onChange={(e) => setRestaurantName(e.target.value)}
+                placeholder="Restaurant name"
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                required
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={cuisine}
+                onChange={(e) => setCuisine(e.target.value)}
+                placeholder="Cuisine"
+                className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
+                required
+              />
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Phone"
+                className="rounded-2xl border border-border bg-card px-4 py-3.5 text-sm outline-none focus:border-primary"
+                required
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <button
           type="submit"
-          disabled={loading || locating}
+          disabled={loading}
           className="w-full rounded-2xl bg-gradient-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-60"
         >
           {loading ? "Creating account..." : accountType === "restaurant" ? "Create restaurant account" : "Create account"}
         </button>
       </form>
 
-      {confirmingLocation && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 px-5 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-card">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-warning/15 text-warning">
-              <LocateFixed className="h-5 w-5" />
-            </div>
-            <h2 className="mt-4 text-lg font-bold">{accountType === "restaurant" ? "Confirm restaurant location" : "Confirm your location"}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {accountType === "restaurant"
-                ? "Ensure the location you are currently standing in is the exact location of your restaurant before you proceed."
-                : "Use the location you are currently in so BitePass can show the right restaurants around you."}
-            </p>
-            <div className="mt-5 grid gap-2">
-              <button
-                type="button"
-                onClick={captureLocation}
-                className="rounded-xl bg-gradient-primary py-2.5 text-sm font-bold text-primary-foreground shadow-glow"
-              >
-                Proceed and pin location
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmingLocation(false)}
-                className="rounded-xl border border-border bg-background py-2.5 text-sm font-bold"
-              >
-                Go back
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmingLocation(false)}
-                className="py-1.5 text-xs font-semibold text-muted-foreground"
-              >
-                Stay here
-              </button>
-            </div>
-          </div>
-        </div>
+      {accountType === "customer" && (
+        <button
+          type="button"
+          onClick={googleSignup}
+          disabled={loading}
+          className="mt-3 w-full rounded-2xl border border-border bg-card py-3.5 text-sm font-semibold text-foreground shadow-soft transition hover:bg-muted disabled:opacity-60"
+        >
+          Continue with Google
+        </button>
       )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">

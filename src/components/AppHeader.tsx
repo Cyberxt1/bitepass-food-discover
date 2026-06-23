@@ -11,13 +11,13 @@ export function AppHeader({ subtitle, locationLabel }: { subtitle?: string; loca
 
   return (
     <header className="sticky top-0 z-40 glass border-b border-border/40">
-      <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3" />
-            <span>{label}</span>
+            <span className="truncate">{label}</span>
           </div>
-          <div className="text-sm font-semibold">
+          <div className="truncate text-sm font-semibold lg:text-base">
             {user ? `Hey, ${user.name.split(" ")[0]}` : subtitle ?? "Welcome to BitePass"}
           </div>
         </div>

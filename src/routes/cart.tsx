@@ -1,14 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Clock, Minus, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
-import { FILES, readTable } from "@/lib/csv-store";
 import { backend } from "@/lib/backend";
-import { MealPlaceholder } from "@/components/MealPlaceholder";
-import { startPaystackPayment } from "@/lib/paystack";
+import { isPaystackConfigured, startPaystackPayment } from "@/lib/paystack";
 import { notify } from "@/lib/notifications";
+import type { Restaurant } from "@/lib/seed";
 
 export const Route = createFileRoute("/cart")({ component: CartPage });
 
@@ -19,12 +18,29 @@ function CartPage() {
   const [placing, setPlacing] = useState(false);
   const [pickupMode, setPickupMode] = useState<"asap" | "scheduled">("asap");
   const [pickupAt, setPickupAt] = useState(getDefaultPickupTime());
+  const [currentRestaurant, setCurrentRestaurant] = useState<Restaurant | undefined>();
 
   const restaurantId = items[0]?.restaurantId ?? "";
-  const currentRestaurant = readTable<{ id: string; isOpen: string }>(FILES.restaurants).find((restaurant) => restaurant.id === restaurantId);
   const restaurantClosed = currentRestaurant?.isOpen === "0";
   const fee = items.length > 0 ? 200 : 0;
   const grand = total + fee;
+
+  useEffect(() => {
+    if (!restaurantId) {
+      setCurrentRestaurant(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    async function loadRestaurant() {
+      const restaurant = (await backend.restaurants()).find((entry) => entry.id === restaurantId);
+      if (!cancelled) setCurrentRestaurant(restaurant);
+    }
+    void loadRestaurant();
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantId]);
 
   const place = async () => {
     if (placing) return;
@@ -107,7 +123,7 @@ function CartPage() {
   return (
     <div>
       <header className="sticky top-0 z-30 glass border-b border-border/40">
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <Link to="/discover" className="grid h-9 w-9 place-items-center rounded-full bg-card shadow-soft">
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -126,11 +142,14 @@ function CartPage() {
         </div>
       ) : (
         <>
-          <main className="space-y-3 px-4 pt-4">
+          <main className="mx-auto grid max-w-5xl gap-4 px-4 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8 lg:pt-8">
+            <section className="space-y-3">
             {items.map((item) => (
               <div key={item.id} className="rounded-2xl bg-card p-3 shadow-soft animate-slide-up">
                 <div className="flex gap-3">
-                  <MealPlaceholder name={item.name} className="h-16 w-16 text-2xl" />
+                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-muted px-2 text-center text-[10px] font-black leading-tight">
+                    {item.name.split(" ").slice(0, 2).join(" ")}
+                  </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold leading-tight">{item.name}</p>
                     <p className="text-[11px] text-muted-foreground">{item.restaurantName}</p>
@@ -189,7 +208,9 @@ function CartPage() {
                 </div>
               </div>
             ))}
+            </section>
 
+            <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
             <div className="rounded-2xl bg-card p-4 shadow-soft">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Clock className="h-4 w-4 text-primary" />
@@ -228,7 +249,9 @@ function CartPage() {
 
             <div className="rounded-2xl bg-card p-4 shadow-soft">
               <p className="text-sm font-semibold">Payment</p>
-              <p className="mt-1 text-xs text-muted-foreground">Checkout is powered by Paystack.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {isPaystackConfigured() ? "Checkout is powered by Paystack." : "Demo checkout is active until Paystack is configured."}
+              </p>
               {restaurantClosed && (
                 <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
                   This restaurant is closed. You cannot place this order until it reopens.
@@ -242,9 +265,10 @@ function CartPage() {
               <div className="my-2 border-t border-border" />
               <Row label="Total" value={naira(grand)} bold />
             </div>
+            </aside>
           </main>
 
-          <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3">
+          <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3 lg:bottom-6 lg:left-auto lg:right-8 lg:max-w-sm lg:translate-x-0">
             <button
               onClick={place}
               disabled={placing || restaurantClosed}

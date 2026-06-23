@@ -9,13 +9,12 @@ export function RestaurantCard({ r, distanceLabel }: { r: Restaurant; distanceLa
       params={{ restaurantId: r.id }}
       className="group block overflow-hidden rounded-2xl bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-card"
     >
-      <div className="relative h-36 overflow-hidden bg-muted">
-        <img src={r.image} alt={r.name} loading="lazy"
-          className="h-full w-full object-cover transition duration-700 group-hover:scale-110" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-        <div className="absolute bottom-2 left-2 flex gap-1">
-          {r.tags.split("|").slice(0, 2).map((t) => (
-            <span key={t} className="rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold text-foreground">{t}</span>
+      <div className="relative border-b border-border bg-muted/45 p-3">
+        <p className="line-clamp-2 min-h-10 text-base font-black leading-tight">{r.name}</p>
+        <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{r.description}</p>
+        <div className="mt-3 flex flex-wrap gap-1">
+          {r.tags.split("|").filter(Boolean).slice(0, 2).map((t) => (
+            <span key={t} className="rounded-full bg-background px-2 py-0.5 text-[10px] font-semibold text-foreground">{t}</span>
           ))}
         </div>
         {r.isOpen === "0" && (
@@ -24,12 +23,11 @@ export function RestaurantCard({ r, distanceLabel }: { r: Restaurant; distanceLa
       </div>
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-1 text-sm font-semibold">{r.name}</h3>
+          <h3 className="line-clamp-1 text-sm font-semibold">{r.cuisine}</h3>
           <span className="flex shrink-0 items-center gap-0.5 rounded-md bg-success/10 px-1.5 py-0.5 text-xs font-bold text-success">
             <Star className="h-3 w-3 fill-current" />{r.rating}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground">{r.cuisine}</p>
         <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{r.prepTime} min</span>
           <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{distanceLabel ?? `${r.distance} km`}</span>

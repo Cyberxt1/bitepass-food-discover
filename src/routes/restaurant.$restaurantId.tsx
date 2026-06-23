@@ -83,15 +83,18 @@ function RestaurantPage() {
 
   return (
     <div>
-      <div className="relative h-56 overflow-hidden">
-        <img src={restaurant.image} alt={restaurant.name} className="h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-black/30" />
-        <Link to="/discover" className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft">
+      <div className="relative bg-[linear-gradient(135deg,oklch(0.2_0.04_45),oklch(0.46_0.14_36))] px-4 pb-16 pt-4 text-white lg:px-8 lg:pb-20">
+        <Link to="/discover" className="grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft">
           <ArrowLeft className="h-4 w-4 text-foreground" />
         </Link>
+        <div className="mx-auto mt-8 max-w-6xl">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/75">{restaurant.cuisine}</p>
+          <h1 className="mt-2 max-w-2xl text-3xl font-black leading-tight lg:text-5xl">{restaurant.name}</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78">{restaurant.description}</p>
+        </div>
       </div>
 
-      <div className="-mt-10 px-4">
+      <div className="-mt-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="rounded-3xl bg-card p-5 shadow-card animate-slide-up">
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -180,7 +183,7 @@ function MenuSection({ meals, closed }: { meals: Meal[]; closed: boolean }) {
           <p className="mt-1 text-xs text-muted-foreground">This restaurant has not published a menu.</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="grid gap-2.5 lg:grid-cols-2">
           {meals.map((m) => <MealCard key={m.id} meal={m} hideImage />)}
         </div>
       )}

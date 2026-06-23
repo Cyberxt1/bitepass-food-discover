@@ -34,26 +34,17 @@ function OrderDetail() {
   }, [orderId, tick]);
 
   useEffect(() => {
-    if (!order || order.status === "completed") return;
-    const idx = flow.indexOf(order.status as (typeof flow)[number]);
-    if (idx < 0 || idx >= flow.length - 1) return;
-    const timer = setTimeout(() => {
-      void backend.updateOrder(orderId, { status: flow[idx + 1] });
-      setTick((value) => value + 1);
-    }, 8000);
-    return () => clearTimeout(timer);
-  }, [order, orderId]);
-
-  useEffect(() => {
     const timer = setInterval(() => setTick((value) => value + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    if (!order) return;
+    const currentOrder = order;
+    if (!currentOrder) return;
+    const activeOrder = currentOrder;
     let cancelled = false;
     async function loadRestaurant() {
-      const found = (await backend.restaurants()).find((restaurant) => restaurant.id === order.restaurantId);
+      const found = (await backend.restaurants()).find((restaurant) => restaurant.id === activeOrder.restaurantId);
       if (!cancelled) setRestaurantName(found?.name ?? "restaurant");
     }
     void loadRestaurant();
@@ -77,7 +68,7 @@ function OrderDetail() {
   return (
     <div>
       <header className="sticky top-0 z-30 glass border-b border-border/40">
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <Link to="/orders" className="grid h-9 w-9 place-items-center rounded-full bg-card shadow-soft">
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -85,7 +76,7 @@ function OrderDetail() {
         </div>
       </header>
 
-      <main className="space-y-4 px-4 pt-4">
+      <main className="mx-auto grid max-w-5xl gap-4 px-4 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8 lg:pt-8">
         <div className="rounded-3xl bg-gradient-warm p-5 text-white shadow-glow animate-slide-up">
           <p className="text-xs uppercase tracking-wider opacity-85">{order.status === "completed" ? "Order finished" : "Order sent to store"}</p>
           <p className="mt-1 font-mono text-4xl font-bold">{order.status === "completed" ? "DONE" : "PAID"}</p>
@@ -93,7 +84,7 @@ function OrderDetail() {
           <p className="mt-1 text-xs opacity-85">Requested pickup: {new Date(order.pickupTime).toLocaleString()}</p>
         </div>
 
-        <div className="rounded-2xl bg-card p-4 shadow-soft">
+        <div className="rounded-2xl bg-card p-4 shadow-soft lg:row-span-2">
           <div className="space-y-4">
             {flow.map((step, index) => {
               const Meta = stepMeta[step];
