@@ -18,7 +18,17 @@ export function getStoredLocation(details?: LocationCarrier | null): LocationDet
   const lat = Number(details.lat);
   const lng = Number(details.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng, address: details.address };
+  const address = isGenericLocationName(details.address) ? coordinateLocationName({ lat, lng }) : details.address;
+  return { lat, lng, address };
+}
+
+export function coordinateLocationName(coords: Coordinates): string {
+  return `Pinned area ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+}
+
+function isGenericLocationName(address?: string): boolean {
+  if (!address) return true;
+  return ["current location", "location", "pinned location"].includes(address.trim().toLowerCase());
 }
 
 export function getCurrentCoordinates(): Promise<Coordinates> {
@@ -35,8 +45,16 @@ export function getCurrentCoordinates(): Promise<Coordinates> {
           lng: position.coords.longitude,
         });
       },
-      () => reject(new Error("We could not access your location")),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+      (error) => {
+        const message =
+          error.code === error.PERMISSION_DENIED
+            ? "Location is off. Turn it on for this browser, then tap refresh."
+            : error.code === error.TIMEOUT
+              ? "Location took too long. Move closer to a clear signal and try again."
+              : "We could not read your exact location. Please try again.";
+        reject(new Error(message));
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   });
 }
@@ -55,14 +73,48 @@ export async function reverseGeocode(coords: Coordinates): Promise<string> {
       signal: controller.signal,
       headers: { Accept: "application/json" },
     });
-    if (!response.ok) return "Current location";
-    const data = (await response.json()) as { display_name?: string };
-    return data.display_name ?? "Current location";
+    if (response.ok) {
+      const data = (await response.json()) as { display_name?: string };
+      if (data.display_name && !isGenericLocationName(data.display_name)) return data.display_name;
+    }
   } catch {
-    return "Current location";
+    // Try the lighter public reverse-geocode endpoint below.
   } finally {
     clearTimeout(timeout);
   }
+
+  const fallbackController = new AbortController();
+  const fallbackTimeout = setTimeout(() => fallbackController.abort(), 5000);
+  try {
+    const params = new URLSearchParams({
+      latitude: String(coords.lat),
+      longitude: String(coords.lng),
+      localityLanguage: "en",
+    });
+    const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?${params}`, {
+      signal: fallbackController.signal,
+      headers: { Accept: "application/json" },
+    });
+    if (response.ok) {
+      const data = (await response.json()) as {
+        locality?: string;
+        city?: string;
+        principalSubdivision?: string;
+        countryName?: string;
+      };
+      const label = [data.locality || data.city, data.principalSubdivision, data.countryName]
+        .map((part) => part?.trim())
+        .filter(Boolean)
+        .join(", ");
+      if (label) return label;
+    }
+  } catch {
+    // The coordinate label is still better than a fake place name.
+  } finally {
+    clearTimeout(fallbackTimeout);
+  }
+
+  return coordinateLocationName(coords);
 }
 
 export async function getCurrentLocationDetails(): Promise<LocationDetails> {
@@ -78,13 +130,14 @@ export async function getPreferredLocationDetails(details?: LocationCarrier | nu
 }
 
 export function shortLocationLabel(address: string): string {
+  if (isGenericLocationName(address)) return "Location off";
   const compact = address
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean)
     .slice(0, 2)
     .join(", ");
-  return compact || "Current location";
+  return compact || "Location off";
 }
 
 export function distanceKm(a: Coordinates, b: Coordinates): number {

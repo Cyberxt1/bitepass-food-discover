@@ -4,6 +4,7 @@ import {
   ChevronRight,
   CupSoda,
   Flame,
+  Heart,
   LocateFixed,
   Navigation,
   Sandwich,
@@ -13,6 +14,8 @@ import {
   TrendingUp,
   Utensils,
   Wheat,
+  X,
+  EyeOff,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { backend } from "@/lib/backend";
@@ -55,6 +58,10 @@ function Discover() {
   const [coords, setCoords] = useState<Coordinates | null>(null);
   const [locationLabel, setLocationLabel] = useState("Location off");
   const [requestingLocation, setRequestingLocation] = useState(false);
+  const [nearbyDeckOpen, setNearbyDeckOpen] = useState(false);
+  const [deckIndex, setDeckIndex] = useState(0);
+  const [likedRestaurantIds, setLikedRestaurantIds] = useState<Set<string>>(new Set());
+  const [mutedRestaurantIds, setMutedRestaurantIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -93,16 +100,6 @@ function Discover() {
     setLocationLabel(stored.address);
   }, [user]);
 
-  useEffect(() => {
-    if (coords || typeof navigator === "undefined" || !navigator.permissions) return;
-    navigator.permissions
-      .query({ name: "geolocation" as PermissionName })
-      .then((status) => {
-        if (status.state === "granted") void enableLocation();
-      })
-      .catch(() => {});
-  }, [coords]);
-
   const enableLocation = async () => {
     if (requestingLocation) return;
     setRequestingLocation(true);
@@ -140,7 +137,9 @@ function Discover() {
         .filter(({ distance }) => distance <= NEARBY_RADIUS_KM)
         .map(({ restaurant }) => restaurant)
     : [];
-  const displayRestaurants = (coords ? nearbyRestaurants : restaurants).slice(0, 6);
+  const visibleNearbyRestaurants = nearbyRestaurants.filter((restaurant) => !mutedRestaurantIds.has(restaurant.id));
+  const displayLimit = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches ? 6 : 4;
+  const displayRestaurants = (coords ? visibleNearbyRestaurants : restaurants).slice(0, displayLimit);
 
   const nearbyRestaurantIds = new Set(nearbyRestaurants.map((restaurant) => restaurant.id));
 
@@ -150,7 +149,32 @@ function Discover() {
     return target ? formatDistance(distanceKm(coords, target)) : undefined;
   };
 
+  const currentDeckRestaurant = visibleNearbyRestaurants[deckIndex % Math.max(visibleNearbyRestaurants.length, 1)];
+  const moveDeck = (direction: 1 | -1) => {
+    if (visibleNearbyRestaurants.length === 0) return;
+    setDeckIndex((value) => (value + direction + visibleNearbyRestaurants.length) % visibleNearbyRestaurants.length);
+  };
+  const likeCurrentRestaurant = () => {
+    if (!currentDeckRestaurant) return;
+    setLikedRestaurantIds((current) => new Set(current).add(currentDeckRestaurant.id));
+    moveDeck(1);
+  };
+  const muteCurrentRestaurant = () => {
+    if (!currentDeckRestaurant) return;
+    setMutedRestaurantIds((current) => new Set(current).add(currentDeckRestaurant.id));
+    setDeckIndex(0);
+  };
+  const handleDeckTouch = (startX: number, startY: number, endX: number, endY: number) => {
+    const deltaX = endX - startX;
+    const deltaY = endY - startY;
+    if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 45) return;
+    if (Math.abs(deltaX) > Math.abs(deltaY)) moveDeck(deltaX > 0 ? 1 : -1);
+    else if (deltaY > 0) likeCurrentRestaurant();
+    else muteCurrentRestaurant();
+  };
+
   const trending = meals.filter((m) => m.popular === "1").slice(0, 6);
+  let touchStart: { x: number; y: number } | null = null;
   return (
     <>
       <AppHeader locationLabel={locationLabel} subtitle="Welcome to BitePass" />
@@ -170,6 +194,25 @@ function Discover() {
                 <p className="mt-2 max-w-xl text-xs leading-5 text-white/82 sm:mt-3 sm:text-base sm:leading-6">
                   Quick pickup from restaurants around you.
                 </p>
+                <div className="mt-4 rounded-2xl bg-white/12 p-3 ring-1 ring-white/15 backdrop-blur sm:hidden">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-white/65">Your area</p>
+                      <p className="mt-1 line-clamp-2 text-sm font-bold leading-5 text-white">
+                        {coords ? shortLocationLabel(locationLabel) : "Tap refresh to use exact location"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={enableLocation}
+                      disabled={requestingLocation}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-primary shadow-soft transition active:scale-95 disabled:opacity-70"
+                      aria-label="Refresh location"
+                    >
+                      <LocateFixed className={`h-4 w-4 ${requestingLocation ? "animate-spin" : ""}`} />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -233,10 +276,14 @@ function Discover() {
 
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="flex items-center gap-2 text-base font-black sm:text-lg">
+                <button
+                  type="button"
+                  onClick={() => coords && visibleNearbyRestaurants.length > 0 && setNearbyDeckOpen(true)}
+                  className="flex items-center gap-2 text-left text-base font-black sm:text-lg"
+                >
                   <Navigation className="h-4 w-4 text-primary" />
                   {coords ? "Near you" : "Restaurants to explore"}
-                </h2>
+                </button>
                 {!coords && !loading && (
                   <button
                     type="button"
@@ -247,9 +294,18 @@ function Discover() {
                     {requestingLocation ? "Locating..." : "Use location"}
                   </button>
                 )}
+                {coords && visibleNearbyRestaurants.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setNearbyDeckOpen(true)}
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-primary transition hover:bg-muted"
+                  >
+                    Swipe view
+                  </button>
+                )}
               </div>
 
-              {coords && !loading && nearbyRestaurants.length === 0 ? (
+              {coords && !loading && visibleNearbyRestaurants.length === 0 ? (
                 <EmptyPanel title="No restaurants within 40 km yet" detail="Try browsing all restaurants while more kitchens join your area." />
               ) : (
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
@@ -290,6 +346,83 @@ function Discover() {
           </div>
         </section>
       </main>
+      {nearbyDeckOpen && currentDeckRestaurant && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center sm:pb-10">
+          <div className="relative w-full max-w-sm">
+            <button
+              type="button"
+              onClick={() => setNearbyDeckOpen(false)}
+              className="absolute -top-3 right-0 z-10 grid h-10 w-10 -translate-y-full place-items-center rounded-full bg-white text-foreground shadow-soft"
+              aria-label="Close nearby restaurants"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div
+              className="overflow-hidden rounded-[1.75rem] bg-card shadow-card"
+              onTouchStart={(event) => {
+                const touch = event.touches[0];
+                touchStart = touch ? { x: touch.clientX, y: touch.clientY } : null;
+              }}
+              onTouchEnd={(event) => {
+                const touch = event.changedTouches[0];
+                if (touchStart && touch) handleDeckTouch(touchStart.x, touchStart.y, touch.clientX, touch.clientY);
+                touchStart = null;
+              }}
+            >
+              <div className="relative aspect-[4/4.6] bg-muted">
+                {currentDeckRestaurant.image && (
+                  <img src={currentDeckRestaurant.image} alt={currentDeckRestaurant.name} className="h-full w-full object-cover" />
+                )}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 text-white">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="line-clamp-1 text-2xl font-black">{currentDeckRestaurant.name}</p>
+                      <p className="mt-1 line-clamp-1 text-sm font-semibold text-white/82">
+                        {currentDeckRestaurant.address || "Pinned restaurant area"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white/18 px-3 py-1 text-xs font-black backdrop-blur">
+                      {distanceFor(currentDeckRestaurant) ?? `${currentDeckRestaurant.distance} km`}
+                    </span>
+                  </div>
+                </div>
+                {likedRestaurantIds.has(currentDeckRestaurant.id) && (
+                  <span className="absolute left-4 top-4 rounded-full bg-success px-3 py-1 text-xs font-black text-success-foreground">
+                    Liked
+                  </span>
+                )}
+              </div>
+              <div className="space-y-4 p-4">
+                <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{currentDeckRestaurant.description}</p>
+                <div className="grid grid-cols-4 gap-2">
+                  <button type="button" onClick={() => moveDeck(-1)} className="rounded-2xl border border-border py-3 text-sm font-black">
+                    Left
+                  </button>
+                  <button type="button" onClick={() => moveDeck(1)} className="rounded-2xl border border-border py-3 text-sm font-black">
+                    Right
+                  </button>
+                  <button type="button" onClick={muteCurrentRestaurant} className="grid place-items-center rounded-2xl bg-muted py-3 text-muted-foreground">
+                    <EyeOff className="h-4 w-4" />
+                  </button>
+                  <button type="button" onClick={likeCurrentRestaurant} className="grid place-items-center rounded-2xl bg-success py-3 text-success-foreground">
+                    <Heart className="h-4 w-4 fill-current" />
+                  </button>
+                </div>
+                <Link
+                  to="/restaurant/$restaurantId"
+                  params={{ restaurantId: currentDeckRestaurant.id }}
+                  className="block rounded-2xl bg-gradient-primary px-5 py-3 text-center text-sm font-black text-primary-foreground shadow-glow"
+                >
+                  Open restaurant
+                </Link>
+                <p className="text-center text-[11px] font-semibold text-muted-foreground">
+                  Swipe left/right to browse, down to like, up to mute.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -354,7 +354,7 @@ function RestaurantOnboarding({
   ];
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-hero px-5 py-16">
+    <div className="relative flex min-h-[100dvh] items-start justify-center bg-gradient-hero px-5 pb-8 pt-20 sm:items-center sm:py-16">
       <button
         type="button"
         onClick={() => {
@@ -409,7 +409,6 @@ function RestaurantOnboarding({
                     onChange={(event) => update("restaurant", event.target.value)}
                     placeholder="Restaurant name"
                     className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                    autoFocus
                   />
                 </OnboardingField>
               </div>
@@ -420,10 +419,10 @@ function RestaurantOnboarding({
                 <OnboardingField icon={Mail}>
                   <input
                     value={form.intro}
-                    onChange={(event) => update("intro", event.target.value.split(/\s+/)[0] ?? "")}
-                    placeholder="One-word intro, e.g. Smoky"
+                    onChange={(event) => update("intro", event.target.value.slice(0, 80))}
+                    placeholder="Short intro, e.g. Smoky jollof spot"
+                    maxLength={80}
                     className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                    autoFocus
                   />
                 </OnboardingField>
                 <OnboardingField icon={Store}>

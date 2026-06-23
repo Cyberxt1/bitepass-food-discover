@@ -13,8 +13,6 @@ import { Splash } from "@/components/Splash";
 import { RouteLoadingOverlay } from "@/components/RouteLoadingOverlay";
 import { Toaster } from "@/components/ui/sonner";
 import { useCart } from "@/lib/cart";
-import { reverseGeocode } from "@/lib/location";
-import { notify } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
 function NotFoundComponent() {
@@ -119,41 +117,6 @@ function AppShell() {
       nav({ to: "/login", replace: true });
     }
   }, [authReady, isAuthPage, isPublicPage, nav, path, user]);
-
-  useEffect(() => {
-    if (!authReady || !user || typeof navigator === "undefined" || !navigator.geolocation) return;
-
-    let cancelled = false;
-    let lastSavedAt = 0;
-
-    const savePosition = async (position: GeolocationPosition) => {
-      const now = Date.now();
-      if (now - lastSavedAt < 30000) return;
-      lastSavedAt = now;
-
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      const address = await reverseGeocode({ lat, lng });
-      if (cancelled) return;
-
-      await updateProfile({ address, lat: String(lat), lng: String(lng) });
-    };
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        void savePosition(position);
-      },
-      () => {
-        notify("info", "Turn on location to see restaurants near you", { id: "location-auto-prompt" });
-      },
-      { enableHighAccuracy: true, maximumAge: 30000, timeout: 12000 },
-    );
-
-    return () => {
-      cancelled = true;
-      navigator.geolocation.clearWatch(watchId);
-    };
-  }, [authReady, updateProfile, user]);
 
   if (fullWidth) {
     return (
