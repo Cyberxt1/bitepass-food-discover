@@ -16,8 +16,10 @@ import {
   Wheat,
   X,
   EyeOff,
+  Clock,
+  Star,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import type { Meal, Restaurant } from "@/lib/seed";
@@ -62,6 +64,8 @@ function Discover() {
   const [deckIndex, setDeckIndex] = useState(0);
   const [likedRestaurantIds, setLikedRestaurantIds] = useState<Set<string>>(new Set());
   const [mutedRestaurantIds, setMutedRestaurantIds] = useState<Set<string>>(new Set());
+  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const seenNearbyIdsRef = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -141,7 +145,29 @@ function Discover() {
   const displayLimit = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches ? 6 : 4;
   const displayRestaurants = (coords ? visibleNearbyRestaurants : []).slice(0, displayLimit);
 
-  const nearbyRestaurantIds = new Set(nearbyRestaurants.map((restaurant) => restaurant.id));
+  useEffect(() => {
+    if (!coords) {
+      seenNearbyIdsRef.current = null;
+      return;
+    }
+
+    const nextIds = new Set(nearbyRestaurants.map((restaurant) => restaurant.id));
+    if (!seenNearbyIdsRef.current) {
+      seenNearbyIdsRef.current = nextIds;
+      return;
+    }
+
+    const newRestaurants = nearbyRestaurants.filter((restaurant) => !seenNearbyIdsRef.current?.has(restaurant.id));
+    seenNearbyIdsRef.current = nextIds;
+    if (newRestaurants.length === 0) return;
+
+    notify("success", `${newRestaurants.length} new nearby restaurant${newRestaurants.length === 1 ? "" : "s"} found`, {
+      id: `discover-nearby:${newRestaurants.map((restaurant) => restaurant.id).join(":")}`,
+      persist: false,
+    });
+    setDeckIndex(0);
+    setNearbyDeckOpen(true);
+  }, [coords, nearbyRestaurants]);
 
   const distanceFor = (restaurant: Restaurant) => {
     if (!coords) return undefined;
@@ -339,7 +365,7 @@ function Discover() {
                       const rest = restaurants.find((r) => r.id === m.restaurantId);
                       return (
                         <div key={m.id} className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink">
-                          <MealCard meal={m} restaurantName={rest?.name} />
+                          <MealCard meal={m} restaurantName={rest?.name} onQuickView={setSelectedMeal} />
                         </div>
                       );
                     })}
@@ -425,7 +451,74 @@ function Discover() {
           </div>
         </div>
       )}
+      {selectedMeal && (
+        <MealQuickView
+          meal={selectedMeal}
+          restaurant={restaurants.find((restaurant) => restaurant.id === selectedMeal.restaurantId)}
+          onClose={() => setSelectedMeal(null)}
+        />
+      )}
     </>
+  );
+}
+
+function MealQuickView({
+  meal,
+  restaurant,
+  onClose,
+}: {
+  meal: Meal;
+  restaurant?: Restaurant;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center sm:pb-10" onClick={onClose}>
+      <div className="w-full max-w-md overflow-hidden rounded-[1.75rem] bg-card shadow-card animate-slide-up" onClick={(event) => event.stopPropagation()}>
+        <div className="relative aspect-[4/3] bg-muted">
+          {meal.image ? (
+            <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
+          ) : (
+            <div className="grid h-full place-items-center bg-[linear-gradient(135deg,oklch(0.93_0.04_75),oklch(0.86_0.12_42))] px-6 text-center">
+              <span className="text-2xl font-black leading-tight">{meal.name}</span>
+            </div>
+          )}
+          {meal.popular === "1" && (
+            <span className="absolute left-4 top-4 rounded-full bg-primary px-3 py-1 text-[11px] font-black text-primary-foreground">
+              Popular
+            </span>
+          )}
+        </div>
+        <div className="space-y-4 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-xl font-black leading-tight">{meal.name}</h3>
+              <p className="mt-1 text-sm font-semibold text-muted-foreground">{restaurant?.name ?? "Restaurant"}</p>
+              {restaurant?.address && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{restaurant.address}</p>}
+            </div>
+            <span className="shrink-0 text-base font-black text-primary">{naira(meal.price)}</span>
+          </div>
+          <p className="text-sm leading-6 text-muted-foreground">{meal.description}</p>
+          <div className="flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+              <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+              {meal.rating}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+              <Clock className="h-3.5 w-3.5" />
+              {meal.prepTime} min
+            </span>
+            {meal.servingUnit && <span className="rounded-full bg-muted px-2.5 py-1">Per {meal.servingUnit}</span>}
+          </div>
+          <Link
+            to="/meal/$mealId"
+            params={{ mealId: meal.id }}
+            className="block rounded-2xl bg-gradient-primary px-5 py-3 text-center text-sm font-black text-primary-foreground shadow-glow"
+          >
+            Choose this meal
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }
 

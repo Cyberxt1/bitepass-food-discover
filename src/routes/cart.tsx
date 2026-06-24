@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Clock, Minus, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowLeft, CheckSquare, Clock, Minus, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
@@ -12,7 +12,7 @@ import type { Restaurant } from "@/lib/seed";
 export const Route = createFileRoute("/cart")({ component: CartPage });
 
 function CartPage() {
-  const { items, setQty, remove, total, clear, setNotes, setOptionQty } = useCart();
+  const { items, setQty, remove, setNotes, setOptionQty } = useCart();
   const { user } = useAuth();
   const nav = useNavigate();
   const [placing, setPlacing] = useState(false);
@@ -20,11 +20,25 @@ function CartPage() {
   const [pickupMode, setPickupMode] = useState<"asap" | "scheduled">("asap");
   const [pickupAt, setPickupAt] = useState(getDefaultPickupTime());
   const [currentRestaurant, setCurrentRestaurant] = useState<Restaurant | undefined>();
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
-  const restaurantId = items[0]?.restaurantId ?? "";
+  useEffect(() => {
+    setSelectedItemIds((current) => {
+      const itemIds = new Set(items.map((item) => item.id));
+      const next = new Set([...current].filter((id) => itemIds.has(id)));
+      items.forEach((item) => {
+        if (!current.has(item.id)) next.add(item.id);
+      });
+      return next;
+    });
+  }, [items]);
+
+  const selectedItems = useMemo(() => items.filter((item) => selectedItemIds.has(item.id)), [items, selectedItemIds]);
+  const selectedSubtotal = selectedItems.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const restaurantId = selectedItems[0]?.restaurantId ?? items[0]?.restaurantId ?? "";
   const restaurantClosed = currentRestaurant?.isOpen === "0";
-  const fee = items.length > 0 ? 200 : 0;
-  const grand = total + fee;
+  const fee = selectedItems.length > 0 ? 200 : 0;
+  const grand = selectedSubtotal + fee;
 
   useEffect(() => {
     if (!restaurantId) {
@@ -48,6 +62,10 @@ function CartPage() {
     if (!user) {
       notify("info", "Please sign in to checkout", { id: "cart-login-required" });
       nav({ to: "/login" });
+      return;
+    }
+    if (selectedItems.length === 0) {
+      notify("info", "Select at least one cart item to checkout", { id: "cart-select-required" });
       return;
     }
 
@@ -93,7 +111,7 @@ function CartPage() {
         userId: user.id,
         restaurantId,
         items: JSON.stringify(
-          items.map((item) => ({
+          selectedItems.map((item) => ({
             mealId: item.mealId,
             name: item.name,
             qty: item.qty,
@@ -113,7 +131,7 @@ function CartPage() {
         paymentReference,
       });
       setCheckoutStage("Order received...");
-      clear();
+      selectedItems.forEach((item) => remove(item.id));
       notify("success", "Payment successful, order sent to the store", { id: `order-paid:${orderId}` });
       nav({ to: "/orders/$orderId", params: { orderId } });
     } catch (error) {
@@ -149,11 +167,44 @@ function CartPage() {
         <>
           <main className="mx-auto grid max-w-5xl gap-4 px-4 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8 lg:pt-8">
             <section className="space-y-3">
+            <div className="flex items-center justify-between rounded-2xl bg-card px-4 py-3 shadow-soft">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="h-4 w-4 text-primary" />
+                <p className="text-sm font-bold">{selectedItems.length} selected</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedItemIds(selectedItems.length === items.length ? new Set() : new Set(items.map((item) => item.id)))}
+                className="rounded-full bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:bg-accent"
+              >
+                {selectedItems.length === items.length ? "Uncheck all" : "Check all"}
+              </button>
+            </div>
             {items.map((item) => (
               <div key={item.id} className="rounded-2xl bg-card p-3 shadow-soft animate-slide-up">
                 <div className="flex gap-3">
-                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-muted px-2 text-center text-[10px] font-black leading-tight">
-                    {item.name.split(" ").slice(0, 2).join(" ")}
+                  <input
+                    type="checkbox"
+                    checked={selectedItemIds.has(item.id)}
+                    onChange={(event) => {
+                      setSelectedItemIds((current) => {
+                        const next = new Set(current);
+                        if (event.target.checked) next.add(item.id);
+                        else next.delete(item.id);
+                        return next;
+                      });
+                    }}
+                    className="mt-5 h-4 w-4 shrink-0 accent-primary"
+                    aria-label={`Select ${item.name}`}
+                  />
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="grid h-full place-items-center px-2 text-center text-[10px] font-black leading-tight">
+                        {item.name.split(" ").slice(0, 2).join(" ")}
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold leading-tight">{item.name}</p>
@@ -265,7 +316,7 @@ function CartPage() {
             </div>
 
             <div className="rounded-2xl bg-card p-4 shadow-soft">
-              <Row label="Subtotal" value={naira(total)} />
+              <Row label="Subtotal" value={naira(selectedSubtotal)} />
               <Row label="Service fee" value={naira(fee)} />
               <div className="my-2 border-t border-border" />
               <Row label="Total" value={naira(grand)} bold />
@@ -276,7 +327,7 @@ function CartPage() {
           <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3 lg:bottom-6 lg:left-auto lg:right-8 lg:max-w-sm lg:translate-x-0">
             <button
               onClick={place}
-              disabled={placing || restaurantClosed}
+              disabled={placing || restaurantClosed || selectedItems.length === 0}
               className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow active:scale-95 disabled:opacity-70"
             >
               <span>{placing ? checkoutStage : "Pay and place order"}</span>

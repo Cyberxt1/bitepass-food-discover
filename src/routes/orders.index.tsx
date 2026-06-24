@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Receipt } from "lucide-react";
+import { Loader2, Receipt } from "lucide-react";
 import type { Order } from "@/lib/seed";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
@@ -19,6 +19,7 @@ function OrdersList() {
   const { user } = useAuth();
   const nav = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [openingOrderId, setOpeningOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     const currentUser = user;
@@ -71,6 +72,7 @@ function OrdersList() {
                 key={order.id}
                 to="/orders/$orderId"
                 params={{ orderId: order.id }}
+                onClick={() => setOpeningOrderId(order.id)}
                 className="block rounded-2xl bg-card p-4 shadow-soft transition hover:-translate-y-0.5"
               >
                 <div className="flex items-start justify-between">
@@ -94,6 +96,12 @@ function OrdersList() {
                   {items.map((item) => `${item.qty}x ${item.name}`).join(", ")}
                 </p>
                 <div className="mt-2 text-sm font-bold text-primary">{naira(order.total)}</div>
+                {openingOrderId === order.id && (
+                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-xs font-bold text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    Opening order...
+                  </div>
+                )}
               </Link>
             );
           })}

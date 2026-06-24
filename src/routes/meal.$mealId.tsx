@@ -103,13 +103,21 @@ function MealPage() {
 
   return (
     <div className="overflow-x-hidden pb-32 lg:pb-10">
-      <div className="relative h-24">
+      <div className="relative h-64 bg-muted sm:h-80">
+        {meal.image ? (
+          <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="grid h-full place-items-center bg-[linear-gradient(135deg,oklch(0.93_0.04_75),oklch(0.86_0.12_42))] px-6 text-center">
+            <span className="text-3xl font-black leading-tight">{meal.name}</span>
+          </div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent" />
         <Link to="/discover" className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft lg:left-8">
           <ArrowLeft className="h-4 w-4 text-foreground" />
         </Link>
       </div>
 
-      <div className="mx-auto max-w-3xl bg-background px-4 pt-2 sm:px-6 lg:px-8">
+      <div className="-mt-8 mx-auto max-w-3xl bg-background px-4 pt-2 sm:px-6 lg:px-8">
         <main className="min-w-0">
         <h1 className="text-2xl font-bold">{meal.name}</h1>
         {restaurant && (

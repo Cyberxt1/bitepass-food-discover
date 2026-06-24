@@ -6,9 +6,10 @@ import {
   User, Mail, Phone, MapPin, ArrowRight, ArrowLeft, Loader2,
 } from "lucide-react";
 import {
-  Area,
-  AreaChart,
+  Bar,
   CartesianGrid,
+  ComposedChart,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -550,7 +551,9 @@ function Overview({
       orders: dayOrders.length,
     };
   });
-  const averageRevenue = revenue / trend.length;
+  const weeklyRevenue = trend.reduce((sum, day) => sum + day.rev, 0);
+  const totalTrendOrders = trend.reduce((sum, day) => sum + day.orders, 0);
+  const averageRevenue = weeklyRevenue / trend.length;
   const bestDay = trend.reduce((best, current) => (current.rev > best.rev ? current : best), trend[0]);
 
   return (
@@ -587,15 +590,16 @@ function Overview({
         </div>
       </Card>
 
-      <Card title="Revenue - last 7 days" subtitle={restaurant.name}>
+      <Card title="Sales snapshot" subtitle="Last 7 days">
         <div className="grid gap-2 sm:grid-cols-3">
           <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">This week</p>
-            <p className="mt-1 text-lg font-bold text-foreground">{naira(revenue)}</p>
+            <p className="mt-1 text-lg font-bold text-foreground">{naira(weeklyRevenue)}</p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Daily average</p>
-            <p className="mt-1 text-lg font-bold text-foreground">{naira(Math.round(averageRevenue))}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Orders</p>
+            <p className="mt-1 text-lg font-bold text-foreground">{totalTrendOrders}</p>
+            <p className="text-[11px] text-muted-foreground">{naira(Math.round(averageRevenue))} avg/day</p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Best day</p>
@@ -604,16 +608,14 @@ function Overview({
           </div>
         </div>
 
-        <div className="mt-4 rounded-[28px] border border-border/60 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.14),transparent_48%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0))] p-3">
+        <div className="mt-4 rounded-[28px] border border-border/60 bg-background p-3">
+          <div className="mb-3 flex flex-wrap gap-3 text-[11px] font-bold text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Revenue</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Orders</span>
+          </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="businessRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.68 0.19 35)" stopOpacity={0.45} />
-                    <stop offset="100%" stopColor="oklch(0.68 0.19 35)" stopOpacity={0.04} />
-                  </linearGradient>
-                </defs>
+              <ComposedChart data={trend} margin={{ top: 10, right: 0, left: -10, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="oklch(0.9 0.01 80)" strokeDasharray="4 4" />
                 <XAxis
                   dataKey="day"
@@ -623,6 +625,7 @@ function Overview({
                   stroke="oklch(0.5 0.02 50)"
                 />
                 <YAxis
+                  yAxisId="revenue"
                   tickLine={false}
                   axisLine={false}
                   fontSize={11}
@@ -630,8 +633,18 @@ function Overview({
                   stroke="oklch(0.5 0.02 50)"
                   tickFormatter={(value: number) => compactNaira(value)}
                 />
+                <YAxis
+                  yAxisId="orders"
+                  orientation="right"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  width={28}
+                  stroke="oklch(0.5 0.02 50)"
+                  allowDecimals={false}
+                />
                 <Tooltip
-                  cursor={{ stroke: "oklch(0.68 0.19 35 / 0.25)", strokeWidth: 1.5, strokeDasharray: "4 4" }}
+                  cursor={{ fill: "oklch(0.94 0.02 70 / 0.75)" }}
                   contentStyle={{
                     borderRadius: 18,
                     border: "1px solid oklch(0.92 0.008 80)",
@@ -639,23 +652,33 @@ function Overview({
                     boxShadow: "0 18px 45px rgba(15, 23, 42, 0.12)",
                     fontSize: 12,
                   }}
-                  formatter={(value: number) => [naira(value), "Revenue"]}
+                  formatter={(value: number, name: string) => [
+                    name === "rev" ? naira(value) : value,
+                    name === "rev" ? "Revenue" : "Orders",
+                  ]}
                   labelFormatter={(_, payload) => {
                     const item = payload?.[0]?.payload as { fullDate?: string; orders?: number } | undefined;
                     if (!item) return "";
                     return `${item.fullDate} - ${item.orders ?? 0} order${item.orders === 1 ? "" : "s"}`;
                   }}
                 />
-                <Area
-                  type="monotone"
+                <Bar
+                  yAxisId="revenue"
                   dataKey="rev"
-                  stroke="oklch(0.68 0.19 35)"
-                  strokeWidth={3}
-                  fill="url(#businessRevenueFill)"
-                  dot={{ r: 0 }}
-                  activeDot={{ r: 5, strokeWidth: 0, fill: "oklch(0.68 0.19 35)" }}
+                  fill="oklch(0.68 0.19 35)"
+                  radius={[8, 8, 3, 3]}
+                  barSize={28}
                 />
-              </AreaChart>
+                <Line
+                  yAxisId="orders"
+                  type="monotone"
+                  dataKey="orders"
+                  stroke="oklch(0.58 0.14 150)"
+                  strokeWidth={3}
+                  dot={{ r: 4, strokeWidth: 0, fill: "oklch(0.58 0.14 150)" }}
+                  activeDot={{ r: 6, strokeWidth: 0, fill: "oklch(0.58 0.14 150)" }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>

@@ -35,6 +35,12 @@ export function RestaurantCard({ r, distanceLabel }: { r: Restaurant; distanceLa
             <Star className="h-3 w-3 fill-current" />{r.rating}
           </span>
         </div>
+        {r.address && (
+          <p className="mt-2 flex items-start gap-1 text-[11px] font-semibold leading-4 text-foreground">
+            <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+            <span className="line-clamp-2">{r.address}</span>
+          </p>
+        )}
         <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{r.prepTime} min</span>
           <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{distanceLabel ?? `${r.distance} km`}</span>

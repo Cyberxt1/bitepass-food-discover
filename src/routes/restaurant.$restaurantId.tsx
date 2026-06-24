@@ -129,6 +129,7 @@ function RestaurantPage() {
           <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{restaurant.prepTime} min prep</span>
             <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{restaurant.distance} km away</span>
+            {restaurant.address && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{restaurant.address}</span>}
             <span>{reviews.length} reviews</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -215,7 +216,7 @@ function MenuSection({ meals, closed }: { meals: Meal[]; closed: boolean }) {
         </div>
       ) : (
         <div className="grid gap-2.5 lg:grid-cols-2">
-          {meals.map((m) => <MealCard key={m.id} meal={m} hideImage />)}
+          {meals.map((m) => <MealCard key={m.id} meal={m} />)}
         </div>
       )}
     </section>

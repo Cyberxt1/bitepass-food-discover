@@ -7,20 +7,24 @@ export function MealCard({
   meal,
   restaurantName,
   hideImage = false,
+  onQuickView,
 }: {
   meal: Meal;
   restaurantName?: string;
   hideImage?: boolean;
+  onQuickView?: (meal: Meal) => void;
 }) {
-  return (
-    <Link
-      to="/meal/$mealId"
-      params={{ mealId: meal.id }}
-      className="group block rounded-2xl bg-card p-3 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card"
-    >
-      {!hideImage && meal.image && (
+  const content = (
+    <>
+      {!hideImage && (
         <div className="mb-3 aspect-[4/3] overflow-hidden rounded-xl bg-muted">
-          <img src={meal.image} alt={meal.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+          {meal.image ? (
+            <img src={meal.image} alt={meal.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+          ) : (
+            <div className="grid h-full place-items-center bg-[linear-gradient(135deg,oklch(0.93_0.04_75),oklch(0.86_0.12_42))] px-4 text-center">
+              <span className="text-sm font-black leading-tight text-foreground">{meal.name}</span>
+            </div>
+          )}
         </div>
       )}
       <div className="flex min-w-0 flex-col justify-between py-0.5">
@@ -47,6 +51,22 @@ export function MealCard({
           </span>
         </div>
       </div>
+    </>
+  );
+
+  const className = "group block w-full rounded-2xl bg-card p-3 text-left shadow-soft transition hover:-translate-y-0.5 hover:shadow-card";
+
+  if (onQuickView) {
+    return (
+      <button type="button" onClick={() => onQuickView(meal)} className={className}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link to="/meal/$mealId" params={{ mealId: meal.id }} className={className}>
+      {content}
     </Link>
   );
 }
