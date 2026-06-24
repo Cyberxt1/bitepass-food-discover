@@ -4,7 +4,6 @@ import {
   ChevronRight,
   CupSoda,
   Flame,
-  Heart,
   LocateFixed,
   Navigation,
   Sandwich,
@@ -14,7 +13,6 @@ import {
   TrendingUp,
   Utensils,
   Wheat,
-  X,
   EyeOff,
   Clock,
   Star,
@@ -65,7 +63,10 @@ function Discover() {
   const [likedRestaurantIds, setLikedRestaurantIds] = useState<Set<string>>(new Set());
   const [mutedRestaurantIds, setMutedRestaurantIds] = useState<Set<string>>(new Set());
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [deckDrag, setDeckDrag] = useState({ x: 0, y: 0 });
+  const [deckSwipe, setDeckSwipe] = useState<{ x: number; y: number; action: "like" | "mute" | "next" | "previous" } | null>(null);
   const seenNearbyIdsRef = useRef<Set<string> | null>(null);
+  const deckTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,17 +191,35 @@ function Discover() {
     setMutedRestaurantIds((current) => new Set(current).add(currentDeckRestaurant.id));
     setDeckIndex(0);
   };
+  const finishDeckSwipe = (x: number, y: number, action: "like" | "mute" | "next" | "previous") => {
+    setDeckSwipe({ x, y, action });
+    window.setTimeout(() => {
+      if (action === "like") likeCurrentRestaurant();
+      if (action === "mute") muteCurrentRestaurant();
+      if (action === "next") moveDeck(1);
+      if (action === "previous") moveDeck(-1);
+      setDeckDrag({ x: 0, y: 0 });
+      setDeckSwipe(null);
+    }, 280);
+  };
   const handleDeckTouch = (startX: number, startY: number, endX: number, endY: number) => {
     const deltaX = endX - startX;
     const deltaY = endY - startY;
+    setDeckDrag({ x: 0, y: 0 });
     if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 45) return;
-    if (Math.abs(deltaX) > Math.abs(deltaY)) moveDeck(deltaX > 0 ? 1 : -1);
-    else if (deltaY > 0) likeCurrentRestaurant();
-    else muteCurrentRestaurant();
+    const fallX = deltaX === 0 ? (deltaY > 0 ? 44 : -44) : deltaX * 2.4;
+    const fallY = deltaY * 2.4 + (deltaY > 0 ? 260 : -260);
+    if (Math.abs(deltaY) >= Math.abs(deltaX)) {
+      finishDeckSwipe(fallX, fallY, deltaY > 0 ? "like" : "mute");
+    } else {
+      finishDeckSwipe(fallX, deltaY * 2.1 + 180, deltaX > 0 ? "next" : "previous");
+    }
   };
 
   const trending = meals.filter((m) => m.popular === "1").slice(0, 6);
-  let touchStart: { x: number; y: number } | null = null;
+  const deckTransform = deckSwipe
+    ? `translate(${deckSwipe.x}px, ${deckSwipe.y}px) rotate(${Math.max(-24, Math.min(24, deckSwipe.x / 12))}deg)`
+    : `translate(${deckDrag.x}px, ${deckDrag.y}px) rotate(${Math.max(-10, Math.min(10, deckDrag.x / 18))}deg)`;
   return (
     <>
       <AppHeader locationLabel={locationLabel} subtitle="Welcome to BitePass" />
@@ -375,26 +394,36 @@ function Discover() {
         </section>
       </main>
       {nearbyDeckOpen && currentDeckRestaurant && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center sm:pb-10">
-          <div className="relative w-full max-w-sm">
-            <button
-              type="button"
-              onClick={() => setNearbyDeckOpen(false)}
-              className="absolute -top-3 right-0 z-10 grid h-10 w-10 -translate-y-full place-items-center rounded-full bg-white text-foreground shadow-soft"
-              aria-label="Close nearby restaurants"
-            >
-              <X className="h-4 w-4" />
-            </button>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center sm:pb-10"
+          onClick={() => setNearbyDeckOpen(false)}
+        >
+          <div className="relative w-full max-w-sm" onClick={(event) => event.stopPropagation()}>
             <div
-              className="overflow-hidden rounded-[1.75rem] bg-card shadow-card"
+              className="overflow-hidden rounded-[1.75rem] bg-card shadow-card touch-none"
+              style={{
+                transform: deckTransform,
+                opacity: deckSwipe ? 0.1 : 1,
+                transition: deckSwipe ? "transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 220ms ease" : "transform 120ms ease-out",
+              }}
               onTouchStart={(event) => {
                 const touch = event.touches[0];
-                touchStart = touch ? { x: touch.clientX, y: touch.clientY } : null;
+                deckTouchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+              }}
+              onTouchMove={(event) => {
+                const touch = event.touches[0];
+                if (!touch || !deckTouchStartRef.current || deckSwipe) return;
+                setDeckDrag({
+                  x: touch.clientX - deckTouchStartRef.current.x,
+                  y: touch.clientY - deckTouchStartRef.current.y,
+                });
               }}
               onTouchEnd={(event) => {
                 const touch = event.changedTouches[0];
-                if (touchStart && touch) handleDeckTouch(touchStart.x, touchStart.y, touch.clientX, touch.clientY);
-                touchStart = null;
+                if (deckTouchStartRef.current && touch) {
+                  handleDeckTouch(deckTouchStartRef.current.x, deckTouchStartRef.current.y, touch.clientX, touch.clientY);
+                }
+                deckTouchStartRef.current = null;
               }}
             >
               <div className="relative aspect-[4/4.6] bg-muted">
@@ -415,25 +444,28 @@ function Discover() {
                   </div>
                 </div>
                 {likedRestaurantIds.has(currentDeckRestaurant.id) && (
-                  <span className="absolute left-4 top-4 rounded-full bg-success px-3 py-1 text-xs font-black text-success-foreground">
-                    Liked
+                  <span className="absolute left-4 top-4 rounded-full bg-success px-3 py-1 text-xs font-black text-success-foreground animate-fire-pop">
+                    Fire picked
                   </span>
                 )}
               </div>
               <div className="space-y-4 p-4">
                 <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{currentDeckRestaurant.description}</p>
-                <div className="grid grid-cols-4 gap-2">
-                  <button type="button" onClick={() => moveDeck(-1)} className="rounded-2xl border border-border py-3 text-sm font-black">
-                    Left
-                  </button>
-                  <button type="button" onClick={() => moveDeck(1)} className="rounded-2xl border border-border py-3 text-sm font-black">
-                    Right
-                  </button>
+                <div className="grid grid-cols-[1fr_1.4fr] gap-2">
                   <button type="button" onClick={muteCurrentRestaurant} className="grid place-items-center rounded-2xl bg-muted py-3 text-muted-foreground">
                     <EyeOff className="h-4 w-4" />
                   </button>
-                  <button type="button" onClick={likeCurrentRestaurant} className="grid place-items-center rounded-2xl bg-success py-3 text-success-foreground">
-                    <Heart className="h-4 w-4 fill-current" />
+                  <button
+                    type="button"
+                    onClick={likeCurrentRestaurant}
+                    className={`grid place-items-center rounded-2xl py-3 text-xl transition active:scale-95 ${
+                      likedRestaurantIds.has(currentDeckRestaurant.id)
+                        ? "bg-success text-success-foreground shadow-soft animate-fire-pop"
+                        : "bg-success/15"
+                    }`}
+                    aria-label="Like restaurant"
+                  >
+                    <span className="animate-fire-pop">🔥</span>
                   </button>
                 </div>
                 <Link
@@ -444,7 +476,7 @@ function Discover() {
                   Open restaurant
                 </Link>
                 <p className="text-center text-[11px] font-semibold text-muted-foreground">
-                  Swipe left/right to browse, down to like, up to mute.
+                  Swipe the card. Down likes, up hides, sideways browses.
                 </p>
               </div>
             </div>
@@ -473,29 +505,25 @@ function MealQuickView({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center sm:pb-10" onClick={onClose}>
-      <div className="w-full max-w-md overflow-hidden rounded-[1.75rem] bg-card shadow-card animate-slide-up" onClick={(event) => event.stopPropagation()}>
-        <div className="relative aspect-[4/3] bg-muted">
-          {meal.image ? (
-            <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="grid h-full place-items-center bg-[linear-gradient(135deg,oklch(0.93_0.04_75),oklch(0.86_0.12_42))] px-6 text-center">
-              <span className="text-2xl font-black leading-tight">{meal.name}</span>
-            </div>
-          )}
-          {meal.popular === "1" && (
-            <span className="absolute left-4 top-4 rounded-full bg-primary px-3 py-1 text-[11px] font-black text-primary-foreground">
-              Popular
-            </span>
-          )}
-        </div>
+      <div className="w-full max-w-md rounded-[1.75rem] bg-card p-4 shadow-card animate-slide-up" onClick={(event) => event.stopPropagation()}>
         <div className="space-y-4 p-4">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-muted shadow-soft">
+              {meal.image ? (
+                <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="grid h-full place-items-center bg-[linear-gradient(135deg,oklch(0.93_0.04_75),oklch(0.86_0.12_42))] px-2 text-center">
+                  <span className="text-xs font-black leading-tight">{meal.name}</span>
+                </div>
+              )}
+              {meal.popular === "1" && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />}
+            </div>
             <div className="min-w-0">
               <h3 className="text-xl font-black leading-tight">{meal.name}</h3>
               <p className="mt-1 text-sm font-semibold text-muted-foreground">{restaurant?.name ?? "Restaurant"}</p>
               {restaurant?.address && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{restaurant.address}</p>}
+              <span className="mt-2 inline-block text-base font-black text-primary">{naira(meal.price)}</span>
             </div>
-            <span className="shrink-0 text-base font-black text-primary">{naira(meal.price)}</span>
           </div>
           <p className="text-sm leading-6 text-muted-foreground">{meal.description}</p>
           <div className="flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground">
