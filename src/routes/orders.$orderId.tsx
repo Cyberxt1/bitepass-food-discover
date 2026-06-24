@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, ChefHat, ShoppingBag, PackageCheck } from "lucide-react";
-import type { Order } from "@/lib/seed";
+import type { Order, Review } from "@/lib/seed";
 import { naira } from "@/lib/format";
 import { backend } from "@/lib/backend";
+import { useAuth } from "@/lib/auth";
+import { notify } from "@/lib/notifications";
 
 export const Route = createFileRoute("/orders/$orderId")({ component: OrderDetail });
 
@@ -17,9 +19,14 @@ const stepMeta = {
 
 function OrderDetail() {
   const { orderId } = Route.useParams();
+  const { user } = useAuth();
   const [order, setOrder] = useState<Order | undefined>();
   const [tick, setTick] = useState(0);
   const [restaurantName, setRestaurantName] = useState("restaurant");
+  const [reviewTarget, setReviewTarget] = useState("restaurant");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewing, setReviewing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,6 +63,7 @@ function OrderDetail() {
   if (!order) return <div className="p-8 text-center text-sm">Order not found.</div>;
 
   const items = JSON.parse(order.items) as {
+    mealId?: string;
     name: string;
     qty: number;
     price: number;
@@ -64,6 +72,37 @@ function OrderDetail() {
     options?: { name: string; price: number; qty?: number }[];
   }[];
   const currentIdx = flow.indexOf(order.status as (typeof flow)[number]);
+  const submitReview = async () => {
+    if (!user || reviewing) return;
+    if (!reviewComment.trim()) {
+      notify("error", "Write a short review first", { id: "order-review-empty" });
+      return;
+    }
+    setReviewing(true);
+    try {
+      const mealId = reviewTarget === "restaurant" ? "" : reviewTarget;
+      const review: Review = {
+        id: "rv" + Date.now(),
+        mealId,
+        restaurantId: reviewTarget === "restaurant" ? order.restaurantId : undefined,
+        userId: user.id,
+        userName: user.name,
+        rating: String(reviewRating),
+        taste: "",
+        portion: "",
+        spice: "",
+        waitTime: "",
+        comment: reviewComment.trim(),
+        createdAt: new Date().toISOString(),
+      };
+      await backend.addReview(review);
+      setReviewComment("");
+      setReviewRating(5);
+      notify("success", "Review sent", { id: `order-review:${order.id}:${reviewTarget}` });
+    } finally {
+      setReviewing(false);
+    }
+  };
 
   return (
     <div>
@@ -134,6 +173,50 @@ function OrderDetail() {
             <span>{naira(order.total)}</span>
           </div>
         </div>
+
+        {order.status === "completed" && (
+          <div className="rounded-2xl bg-card p-4 shadow-soft lg:col-span-2">
+            <h3 className="text-sm font-bold">Review this order</h3>
+            <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr_auto] md:items-start">
+              <select
+                value={reviewTarget}
+                onChange={(event) => setReviewTarget(event.target.value)}
+                className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              >
+                <option value="restaurant">Restaurant service</option>
+                {items.filter((item) => item.mealId).map((item) => (
+                  <option key={item.mealId} value={item.mealId}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+              <div>
+                <div className="mb-2 flex gap-1">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button key={value} type="button" onClick={() => setReviewRating(value)} className="text-lg">
+                      <span className={value <= reviewRating ? "text-warning" : "text-muted-foreground"}>★</span>
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={reviewComment}
+                  onChange={(event) => setReviewComment(event.target.value)}
+                  placeholder="How was the food or service?"
+                  rows={2}
+                  className="w-full resize-none rounded-xl border border-border bg-background p-3 text-sm outline-none focus:border-primary"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={submitReview}
+                disabled={reviewing}
+                className="rounded-xl bg-gradient-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-glow disabled:opacity-60"
+              >
+                {reviewing ? "Sending..." : "Send review"}
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -38,7 +38,7 @@ function splitLine(line: string): string[] {
 
 function toCSV(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return "";
-  const headers = Object.keys(rows[0]);
+  const headers = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
   const esc = (v: unknown) => {
     const s = v == null ? "" : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;

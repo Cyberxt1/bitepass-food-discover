@@ -1,6 +1,7 @@
 import { FILES, appendRow, deleteRow, readTable, updateRow } from "./csv-store";
 import { isSupabaseConfigured, supabase } from "./supabase";
 import type { Discount, Meal, Order, Restaurant, Review, User } from "./seed";
+import { trackAuditEvent } from "./audit";
 
 type CollectionName = "users" | "restaurants" | "meals" | "orders" | "discounts" | "reviews";
 type Row = { id: string } & Record<string, unknown>;
@@ -16,8 +17,6 @@ const fileFor: Record<CollectionName, string> = {
   reviews: FILES.reviews,
 };
 
-const seededTables = new Set<CollectionName>();
-
 function upsertLocal<T extends { id: string }>(file: string, item: T) {
   const rows = readTable<T>(file);
   const exists = rows.some((row) => row.id === item.id);
@@ -29,24 +28,8 @@ function cleanRow<T extends Row>(item: T): Row {
   return Object.fromEntries(Object.entries(item).filter(([, value]) => value !== undefined)) as Row;
 }
 
-async function seedSupabaseTableIfEmpty<T extends Row>(name: CollectionName) {
-  if (!useSupabase || !supabase || seededTables.has(name)) return;
-  seededTables.add(name);
-
-  const fallbackRows = readTable<T>(fileFor[name]);
-  if (fallbackRows.length === 0) return;
-
-  const { count, error } = await supabase.from(name).select("id", { count: "exact", head: true });
-  if (error) throw error;
-  if ((count ?? 0) > 0) return;
-
-  const { error: upsertError } = await supabase.from(name).upsert(fallbackRows.map(cleanRow));
-  if (upsertError) throw upsertError;
-}
-
 async function readSupabaseTable<T extends Row>(name: CollectionName): Promise<T[]> {
   if (!supabase) return [];
-  await seedSupabaseTableIfEmpty<T>(name);
 
   const { data, error } = await supabase.from(name).select("*");
   if (error) throw error;
@@ -59,8 +42,7 @@ async function readSupabaseTable<T extends Row>(name: CollectionName): Promise<T
 async function readCollection<T extends Row>(name: CollectionName): Promise<T[]> {
   if (useSupabase) {
     try {
-      const rows = await readSupabaseTable<T>(name);
-      if (rows.length > 0) return rows;
+      return await readSupabaseTable<T>(name);
     } catch (error) {
       console.warn(`Supabase ${name} read failed, using local fallback`, error);
     }
@@ -70,34 +52,40 @@ async function readCollection<T extends Row>(name: CollectionName): Promise<T[]>
 }
 
 async function setCollectionDoc<T extends Row>(name: CollectionName, item: T) {
-  upsertLocal(fileFor[name], item);
   if (useSupabase && supabase) {
     const { error } = await supabase.from(name).upsert(cleanRow(item));
     if (error) throw error;
+    upsertLocal(fileFor[name], item);
+    return;
   }
+  upsertLocal(fileFor[name], item);
 }
 
 async function patchCollectionDoc(name: CollectionName, id: string, patch: Record<string, unknown>) {
-  updateRow(fileFor[name], (row) => row.id === id, patch);
   if (useSupabase && supabase) {
     const { error } = await supabase.from(name).update(cleanRow({ id, ...patch })).eq("id", id);
     if (error) throw error;
+    updateRow(fileFor[name], (row) => row.id === id, patch);
+    return;
   }
+  updateRow(fileFor[name], (row) => row.id === id, patch);
 }
 
 async function deleteCollectionDoc(name: CollectionName, id: string) {
-  deleteRow(fileFor[name], (row) => row.id === id);
   if (useSupabase && supabase) {
     const { error } = await supabase.from(name).delete().eq("id", id);
     if (error) throw error;
+    deleteRow(fileFor[name], (row) => row.id === id);
+    return;
   }
+  deleteRow(fileFor[name], (row) => row.id === id);
 }
 
 async function writeWithFallback(action: () => Promise<void>) {
   try {
     await action();
   } catch (error) {
-    console.warn("Remote write failed after local write", error);
+    console.warn("Write failed", error);
   }
 }
 
@@ -110,16 +98,64 @@ export const backend = {
   discounts: () => readCollection<Discount>("discounts"),
 
   setUser: (user: User) => writeWithFallback(() => setCollectionDoc("users", user)),
-  setRestaurant: (restaurant: Restaurant) => writeWithFallback(() => setCollectionDoc("restaurants", restaurant)),
-  addOrder: (order: Order) => writeWithFallback(() => setCollectionDoc("orders", order)),
+  setRestaurant: (restaurant: Restaurant) => {
+    trackAuditEvent({
+      type: "restaurant_created",
+      actorId: restaurant.ownerId,
+      targetId: restaurant.id,
+      targetType: "restaurant",
+      title: `${restaurant.name} store saved`,
+      detail: restaurant.address || restaurant.cuisine,
+    });
+    return writeWithFallback(() => setCollectionDoc("restaurants", restaurant));
+  },
+  addOrder: (order: Order) => {
+    trackAuditEvent({
+      type: "order_created",
+      actorId: order.userId,
+      targetId: order.id,
+      targetType: "order",
+      title: `Order #${order.id.slice(-5)} created`,
+      detail: `${order.status} - ${order.total}`,
+    });
+    return writeWithFallback(() => setCollectionDoc("orders", order));
+  },
   addMeal: (meal: Meal) => writeWithFallback(() => setCollectionDoc("meals", meal)),
   addDiscount: (discount: Discount) => writeWithFallback(() => setCollectionDoc("discounts", discount)),
-  addReview: (review: Review) => writeWithFallback(() => setCollectionDoc("reviews", review)),
+  addReview: (review: Review) => {
+    trackAuditEvent({
+      type: "review_created",
+      actorId: review.userId,
+      actorName: review.userName,
+      targetId: review.id,
+      targetType: "review",
+      title: `${review.userName} left a ${review.rating}-star review`,
+      detail: review.comment,
+    });
+    return writeWithFallback(() => setCollectionDoc("reviews", review));
+  },
 
   updateUser: (id: string, patch: Partial<User>) => writeWithFallback(() => patchCollectionDoc("users", id, patch)),
-  updateRestaurant: (id: string, patch: Partial<Restaurant>) =>
-    writeWithFallback(() => patchCollectionDoc("restaurants", id, patch)),
-  updateOrder: (id: string, patch: Partial<Order>) => writeWithFallback(() => patchCollectionDoc("orders", id, patch)),
+  updateRestaurant: (id: string, patch: Partial<Restaurant>) => {
+    trackAuditEvent({
+      type: "restaurant_updated",
+      targetId: id,
+      targetType: "restaurant",
+      title: `Restaurant ${id} updated`,
+      detail: Object.keys(patch).join(", "),
+    });
+    return writeWithFallback(() => patchCollectionDoc("restaurants", id, patch));
+  },
+  updateOrder: (id: string, patch: Partial<Order>) => {
+    trackAuditEvent({
+      type: "order_updated",
+      targetId: id,
+      targetType: "order",
+      title: `Order #${id.slice(-5)} updated`,
+      detail: Object.entries(patch).map(([key, value]) => `${key}: ${value}`).join(", "),
+    });
+    return writeWithFallback(() => patchCollectionDoc("orders", id, patch));
+  },
   updateMeal: (id: string, patch: Partial<Meal>) => writeWithFallback(() => patchCollectionDoc("meals", id, patch)),
   updateDiscount: (id: string, patch: Partial<Discount>) =>
     writeWithFallback(() => patchCollectionDoc("discounts", id, patch)),

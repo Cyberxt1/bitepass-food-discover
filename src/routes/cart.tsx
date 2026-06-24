@@ -194,10 +194,10 @@ function CartPage() {
                         return next;
                       });
                     }}
-                    className="mt-5 h-4 w-4 shrink-0 accent-primary"
+                    className="mt-4 h-4 w-4 shrink-0 accent-primary"
                     aria-label={`Select ${item.name}`}
                   />
-                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted sm:h-14 sm:w-14">
                     {item.image ? (
                       <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
                     ) : (

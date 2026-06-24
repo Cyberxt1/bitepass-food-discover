@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Clock, Loader2, MapPin, MessageSquare, Phone, Send, Star } from "lucide-react";
+import { ArrowLeft, Clock, Loader2, MapPin, MessageSquare, Send, Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { MealCard } from "@/components/MealCard";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import { notify } from "@/lib/notifications";
 import type { Meal, Restaurant, Review } from "@/lib/seed";
+import { naira } from "@/lib/format";
+import { shortLocationLabel } from "@/lib/location";
 
 export const Route = createFileRoute("/restaurant/$restaurantId")({ component: RestaurantPage });
 
@@ -129,7 +130,7 @@ function RestaurantPage() {
           <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{restaurant.prepTime} min prep</span>
             <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{restaurant.distance} km away</span>
-            {restaurant.address && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{restaurant.address}</span>}
+            {restaurant.address && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{shortLocationLabel(restaurant.address)}</span>}
             <span>{reviews.length} reviews</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -140,9 +141,6 @@ function RestaurantPage() {
           <div className="mt-4 flex gap-2">
             <button onClick={() => setTab("menu")} className="flex-1 rounded-xl bg-gradient-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">
               View menu
-            </button>
-            <button className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-card">
-              <Phone className="h-4 w-4" />
             </button>
           </div>
           {closed && (
@@ -168,13 +166,6 @@ function RestaurantPage() {
             Reviews ({reviews.length})
           </button>
         </div>
-
-        {restaurant.address && (
-          <section className="mt-4 rounded-2xl bg-card p-3 shadow-soft">
-            <p className="text-sm font-semibold">Pickup location</p>
-            <p className="text-xs text-muted-foreground">{restaurant.address}</p>
-          </section>
-        )}
 
         {tab === "menu" ? (
           <MenuSection meals={meals} closed={closed} />
@@ -206,6 +197,15 @@ function RestaurantLoading() {
 }
 
 function MenuSection({ meals, closed }: { meals: Meal[]; closed: boolean }) {
+  const categories = Array.from(new Set(meals.map((meal) => meal.category || "Meals")));
+  const [category, setCategory] = useState(categories[0] ?? "Meals");
+  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const visibleMeals = meals.filter((meal) => (meal.category || "Meals") === category);
+
+  useEffect(() => {
+    if (categories.length > 0 && !categories.includes(category)) setCategory(categories[0]);
+  }, [categories, category]);
+
   return (
     <section className="mt-6">
       <h3 className="mb-3 text-base font-bold">Menu</h3>
@@ -215,11 +215,90 @@ function MenuSection({ meals, closed }: { meals: Meal[]; closed: boolean }) {
           <p className="mt-1 text-xs text-muted-foreground">This restaurant has not published a menu.</p>
         </div>
       ) : (
-        <div className="grid gap-2.5 lg:grid-cols-2">
-          {meals.map((m) => <MealCard key={m.id} meal={m} />)}
-        </div>
+        <>
+          <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+            {categories.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setCategory(item)}
+                className={`shrink-0 rounded-full px-4 py-2 text-xs font-black transition ${
+                  category === item ? "bg-foreground text-background" : "bg-card text-muted-foreground shadow-soft"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {visibleMeals.map((meal) => (
+              <button
+                key={meal.id}
+                type="button"
+                onClick={() => setSelectedMeal(meal)}
+                className="flex min-w-0 items-center gap-3 rounded-2xl bg-card p-2 text-left shadow-soft transition hover:bg-muted"
+              >
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
+                  {meal.image ? (
+                    <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="grid h-full place-items-center px-2 text-center text-[10px] font-black">{meal.name}</div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-1 text-sm font-black">{meal.name}</p>
+                  <p className="line-clamp-1 text-xs text-muted-foreground">{meal.description}</p>
+                  <p className="mt-1 text-sm font-black text-primary">{naira(meal.price)}</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-success/10 px-2 py-1 text-[11px] font-black text-success">
+                  {meal.reviewCount || "0"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
+      {selectedMeal && <MealDetailModal meal={selectedMeal} closed={closed} onClose={() => setSelectedMeal(null)} />}
     </section>
+  );
+}
+
+function MealDetailModal({ meal, closed, onClose }: { meal: Meal; closed: boolean; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center" onClick={onClose}>
+      <div className="w-full max-w-md rounded-[1.5rem] bg-card p-4 shadow-card animate-slide-up" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-start gap-3">
+          <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-muted">
+            {meal.image ? <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" /> : null}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="text-lg font-black leading-tight">{meal.name}</h3>
+              <button type="button" onClick={onClose} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mt-1 text-sm font-black text-primary">{naira(meal.price)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{meal.reviewCount || "0"} reviews</p>
+          </div>
+        </div>
+        <p className="mt-4 text-sm leading-6 text-muted-foreground">{meal.description}</p>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground">
+          <span className="rounded-full bg-muted px-2.5 py-1">{meal.category}</span>
+          <span className="rounded-full bg-muted px-2.5 py-1">{meal.prepTime} min</span>
+          <span className="rounded-full bg-muted px-2.5 py-1">{meal.rating} rating</span>
+        </div>
+        <Link
+          to="/meal/$mealId"
+          params={{ mealId: meal.id }}
+          className={`mt-5 block rounded-2xl px-5 py-3 text-center text-sm font-black shadow-glow ${
+            closed ? "bg-muted text-muted-foreground" : "bg-gradient-primary text-primary-foreground"
+          }`}
+        >
+          {closed ? "Restaurant closed" : "Choose meal"}
+        </Link>
+      </div>
+    </div>
   );
 }
 

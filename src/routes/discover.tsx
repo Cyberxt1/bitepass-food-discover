@@ -31,6 +31,7 @@ import {
   type Coordinates,
 } from "@/lib/location";
 import { notify } from "@/lib/notifications";
+import { naira } from "@/lib/format";
 import { AppHeader } from "@/components/AppHeader";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { MealCard } from "@/components/MealCard";
@@ -39,6 +40,8 @@ import { SkeletonCard } from "@/components/SkeletonCard";
 export const Route = createFileRoute("/discover")({ component: Discover });
 const NEARBY_RADIUS_KM = 40;
 const DISCOVER_REFRESH_MS = 10000;
+const NEARBY_POPUP_KEY = "bitepass:last-nearby-popup";
+const NEARBY_POPUP_COOLDOWN_MS = 1000 * 60 * 60 * 6;
 
 const categories = [
   { name: "Jollof", hint: "Rice bowls", icon: Flame, accent: "bg-orange-500/10 text-orange-700" },
@@ -166,8 +169,12 @@ function Discover() {
       id: `discover-nearby:${newRestaurants.map((restaurant) => restaurant.id).join(":")}`,
       persist: false,
     });
-    setDeckIndex(0);
-    setNearbyDeckOpen(true);
+    const lastPopup = Number(window.localStorage.getItem(NEARBY_POPUP_KEY) ?? 0);
+    if (!Number.isFinite(lastPopup) || Date.now() - lastPopup > NEARBY_POPUP_COOLDOWN_MS) {
+      window.localStorage.setItem(NEARBY_POPUP_KEY, String(Date.now()));
+      setDeckIndex(0);
+      setNearbyDeckOpen(true);
+    }
   }, [coords, nearbyRestaurants]);
 
   const distanceFor = (restaurant: Restaurant) => {
@@ -200,6 +207,11 @@ function Discover() {
       if (action === "previous") moveDeck(-1);
       setDeckDrag({ x: 0, y: 0 });
       setDeckSwipe(null);
+      requestAnimationFrame(() => {
+        const card = document.querySelector("[data-nearby-card='active']");
+        card?.classList.add("animate-card-pop");
+        window.setTimeout(() => card?.classList.remove("animate-card-pop"), 360);
+      });
     }, 280);
   };
   const handleDeckTouch = (startX: number, startY: number, endX: number, endY: number) => {
@@ -223,27 +235,27 @@ function Discover() {
   return (
     <>
       <AppHeader locationLabel={locationLabel} subtitle="Welcome to BitePass" />
-      <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-4 sm:px-6 lg:px-8 lg:py-7">
+      <main className="mx-auto w-full max-w-6xl space-y-5 px-4 py-3 sm:px-6 lg:px-8 lg:py-6">
         <section>
-          <div className="relative overflow-hidden rounded-[1.5rem] bg-[linear-gradient(135deg,oklch(0.2_0.04_45),oklch(0.42_0.14_36)_55%,oklch(0.74_0.16_68))] p-4 text-white shadow-card sm:rounded-[2rem] sm:p-6 lg:min-h-[250px] lg:p-7">
+          <div className="relative overflow-hidden rounded-[1.25rem] bg-[linear-gradient(135deg,oklch(0.2_0.04_45),oklch(0.42_0.14_36)_55%,oklch(0.74_0.16_68))] p-3.5 text-white shadow-card sm:rounded-[1.5rem] sm:p-5 lg:min-h-[210px] lg:p-6">
             <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/25 to-transparent" />
-            <div className="relative z-10 flex h-full flex-col justify-between gap-4 sm:gap-8">
+            <div className="relative z-10 flex h-full flex-col justify-between gap-3 sm:gap-6">
               <div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-2.5 py-1 text-[10px] font-bold backdrop-blur sm:px-3 sm:text-[11px]">
                   <Sparkles className="h-3.5 w-3.5" />
                   BitePass
                 </span>
-                <h1 className="mt-3 max-w-2xl text-2xl font-black leading-[1.08] sm:mt-4 sm:text-4xl lg:text-[2.7rem]">
+                <h1 className="mt-2 max-w-2xl text-xl font-black leading-[1.08] sm:mt-3 sm:text-3xl lg:text-[2.35rem]">
                   Find food nearby. Pay ahead.
                 </h1>
-                <p className="mt-2 max-w-xl text-xs leading-5 text-white/82 sm:mt-3 sm:text-base sm:leading-6">
+                <p className="mt-1.5 max-w-xl text-xs leading-5 text-white/82 sm:mt-2 sm:text-sm sm:leading-6">
                   Quick pickup from restaurants around you.
                 </p>
-                <div className="mt-4 rounded-2xl bg-white/12 p-3 ring-1 ring-white/15 backdrop-blur sm:hidden">
+                <div className="mt-3 rounded-2xl bg-white/12 p-2.5 ring-1 ring-white/15 backdrop-blur sm:hidden">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-wide text-white/65">Your area</p>
-                      <p className="mt-1 line-clamp-2 text-sm font-bold leading-5 text-white">
+                      <p className="mt-1 line-clamp-1 text-sm font-bold leading-5 text-white">
                         {coords ? shortLocationLabel(locationLabel) : "Tap refresh to use exact location"}
                       </p>
                     </div>
@@ -251,7 +263,7 @@ function Discover() {
                       type="button"
                       onClick={enableLocation}
                       disabled={requestingLocation}
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-primary shadow-soft transition active:scale-95 disabled:opacity-70"
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white text-primary shadow-soft transition active:scale-95 disabled:opacity-70"
                       aria-label="Refresh location"
                     >
                       <LocateFixed className={`h-4 w-4 ${requestingLocation ? "animate-spin" : ""}`} />
@@ -263,7 +275,7 @@ function Discover() {
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <Link
                   to="/search"
-                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-white px-4 py-3 text-foreground shadow-soft transition hover:-translate-y-0.5"
+                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-white px-4 py-2.5 text-foreground shadow-soft transition hover:-translate-y-0.5"
                 >
                   <Search className="h-4 w-4 shrink-0 text-primary" />
                   <span className="truncate text-sm font-semibold text-muted-foreground">Search meals or restaurants</span>
@@ -272,7 +284,7 @@ function Discover() {
                   type="button"
                   onClick={enableLocation}
                   disabled={requestingLocation}
-                  className="hidden items-center justify-center gap-2 rounded-2xl bg-black/30 px-4 py-3 text-sm font-bold text-white ring-1 ring-white/18 backdrop-blur transition hover:bg-black/40 disabled:opacity-70 sm:inline-flex"
+                  className="hidden items-center justify-center gap-2 rounded-2xl bg-black/30 px-4 py-2.5 text-sm font-bold text-white ring-1 ring-white/18 backdrop-blur transition hover:bg-black/40 disabled:opacity-70 sm:inline-flex"
                 >
                   <LocateFixed className="h-4 w-4" />
                   <span>{requestingLocation ? "Locating..." : coords ? "Refresh location" : "Use location"}</span>
@@ -315,6 +327,11 @@ function Discover() {
                       </Link>
                     );
                   })}
+                </div>
+                <div className="mt-1.5 flex justify-center gap-1 sm:hidden">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/35" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/35" />
                 </div>
               </div>
             </section>
@@ -398,9 +415,10 @@ function Discover() {
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center sm:pb-10"
           onClick={() => setNearbyDeckOpen(false)}
         >
-          <div className="relative w-full max-w-sm" onClick={(event) => event.stopPropagation()}>
+          <div className="relative w-full max-w-[340px]" onClick={(event) => event.stopPropagation()}>
             <div
-              className="overflow-hidden rounded-[1.75rem] bg-card shadow-card touch-none"
+              data-nearby-card="active"
+              className="overflow-hidden rounded-[1.5rem] bg-card shadow-card touch-none"
               style={{
                 transform: deckTransform,
                 opacity: deckSwipe ? 0.1 : 1,
@@ -426,16 +444,16 @@ function Discover() {
                 deckTouchStartRef.current = null;
               }}
             >
-              <div className="relative aspect-[4/4.6] bg-muted">
+              <div className="relative aspect-[4/3.25] bg-muted">
                 {currentDeckRestaurant.image && (
                   <img src={currentDeckRestaurant.image} alt={currentDeckRestaurant.name} className="h-full w-full object-cover" />
                 )}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 text-white">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="line-clamp-1 text-2xl font-black">{currentDeckRestaurant.name}</p>
+                      <p className="line-clamp-1 text-xl font-black">{currentDeckRestaurant.name}</p>
                       <p className="mt-1 line-clamp-1 text-sm font-semibold text-white/82">
-                        {currentDeckRestaurant.address || "Pinned restaurant area"}
+                        {shortLocationLabel(currentDeckRestaurant.address || currentDeckRestaurant.cuisine)}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full bg-white/18 px-3 py-1 text-xs font-black backdrop-blur">
@@ -449,8 +467,8 @@ function Discover() {
                   </span>
                 )}
               </div>
-              <div className="space-y-4 p-4">
-                <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{currentDeckRestaurant.description}</p>
+              <div className="space-y-3 p-3.5">
+                <p className="line-clamp-1 text-sm leading-6 text-muted-foreground">{currentDeckRestaurant.description}</p>
                 <div className="grid grid-cols-[1fr_1.4fr] gap-2">
                   <button type="button" onClick={muteCurrentRestaurant} className="grid place-items-center rounded-2xl bg-muted py-3 text-muted-foreground">
                     <EyeOff className="h-4 w-4" />

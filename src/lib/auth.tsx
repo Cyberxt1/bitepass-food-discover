@@ -4,6 +4,7 @@ import { backend } from "./backend";
 import { isSupabaseConfigured, supabase } from "./supabase";
 import { clearSession, hasActiveSession, readSessionCookie, writeSessionCookie } from "./session-cookie";
 import type { Restaurant, User } from "./seed";
+import { trackAuditEvent } from "./audit";
 
 type SignupOptions =
   | { role?: "customer"; location?: { address: string; lat: number; lng: number } }
@@ -46,6 +47,30 @@ function findLocalUserByCredentials(email: string, password: string) {
   return readTable<User>(FILES.users).find(
     (user) => normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
   );
+}
+
+async function ensureDemoAdminForLocalLogin(email: string, password: string) {
+  if (normalizeEmail(email) !== "admin@bitepass.test" || password.trim() !== "1234") return null;
+
+  const users = await backend.users();
+  const existing = users.find((entry) => normalizeEmail(entry.email) === "admin@bitepass.test");
+  const admin: User = {
+    id: existing?.id ?? "u-admin-demo",
+    name: existing?.name || "BitePass Admin",
+    email: "admin@bitepass.test",
+    password: "1234",
+    role: "admin",
+    avatar: existing?.avatar || "A",
+    address: existing?.address,
+    lat: existing?.lat,
+    lng: existing?.lng,
+  };
+
+  if (!existing || existing.password !== "1234" || existing.role !== "admin") {
+    await backend.setUser(admin);
+  }
+
+  return admin;
 }
 
 function userFromAuth(params: {
@@ -178,7 +203,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: normalizedEmail,
         password: normalizedPassword,
       });
-      if (error) throw error;
+      if (error) {
+        const demoAdmin = await ensureDemoAdminForLocalLogin(normalizedEmail, normalizedPassword);
+        if (demoAdmin) {
+          writeSessionCookie(demoAdmin.id);
+          writeFile(FILES.session, demoAdmin.id);
+          setUser(demoAdmin);
+          trackAuditEvent({
+            type: "login",
+            actorId: demoAdmin.id,
+            actorName: demoAdmin.name,
+            targetId: demoAdmin.id,
+            targetType: "user",
+            title: `${demoAdmin.name} logged in`,
+            detail: "Development admin fallback used because Supabase Auth has no demo admin account",
+          });
+          return demoAdmin;
+        }
+        throw error;
+      }
       if (!data.user) throw new Error("Login failed");
 
       const u = await getOrCreateAuthProfile({
@@ -197,12 +240,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const u =
       users.find(
         (user) => normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
-      ) ?? findLocalUserByCredentials(normalizedEmail, normalizedPassword);
+      ) ?? findLocalUserByCredentials(normalizedEmail, normalizedPassword) ?? await ensureDemoAdminForLocalLogin(normalizedEmail, normalizedPassword);
 
     if (!u) throw new Error("Invalid credentials");
     writeSessionCookie(u.id);
     writeFile(FILES.session, u.id);
     setUser(u);
+    trackAuditEvent({
+      type: "login",
+      actorId: u.id,
+      actorName: u.name,
+      targetId: u.id,
+      targetType: "user",
+      title: `${u.name} logged in`,
+      detail: `${u.role} account signed in`,
+    });
     return u;
   };
 
@@ -258,6 +310,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       lng: options.role !== "restaurant" ? String(options.location?.lng ?? "") : undefined,
     };
     await backend.setUser(u);
+    trackAuditEvent({
+      type: "signup",
+      actorId: u.id,
+      actorName: u.name,
+      targetId: u.id,
+      targetType: "user",
+      title: `${u.name} created an account`,
+      detail: `${role} account created with ${normalizedEmail}`,
+    });
 
     if (options.role === "restaurant" && options.restaurant) {
       const restaurant: Restaurant = {
@@ -279,6 +340,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lng: String(options.restaurant.lng ?? ""),
       };
       await backend.setRestaurant(restaurant);
+      trackAuditEvent({
+        type: "restaurant_created",
+        actorId: u.id,
+        actorName: u.name,
+        targetId: restaurant.id,
+        targetType: "restaurant",
+        title: `${restaurant.name} store profile created`,
+        detail: restaurant.address || restaurant.cuisine,
+      });
     }
 
     writeSessionCookie(u.id);
@@ -288,9 +358,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    const currentUser = user;
     clearSession();
     writeFile(FILES.session, "");
     setUser(null);
+    if (currentUser) {
+      trackAuditEvent({
+        type: "logout",
+        actorId: currentUser.id,
+        actorName: currentUser.name,
+        targetId: currentUser.id,
+        targetType: "user",
+        title: `${currentUser.name} logged out`,
+        detail: `${currentUser.role} account signed out`,
+      });
+    }
     if (useSupabaseAuth && supabase) {
       void supabase.auth.signOut();
     }
@@ -301,6 +383,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!currentUser) return;
     await backend.updateUser(currentUser.id, patch);
     setUser({ ...currentUser, ...patch });
+    trackAuditEvent({
+      type: "profile_update",
+      actorId: currentUser.id,
+      actorName: currentUser.name,
+      targetId: currentUser.id,
+      targetType: "user",
+      title: `${currentUser.name} updated account details`,
+      detail: Object.keys(patch).join(", "),
+    });
   };
 
   return <Ctx.Provider value={{ user, authReady, login, loginWithGoogle, signup, updateProfile, logout }}>{children}</Ctx.Provider>;

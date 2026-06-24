@@ -14,6 +14,7 @@ import { RouteLoadingOverlay } from "@/components/RouteLoadingOverlay";
 import { Toaster } from "@/components/ui/sonner";
 import { useCart } from "@/lib/cart";
 import { cn } from "@/lib/utils";
+import { trackAuditEvent } from "@/lib/audit";
 
 function NotFoundComponent() {
   return (
@@ -98,10 +99,20 @@ function AppShell() {
   const fullWidth = path === "/" || path === "/login" || path === "/signup" || path.startsWith("/business") || path.startsWith("/admin");
   const showOverlay = isLoading || !authReady;
   const isAuthPage = path === "/login" || path === "/signup";
-  const isPublicPage = path === "/" || isAuthPage;
+  const isAdminPage = path.startsWith("/admin");
+  const isPublicPage = path === "/" || isAuthPage || isAdminPage;
 
   useEffect(() => {
     if (!authReady) return;
+    trackAuditEvent({
+      type: "page_view",
+      actorId: user?.id,
+      actorName: user?.name,
+      targetId: path,
+      targetType: "page",
+      title: `Viewed ${path}`,
+      detail: user ? `${user.name} opened ${path}` : `Guest opened ${path}`,
+    });
 
     if (path === "/" && user) {
       nav({ to: getDashboardPath(user), replace: true });
