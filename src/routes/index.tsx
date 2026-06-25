@@ -472,12 +472,7 @@ function deriveLandingStats(
 ): PlatformStats {
   return {
     id: "public",
-    foodies: String(
-      Math.max(
-        Number(defaultLandingStats.foodies),
-        users.filter((entry) => entry.role === "customer").length,
-      ),
-    ),
+    foodies: String(Math.max(Number(defaultLandingStats.foodies), users.length)),
     kitchens: String(Math.max(Number(defaultLandingStats.kitchens), restaurants.length)),
     avgMinutesSaved: String(
       Math.max(Number(defaultLandingStats.avgMinutesSaved), orders.length ? 6 : 0),

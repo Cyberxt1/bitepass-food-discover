@@ -197,8 +197,10 @@ function AdminDashboard() {
       setUsers(nextUsers);
       setReviews(nextReviews);
       setFeedback(nextFeedback);
-      const latestStats =
-        nextStats[0] ?? derivePlatformStats(nextUsers, nextRestaurants, nextOrders);
+      const latestStats = mergePlatformStats(
+        derivePlatformStats(nextUsers, nextRestaurants, nextOrders),
+        nextStats[0],
+      );
       setStatsForm({
         foodies: latestStats.foodies,
         kitchens: latestStats.kitchens,
@@ -947,10 +949,23 @@ function derivePlatformStats(
 ): PlatformStats {
   return {
     id: "public",
-    foodies: String(users.filter((entry) => entry.role === "customer").length),
+    foodies: String(users.length),
     kitchens: String(restaurants.length),
     avgMinutesSaved: String(Math.max(0, Math.round(orders.length ? 6 : 0))),
     updatedAt: new Date().toISOString(),
+  };
+}
+
+function mergePlatformStats(liveStats: PlatformStats, published?: PlatformStats): PlatformStats {
+  if (!published) return liveStats;
+  return {
+    id: "public",
+    foodies: String(Math.max(Number(liveStats.foodies), Number(published.foodies || 0))),
+    kitchens: String(Math.max(Number(liveStats.kitchens), Number(published.kitchens || 0))),
+    avgMinutesSaved: String(
+      Math.max(Number(liveStats.avgMinutesSaved), Number(published.avgMinutesSaved || 0)),
+    ),
+    updatedAt: liveStats.updatedAt,
   };
 }
 
