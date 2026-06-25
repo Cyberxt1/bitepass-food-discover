@@ -69,17 +69,7 @@ async function readCollection<T extends Row>(name: CollectionName): Promise<T[]>
   ensureSeed();
 
   if (useSupabase) {
-    try {
-      const remoteRows = await readSupabaseTable<T>(name);
-      if (remoteRows.length > 0) return remoteRows;
-
-      const localRows = readTable<T>(fileFor[name]);
-      if (localRows.length > 0) return localRows;
-
-      return remoteRows;
-    } catch (error) {
-      console.warn(`Supabase ${name} read failed, using local fallback`, error);
-    }
+    return readSupabaseTable<T>(name);
   }
 
   return readTable<T>(fileFor[name]);
@@ -89,11 +79,10 @@ async function setCollectionDoc<T extends Row>(name: CollectionName, item: T) {
   if (useSupabase && supabase) {
     const { error } = await supabase.from(name).upsert(cleanRow(item));
     if (error) {
-      console.warn(`Supabase ${name} write failed, saving local fallback`, error);
-    } else {
-      upsertLocal(fileFor[name], item);
-      return;
+      throw new Error(`Supabase ${name} write failed: ${error.message}`);
     }
+    upsertLocal(fileFor[name], item);
+    return;
   }
   upsertLocal(fileFor[name], item);
 }
@@ -109,11 +98,10 @@ async function patchCollectionDoc(
       .update(cleanRow({ id, ...patch }))
       .eq("id", id);
     if (error) {
-      console.warn(`Supabase ${name} update failed, saving local fallback`, error);
-    } else {
-      updateRow(fileFor[name], (row) => row.id === id, patch);
-      return;
+      throw new Error(`Supabase ${name} update failed: ${error.message}`);
     }
+    updateRow(fileFor[name], (row) => row.id === id, patch);
+    return;
   }
   updateRow(fileFor[name], (row) => row.id === id, patch);
 }
@@ -122,21 +110,16 @@ async function deleteCollectionDoc(name: CollectionName, id: string) {
   if (useSupabase && supabase) {
     const { error } = await supabase.from(name).delete().eq("id", id);
     if (error) {
-      console.warn(`Supabase ${name} delete failed, deleting local fallback`, error);
-    } else {
-      deleteRow(fileFor[name], (row) => row.id === id);
-      return;
+      throw new Error(`Supabase ${name} delete failed: ${error.message}`);
     }
+    deleteRow(fileFor[name], (row) => row.id === id);
+    return;
   }
   deleteRow(fileFor[name], (row) => row.id === id);
 }
 
 async function writeWithFallback(action: () => Promise<void>) {
-  try {
-    await action();
-  } catch (error) {
-    console.warn("Write failed", error);
-  }
+  await action();
 }
 
 export const backend = {

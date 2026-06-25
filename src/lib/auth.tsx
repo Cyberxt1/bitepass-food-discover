@@ -162,6 +162,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(profile);
           return;
         }
+
+        clearSession();
+        setUser(null);
+        return;
       }
 
       await restoreLocalSession();
@@ -215,22 +219,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: normalizedPassword,
       });
       if (error) {
-        const localAdmin = await ensureLocalAdminForLogin(normalizedEmail, normalizedPassword);
-        if (localAdmin) {
-          writeSessionCookie(localAdmin.id);
-          writeFile(FILES.session, localAdmin.id);
-          setUser(localAdmin);
-          trackAuditEvent({
-            type: "login",
-            actorId: localAdmin.id,
-            actorName: localAdmin.name,
-            targetId: localAdmin.id,
-            targetType: "user",
-            title: `${localAdmin.name} logged in`,
-            detail: "Local admin fallback used because Supabase Auth has no admin account",
-          });
-          return localAdmin;
-        }
         throw error;
       }
       if (!data.user) throw new Error("Login failed");
