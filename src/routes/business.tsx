@@ -368,7 +368,7 @@ function RestaurantOnboarding({
       ? form.owner.trim().length > 1 && form.restaurant.trim().length > 1
       : step === 1
         ? form.intro.trim().length > 0 && form.phone.trim().length > 5
-        : Boolean(form.address.trim() && hasValidCoords);
+        : form.address.trim().length > 3;
 
   const update = (key: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -423,10 +423,10 @@ function RestaurantOnboarding({
         tags: `${form.intro.trim()}|${form.cuisine.trim() || "Food"}|New`,
         isOpen: "1",
         description: form.intro.trim(),
-        address: form.address,
+        address: form.address.trim(),
         phone: form.phone.trim(),
-        lat: form.lat,
-        lng: form.lng,
+        lat: hasValidCoords ? form.lat.trim() : "",
+        lng: hasValidCoords ? form.lng.trim() : "",
         paymentSetupStatus: "not_started",
       };
       await backend.setRestaurant(restaurant);
@@ -639,7 +639,7 @@ function RestaurantOnboarding({
                     />
                   </div>
                   <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                    Enter the restaurant's actual map coordinates if the owner is somewhere else.
+                    Optional. Add map coordinates when you have them; the address is enough to finish setup.
                   </p>
                 </div>
               </div>
