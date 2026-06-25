@@ -4,7 +4,15 @@ import { useAuth } from "@/lib/auth";
 import { shortLocationLabel } from "@/lib/location";
 import { useNotifications } from "@/lib/notifications";
 
-export function AppHeader({ subtitle, locationLabel }: { subtitle?: string; locationLabel?: string }) {
+export function AppHeader({
+  subtitle,
+  locationLabel,
+  showNotifications = true,
+}: {
+  subtitle?: string;
+  locationLabel?: string;
+  showNotifications?: boolean;
+}) {
   const { user } = useAuth();
   const { unreadCount } = useNotifications();
   const label = locationLabel ?? (user?.address ? shortLocationLabel(user.address) : "Location off");
@@ -21,7 +29,7 @@ export function AppHeader({ subtitle, locationLabel }: { subtitle?: string; loca
             {user ? `Hey, ${user.name.split(" ")[0]}` : subtitle ?? "Welcome to BitePass"}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        {showNotifications && (
           <Link to="/notifications" className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-card transition hover:scale-105">
             <Bell className="h-4 w-4" />
             {unreadCount > 0 && (
@@ -30,7 +38,7 @@ export function AppHeader({ subtitle, locationLabel }: { subtitle?: string; loca
               </span>
             )}
           </Link>
-        </div>
+        )}
       </div>
     </header>
   );

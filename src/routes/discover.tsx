@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Beef,
+  Bell,
   ChevronRight,
   CupSoda,
   Flame,
@@ -9,7 +10,6 @@ import {
   Sandwich,
   Search,
   Soup,
-  Sparkles,
   TrendingUp,
   Utensils,
   Wheat,
@@ -27,10 +27,9 @@ import {
   distanceKm,
   formatDistance,
   restaurantCoords,
-  shortLocationLabel,
   type Coordinates,
 } from "@/lib/location";
-import { notify } from "@/lib/notifications";
+import { notify, useNotifications } from "@/lib/notifications";
 import { naira } from "@/lib/format";
 import { AppHeader } from "@/components/AppHeader";
 import { RestaurantCard } from "@/components/RestaurantCard";
@@ -55,6 +54,7 @@ const categories = [
 
 function Discover() {
   const { user } = useAuth();
+  const { unreadCount } = useNotifications();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,64 +234,37 @@ function Discover() {
     : `translate(${deckDrag.x}px, ${deckDrag.y}px) rotate(${Math.max(-10, Math.min(10, deckDrag.x / 18))}deg)`;
   return (
     <>
-      <AppHeader locationLabel={locationLabel} subtitle="Welcome to BitePass" />
+      <AppHeader locationLabel={locationLabel} subtitle="Welcome to BitePass" showNotifications={false} />
       <main className="mx-auto w-full max-w-6xl space-y-5 px-4 py-3 sm:px-6 lg:px-8 lg:py-6">
-        <section>
-          <div className="relative overflow-hidden rounded-[1.25rem] bg-[linear-gradient(135deg,oklch(0.2_0.04_45),oklch(0.42_0.14_36)_55%,oklch(0.74_0.16_68))] p-3.5 text-white shadow-card sm:rounded-[1.5rem] sm:p-5 lg:min-h-[210px] lg:p-6">
-            <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/25 to-transparent" />
-            <div className="relative z-10 flex h-full flex-col justify-between gap-3 sm:gap-6">
-              <div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-2.5 py-1 text-[10px] font-bold backdrop-blur sm:px-3 sm:text-[11px]">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  BitePass
-                </span>
-                <h1 className="mt-2 max-w-2xl text-xl font-black leading-[1.08] sm:mt-3 sm:text-3xl lg:text-[2.35rem]">
-                  Find food nearby. Pay ahead.
-                </h1>
-                <p className="mt-1.5 max-w-xl text-xs leading-5 text-white/82 sm:mt-2 sm:text-sm sm:leading-6">
-                  Quick pickup from restaurants around you.
-                </p>
-                <div className="mt-3 rounded-2xl bg-white/12 p-2.5 ring-1 ring-white/15 backdrop-blur sm:hidden">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-black uppercase tracking-wide text-white/65">Your area</p>
-                      <p className="mt-1 line-clamp-1 text-sm font-bold leading-5 text-white">
-                        {coords ? shortLocationLabel(locationLabel) : "Tap refresh to use exact location"}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={enableLocation}
-                      disabled={requestingLocation}
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white text-primary shadow-soft transition active:scale-95 disabled:opacity-70"
-                      aria-label="Refresh location"
-                    >
-                      <LocateFixed className={`h-4 w-4 ${requestingLocation ? "animate-spin" : ""}`} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <Link
-                  to="/search"
-                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-white px-4 py-2.5 text-foreground shadow-soft transition hover:-translate-y-0.5"
-                >
-                  <Search className="h-4 w-4 shrink-0 text-primary" />
-                  <span className="truncate text-sm font-semibold text-muted-foreground">Search meals or restaurants</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={enableLocation}
-                  disabled={requestingLocation}
-                  className="hidden items-center justify-center gap-2 rounded-2xl bg-black/30 px-4 py-2.5 text-sm font-bold text-white ring-1 ring-white/18 backdrop-blur transition hover:bg-black/40 disabled:opacity-70 sm:inline-flex"
-                >
-                  <LocateFixed className="h-4 w-4" />
-                  <span>{requestingLocation ? "Locating..." : coords ? "Refresh location" : "Use location"}</span>
-                </button>
-              </div>
-            </div>
-          </div>
+        <section className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+          <Link
+            to="/search"
+            className="flex min-h-12 min-w-0 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2.5 shadow-soft transition hover:-translate-y-0.5 hover:bg-muted"
+          >
+            <Search className="h-4 w-4 shrink-0 text-primary" />
+            <span className="truncate text-sm font-semibold text-muted-foreground">Search meals or restaurants</span>
+          </Link>
+          <Link
+            to="/notifications"
+            className="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-border bg-card shadow-soft transition active:scale-95 hover:bg-muted"
+            aria-label="Notifications"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadCount > 0 && (
+              <span className="absolute right-2 top-2 grid min-h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
+          <button
+            type="button"
+            onClick={enableLocation}
+            disabled={requestingLocation}
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-border bg-card text-primary shadow-soft transition active:scale-95 hover:bg-muted disabled:opacity-70"
+            aria-label={coords ? "Refresh location" : "Use location"}
+          >
+            <LocateFixed className={`h-4 w-4 ${requestingLocation ? "animate-spin" : ""}`} />
+          </button>
         </section>
 
         <section>
