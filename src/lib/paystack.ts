@@ -45,7 +45,9 @@ function loadPaystackScript() {
     const existing = document.querySelector<HTMLScriptElement>('script[data-paystack="inline"]');
     if (existing) {
       existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("Unable to load Paystack")), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Unable to load Paystack")), {
+        once: true,
+      });
       return;
     }
 

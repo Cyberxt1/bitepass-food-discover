@@ -6,7 +6,10 @@ export function Splash({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const t1 = setTimeout(() => setHide(true), 1400);
     const t2 = setTimeout(onDone, 1800);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [onDone]);
 
   return (

@@ -2,7 +2,12 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { readTable, writeFile, FILES } from "./csv-store";
 import { backend } from "./backend";
 import { isSupabaseConfigured, supabase } from "./supabase";
-import { clearSession, hasActiveSession, readSessionCookie, writeSessionCookie } from "./session-cookie";
+import {
+  clearSession,
+  hasActiveSession,
+  readSessionCookie,
+  writeSessionCookie,
+} from "./session-cookie";
 import type { Restaurant, User } from "./seed";
 import { trackAuditEvent } from "./audit";
 
@@ -45,7 +50,9 @@ function findLocalUserByCredentials(email: string, password: string) {
   const normalizedEmail = normalizeEmail(email);
   const normalizedPassword = password.trim();
   return readTable<User>(FILES.users).find(
-    (user) => normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
+    (user) =>
+      normalizeEmail(user.email) === normalizedEmail &&
+      (user.password ?? "").trim() === normalizedPassword,
   );
 }
 
@@ -97,7 +104,10 @@ async function getOrCreateAuthProfile(params: {
   role?: string;
 }) {
   const users = await backend.users();
-  const existing = users.find((entry) => entry.id === params.id || normalizeEmail(entry.email) === normalizeEmail(params.email ?? ""));
+  const existing = users.find(
+    (entry) =>
+      entry.id === params.id || normalizeEmail(entry.email) === normalizeEmail(params.email ?? ""),
+  );
   if (existing) return existing;
   const user = userFromAuth(params);
   await backend.setUser(user);
@@ -168,25 +178,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setAuthReady(true);
       });
 
-    const subscription = useSupabaseAuth && supabase
-      ? supabase.auth.onAuthStateChange((_event, session) => {
-          const authUser = session?.user;
-          if (!authUser) return;
+    const subscription =
+      useSupabaseAuth && supabase
+        ? supabase.auth.onAuthStateChange((_event, session) => {
+            const authUser = session?.user;
+            if (!authUser) return;
 
-          void getOrCreateAuthProfile({
-            id: authUser.id,
-            name: authUser.user_metadata?.name as string | undefined,
-            email: authUser.email,
-            role: authUser.user_metadata?.role as string | undefined,
-          }).then((profile) => {
-            if (cancelled) return;
-            writeSessionCookie(profile.id);
-            writeFile(FILES.session, profile.id);
-            setUser(profile);
-            setAuthReady(true);
-          });
-        }).data.subscription
-      : null;
+            void getOrCreateAuthProfile({
+              id: authUser.id,
+              name: authUser.user_metadata?.name as string | undefined,
+              email: authUser.email,
+              role: authUser.user_metadata?.role as string | undefined,
+            }).then((profile) => {
+              if (cancelled) return;
+              writeSessionCookie(profile.id);
+              writeFile(FILES.session, profile.id);
+              setUser(profile);
+              setAuthReady(true);
+            });
+          }).data.subscription
+        : null;
 
     return () => {
       cancelled = true;
@@ -216,7 +227,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             targetId: demoAdmin.id,
             targetType: "user",
             title: `${demoAdmin.name} logged in`,
-            detail: "Development admin fallback used because Supabase Auth has no demo admin account",
+            detail:
+              "Development admin fallback used because Supabase Auth has no demo admin account",
           });
           return demoAdmin;
         }
@@ -239,8 +251,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const users = await backend.users();
     const u =
       users.find(
-        (user) => normalizeEmail(user.email) === normalizedEmail && (user.password ?? "").trim() === normalizedPassword,
-      ) ?? findLocalUserByCredentials(normalizedEmail, normalizedPassword) ?? await ensureDemoAdminForLocalLogin(normalizedEmail, normalizedPassword);
+        (user) =>
+          normalizeEmail(user.email) === normalizedEmail &&
+          (user.password ?? "").trim() === normalizedPassword,
+      ) ??
+      findLocalUserByCredentials(normalizedEmail, normalizedPassword) ??
+      (await ensureDemoAdminForLocalLogin(normalizedEmail, normalizedPassword));
 
     if (!u) throw new Error("Invalid credentials");
     writeSessionCookie(u.id);
@@ -260,7 +276,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     if (!useSupabaseAuth || !supabase) {
-      throw new Error("Supabase is missing on this build. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.");
+      throw new Error(
+        "Supabase is missing on this build. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.",
+      );
     }
 
     const { error } = await supabase.auth.signInWithOAuth({
@@ -274,7 +292,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return new Promise<User>(() => {});
   };
 
-  const signup = async (name: string, email: string, password: string, options: SignupOptions = { role: "customer" }) => {
+  const signup = async (
+    name: string,
+    email: string,
+    password: string,
+    options: SignupOptions = { role: "customer" },
+  ) => {
     const normalizedEmail = normalizeEmail(email);
     const normalizedPassword = password.trim();
     const role = options.role === "restaurant" ? "restaurant" : "customer";
@@ -295,7 +318,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) id = data.user.id;
     } else {
       const users = await backend.users();
-      if (users.find((user) => normalizeEmail(user.email) === normalizedEmail)) throw new Error("Email already registered");
+      if (users.find((user) => normalizeEmail(user.email) === normalizedEmail))
+        throw new Error("Email already registered");
     }
 
     const u: User = {
@@ -330,7 +354,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         reviews: "0",
         prepTime: "15",
         distance: "0",
-        image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=70",
+        image:
+          "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=70",
         tags: `${options.restaurant.cuisine}|New`,
         isOpen: "1",
         description: `${options.restaurant.name} is now taking preorders on BitePass.`,
@@ -394,7 +419,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  return <Ctx.Provider value={{ user, authReady, login, loginWithGoogle, signup, updateProfile, logout }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider
+      value={{ user, authReady, login, loginWithGoogle, signup, updateProfile, logout }}
+    >
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth() {

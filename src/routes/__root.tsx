@@ -1,5 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, Link, createRootRouteWithContext, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import {
+  Outlet,
+  Link,
+  createRootRouteWithContext,
+  useNavigate,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ChefHat, Home, Receipt, Search, ShoppingBag, User as UserIcon } from "lucide-react";
 
@@ -22,7 +29,9 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-gradient">404</h1>
         <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">The dish you're looking for isn't on the menu.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          The dish you're looking for isn't on the menu.
+        </p>
         <Link
           to="/"
           className="mt-6 inline-flex rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow"
@@ -97,13 +106,20 @@ function AppShell() {
   const { authReady, updateProfile, user } = useAuth();
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [swipeDirection, setSwipeDirection] = useState<"next" | "previous" | null>(null);
-  const fullWidth = path === "/" || path === "/login" || path === "/signup" || path.startsWith("/business") || path.startsWith("/admin");
+  const fullWidth =
+    path === "/" ||
+    path === "/login" ||
+    path === "/signup" ||
+    path.startsWith("/business") ||
+    path.startsWith("/admin");
   const showOverlay = !authReady;
   const isAuthPage = path === "/login" || path === "/signup";
   const isAdminPage = path.startsWith("/admin");
   const isPublicPage = path === "/" || isAuthPage || isAdminPage;
   const swipeRoutes = userNavItems.map((item) => item.to);
-  const activeSwipeIndex = swipeRoutes.findIndex((to) => (to === "/discover" ? path === "/discover" : path.startsWith(to)));
+  const activeSwipeIndex = swipeRoutes.findIndex((to) =>
+    to === "/discover" ? path === "/discover" : path.startsWith(to),
+  );
 
   const handleTouchEnd = (clientX: number, clientY: number) => {
     const start = touchStartRef.current;
@@ -152,7 +168,9 @@ function AppShell() {
   if (fullWidth) {
     return (
       <>
-        <div className={`min-h-screen bg-background transition duration-200 ${showOverlay ? "blur-sm opacity-60" : ""}`}>
+        <div
+          className={`min-h-screen bg-background transition duration-200 ${showOverlay ? "blur-sm opacity-60" : ""}`}
+        >
           <Outlet />
         </div>
         <RouteLoadingOverlay visible={showOverlay} />
@@ -162,7 +180,9 @@ function AppShell() {
 
   return (
     <>
-      <div className={`min-h-screen bg-background transition duration-200 ${showOverlay ? "blur-sm opacity-60" : ""}`}>
+      <div
+        className={`min-h-screen bg-background transition duration-200 ${showOverlay ? "blur-sm opacity-60" : ""}`}
+      >
         <DesktopUserNav />
         <div
           key={path}
@@ -186,7 +206,12 @@ function AppShell() {
   );
 }
 
-const userNavItems: { to: "/discover" | "/search" | "/cart" | "/orders" | "/profile"; label: string; icon: typeof Home; badge?: boolean }[] = [
+const userNavItems: {
+  to: "/discover" | "/search" | "/cart" | "/orders" | "/profile";
+  label: string;
+  icon: typeof Home;
+  badge?: boolean;
+}[] = [
   { to: "/discover", label: "Discover", icon: Home },
   { to: "/search", label: "Search", icon: Search },
   { to: "/cart", label: "Cart", icon: ShoppingBag, badge: true },
@@ -232,7 +257,9 @@ function DesktopUserNav() {
                   )}
                 </span>
                 <span>{label}</span>
-                {active && <span className="absolute left-1 top-1/2 h-7 w-1 -translate-y-1/2 rounded-full bg-primary" />}
+                {active && (
+                  <span className="absolute left-1 top-1/2 h-7 w-1 -translate-y-1/2 rounded-full bg-primary" />
+                )}
               </Link>
             );
           })}

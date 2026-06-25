@@ -59,7 +59,10 @@ function OrdersList() {
         <div className="grid place-items-center px-6 pt-20 text-center">
           <Receipt className="h-12 w-12 text-muted-foreground" />
           <p className="mt-4 text-base font-semibold">No orders yet</p>
-          <Link to="/discover" className="mt-6 rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">
+          <Link
+            to="/discover"
+            className="mt-6 rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow"
+          >
             Order something
           </Link>
         </div>
@@ -78,17 +81,23 @@ function OrdersList() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold">Order #{order.id.slice(-5)}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(order.createdAt).toLocaleString()}
+                    </p>
                     <p className="text-[11px] text-muted-foreground">
                       Pickup: {new Date(order.pickupTime).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${statusColors[order.status] ?? ""}`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${statusColors[order.status] ?? ""}`}
+                    >
                       {order.status}
                     </span>
                     {order.paymentStatus === "paid" && (
-                      <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">paid</span>
+                      <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">
+                        paid
+                      </span>
                     )}
                   </div>
                 </div>

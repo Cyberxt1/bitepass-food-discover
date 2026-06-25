@@ -3,41 +3,110 @@ import { FILES, readTable, writeFile, writeTable } from "./csv-store";
 const SEED_FLAG = "bitepass:seeded:v7:ibadan-lagos-restaurants";
 
 export type Restaurant = {
-  id: string; ownerId: string; name: string; cuisine: string; rating: string; reviews: string;
-  prepTime: string; distance: string; image: string; tags: string; isOpen: string;
-  description: string; address: string; phone: string; lat: string; lng: string;
-  paystackSubaccount?: string; paymentSetupStatus?: string;
+  id: string;
+  ownerId: string;
+  name: string;
+  cuisine: string;
+  rating: string;
+  reviews: string;
+  prepTime: string;
+  distance: string;
+  image: string;
+  tags: string;
+  isOpen: string;
+  description: string;
+  address: string;
+  phone: string;
+  lat: string;
+  lng: string;
+  paystackSubaccount?: string;
+  paymentSetupStatus?: string;
 };
 export type Meal = {
-  id: string; restaurantId: string; name: string; description: string;
-  price: string; image: string; category: string; prepTime: string;
-  rating: string; reviewCount: string; popular: string; available: string;
-  availableFrom: string; availableTo: string; servingUnit?: string; options?: string;
+  id: string;
+  restaurantId: string;
+  name: string;
+  description: string;
+  price: string;
+  image: string;
+  category: string;
+  prepTime: string;
+  rating: string;
+  reviewCount: string;
+  popular: string;
+  available: string;
+  availableFrom: string;
+  availableTo: string;
+  servingUnit?: string;
+  options?: string;
 };
 export type Review = {
-  id: string; mealId: string; restaurantId?: string; userId: string; userName: string; rating: string;
-  taste: string; portion: string; spice: string; waitTime: string;
-  comment: string; createdAt: string;
+  id: string;
+  mealId: string;
+  restaurantId?: string;
+  userId: string;
+  userName: string;
+  rating: string;
+  taste: string;
+  portion: string;
+  spice: string;
+  waitTime: string;
+  comment: string;
+  createdAt: string;
 };
 export type Feedback = {
-  id: string; userId: string; userName: string; email: string; category: string;
-  message: string; status: string; createdAt: string;
+  id: string;
+  userId: string;
+  userName: string;
+  email: string;
+  category: string;
+  message: string;
+  status: string;
+  createdAt: string;
 };
 export type PlatformStats = {
-  id: string; foodies: string; kitchens: string; avgMinutesSaved: string; updatedAt: string;
+  id: string;
+  foodies: string;
+  kitchens: string;
+  avgMinutesSaved: string;
+  updatedAt: string;
 };
 export type Order = {
-  id: string; userId: string; restaurantId: string; items: string;
-  total: string; status: string; pickupTime: string; notes: string; createdAt: string;
-  discountCode: string; paymentStatus?: string; paymentReference?: string; paymentRecipient?: string;
+  id: string;
+  userId: string;
+  restaurantId: string;
+  items: string;
+  total: string;
+  status: string;
+  pickupTime: string;
+  notes: string;
+  createdAt: string;
+  discountCode: string;
+  paymentStatus?: string;
+  paymentReference?: string;
+  paymentRecipient?: string;
 };
 export type User = {
-  id: string; name: string; email: string; password: string; role: string; avatar: string;
-  address?: string; lat?: string; lng?: string;
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+  avatar: string;
+  address?: string;
+  lat?: string;
+  lng?: string;
 };
 export type Discount = {
-  id: string; restaurantId: string; code: string; type: string;
-  value: string; active: string; expiresAt: string; minOrder: string; uses: string;
+  id: string;
+  restaurantId: string;
+  code: string;
+  type: string;
+  value: string;
+  active: string;
+  expiresAt: string;
+  minOrder: string;
+  uses: string;
 };
 
 const mealOptions = (items: { id: string; name: string; price: number }[]) => JSON.stringify(items);
@@ -54,15 +123,78 @@ const users: User[] = [
     lat: "6.4281",
     lng: "3.4219",
   },
-  { id: "u-admin-demo", name: "BitePass Admin", email: "admin@bitepass.test", password: "1234", role: "admin", avatar: "A" },
-  { id: "u-r1", name: "Ada Okafor", email: "ada@bitepass.test", password: "1234", role: "restaurant", avatar: "A" },
-  { id: "u-r2", name: "Kemi Balogun", email: "kemi@bitepass.test", password: "1234", role: "restaurant", avatar: "K" },
-  { id: "u-r3", name: "Tunde Bello", email: "tunde@bitepass.test", password: "1234", role: "restaurant", avatar: "T" },
-  { id: "u-r4", name: "Mariam Yusuf", email: "mariam@bitepass.test", password: "1234", role: "restaurant", avatar: "M" },
-  { id: "u-r5", name: "Emeka Obi", email: "emeka@bitepass.test", password: "1234", role: "restaurant", avatar: "E" },
-  { id: "u-r6", name: "Sade Cole", email: "sade@bitepass.test", password: "1234", role: "restaurant", avatar: "S" },
-  { id: "u-r7", name: "Ibrahim Danjuma", email: "ibrahim@bitepass.test", password: "1234", role: "restaurant", avatar: "I" },
-  { id: "u-r8", name: "Nneka Eze", email: "nneka@bitepass.test", password: "1234", role: "restaurant", avatar: "N" },
+  {
+    id: "u-admin-demo",
+    name: "BitePass Admin",
+    email: "admin@bitepass.test",
+    password: "1234",
+    role: "admin",
+    avatar: "A",
+  },
+  {
+    id: "u-r1",
+    name: "Ada Okafor",
+    email: "ada@bitepass.test",
+    password: "1234",
+    role: "restaurant",
+    avatar: "A",
+  },
+  {
+    id: "u-r2",
+    name: "Kemi Balogun",
+    email: "kemi@bitepass.test",
+    password: "1234",
+    role: "restaurant",
+    avatar: "K",
+  },
+  {
+    id: "u-r3",
+    name: "Tunde Bello",
+    email: "tunde@bitepass.test",
+    password: "1234",
+    role: "restaurant",
+    avatar: "T",
+  },
+  {
+    id: "u-r4",
+    name: "Mariam Yusuf",
+    email: "mariam@bitepass.test",
+    password: "1234",
+    role: "restaurant",
+    avatar: "M",
+  },
+  {
+    id: "u-r5",
+    name: "Emeka Obi",
+    email: "emeka@bitepass.test",
+    password: "1234",
+    role: "restaurant",
+    avatar: "E",
+  },
+  {
+    id: "u-r6",
+    name: "Sade Cole",
+    email: "sade@bitepass.test",
+    password: "1234",
+    role: "restaurant",
+    avatar: "S",
+  },
+  {
+    id: "u-r7",
+    name: "Ibrahim Danjuma",
+    email: "ibrahim@bitepass.test",
+    password: "1234",
+    role: "restaurant",
+    avatar: "I",
+  },
+  {
+    id: "u-r8",
+    name: "Nneka Eze",
+    email: "nneka@bitepass.test",
+    password: "1234",
+    role: "restaurant",
+    avatar: "N",
+  },
 ];
 
 const restaurants: Restaurant[] = [
@@ -75,7 +207,8 @@ const restaurants: Restaurant[] = [
     reviews: "284",
     prepTime: "18",
     distance: "1.2",
-    image: "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?auto=format&fit=crop&w=900&q=75",
     tags: "Chicken|Rice|Quick service",
     isOpen: "1",
     description: "Popular Lagos quick-service chicken, rice, sides, and grab-and-go lunch plates.",
@@ -93,10 +226,12 @@ const restaurants: Restaurant[] = [
     reviews: "196",
     prepTime: "12",
     distance: "2.8",
-    image: "https://images.unsplash.com/photo-1561651823-34feb02250e4?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1561651823-34feb02250e4?auto=format&fit=crop&w=900&q=75",
     tags: "Rice|Grill|Late night",
     isOpen: "1",
-    description: "A familiar Lagos stop for rice dishes, grilled meals, snacks, and quick pickup orders.",
+    description:
+      "A familiar Lagos stop for rice dishes, grilled meals, snacks, and quick pickup orders.",
     address: "Admiralty Way, Lekki Phase 1, Lagos",
     phone: "08010001002",
     lat: "6.4474",
@@ -111,7 +246,8 @@ const restaurants: Restaurant[] = [
     reviews: "151",
     prepTime: "16",
     distance: "6.4",
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=75",
     tags: "Rice|Chicken|Family meals",
     isOpen: "1",
     description: "Everyday Nigerian meals, chicken, rice, and quick lunch packs around Ikeja.",
@@ -129,7 +265,8 @@ const restaurants: Restaurant[] = [
     reviews: "332",
     prepTime: "14",
     distance: "10.9",
-    image: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=900&q=75",
     tags: "Amala|Soup|Local",
     isOpen: "1",
     description: "Ibadan-style amala, ewedu, gbegiri, stew, and assorted meats served fast.",
@@ -147,7 +284,8 @@ const restaurants: Restaurant[] = [
     reviews: "121",
     prepTime: "11",
     distance: "14.5",
-    image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=75",
     tags: "Bakery|Cafe|Quick meals",
     isOpen: "1",
     description: "Ibadan supermarket cafe meals, pastries, snacks, and everyday pickup food.",
@@ -165,7 +303,8 @@ const restaurants: Restaurant[] = [
     reviews: "223",
     prepTime: "13",
     distance: "8.1",
-    image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=75",
     tags: "Rice|Soup|Local meals",
     isOpen: "1",
     description: "Lagos comfort meals, soups, rice, proteins, and quick lunch pickup packs.",
@@ -183,10 +322,12 @@ const restaurants: Restaurant[] = [
     reviews: "87",
     prepTime: "10",
     distance: "4.3",
-    image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=75",
     tags: "Continental|Local|Lounge",
     isOpen: "1",
-    description: "Long-running Ibadan restaurant with continental plates, local meals, and relaxed dining.",
+    description:
+      "Long-running Ibadan restaurant with continental plates, local meals, and relaxed dining.",
     address: "Dugbe, Ibadan, Oyo",
     phone: "08010001007",
     lat: "7.3878",
@@ -201,7 +342,8 @@ const restaurants: Restaurant[] = [
     reviews: "174",
     prepTime: "17",
     distance: "17.6",
-    image: "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=75",
     tags: "Rice|Pastries|Family packs",
     isOpen: "1",
     description: "Familiar Lagos pastries, rice meals, snacks, and family-friendly pickup orders.",
@@ -219,7 +361,8 @@ const restaurants: Restaurant[] = [
     reviews: "99",
     prepTime: "9",
     distance: "22.2",
-    image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=75",
     tags: "Buka|Affordable|Fast",
     isOpen: "0",
     description: "Budget-friendly Ibadan buka meals, beans, rice, soups, and peppery stews.",
@@ -237,7 +380,8 @@ const meals: Meal[] = [
     name: "Smoky Party Jollof",
     description: "Firewood-style jollof rice with peppered chicken and plantain.",
     price: "4500",
-    image: "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?auto=format&fit=crop&w=900&q=75",
     category: "Jollof",
     prepTime: "18",
     rating: "4.9",
@@ -258,7 +402,8 @@ const meals: Meal[] = [
     name: "Fried Rice Combo",
     description: "Fried rice with coleslaw, plantain, and turkey.",
     price: "5200",
-    image: "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=75",
     category: "Rice",
     prepTime: "16",
     rating: "4.7",
@@ -276,7 +421,8 @@ const meals: Meal[] = [
     name: "Double Beef Shawarma",
     description: "Loaded beef shawarma with sausage, chips, and house pepper sauce.",
     price: "3800",
-    image: "https://images.unsplash.com/photo-1561651823-34feb02250e4?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1561651823-34feb02250e4?auto=format&fit=crop&w=900&q=75",
     category: "Shawarma",
     prepTime: "12",
     rating: "4.8",
@@ -297,7 +443,8 @@ const meals: Meal[] = [
     name: "Loaded Shawarma Fries",
     description: "Fries topped with chicken strips, sauce, and vegetables.",
     price: "4200",
-    image: "https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=900&q=75",
     category: "Fries",
     prepTime: "13",
     rating: "4.6",
@@ -315,7 +462,8 @@ const meals: Meal[] = [
     name: "District Classic Burger",
     description: "Beef patty, cheddar, lettuce, onions, and district sauce.",
     price: "5500",
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=75",
     category: "Burgers",
     prepTime: "16",
     rating: "4.7",
@@ -336,7 +484,8 @@ const meals: Meal[] = [
     name: "Amala Abula",
     description: "Amala with ewedu, gbegiri, stew, and assorted meat.",
     price: "3600",
-    image: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=900&q=75",
     category: "Swallow",
     prepTime: "14",
     rating: "4.9",
@@ -357,7 +506,8 @@ const meals: Meal[] = [
     name: "Chicken Wok Noodles",
     description: "Stir-fried noodles with chicken, peppers, and sesame sauce.",
     price: "4300",
-    image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=75",
     category: "Noodles",
     prepTime: "11",
     rating: "4.5",
@@ -375,7 +525,8 @@ const meals: Meal[] = [
     name: "Beef Suya Pack",
     description: "Spicy beef suya with onions, cabbage, pepper, and yaji.",
     price: "3200",
-    image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=75",
     category: "Grill",
     prepTime: "13",
     rating: "4.8",
@@ -393,7 +544,8 @@ const meals: Meal[] = [
     name: "Chicken Avocado Bowl",
     description: "Greens, grilled chicken, avocado, sweet corn, and citrus dressing.",
     price: "5000",
-    image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=75",
     category: "Salads",
     prepTime: "10",
     rating: "4.4",
@@ -411,7 +563,8 @@ const meals: Meal[] = [
     name: "Coconut Rice Bowl",
     description: "Coconut rice with grilled fish, pepper sauce, and plantain.",
     price: "5800",
-    image: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=900&q=75",
     category: "Rice",
     prepTime: "17",
     rating: "4.6",
@@ -429,7 +582,8 @@ const meals: Meal[] = [
     name: "Beans and Plantain",
     description: "Soft beans, fried plantain, stew, and fish.",
     price: "2800",
-    image: "https://images.unsplash.com/photo-1625944525533-473f1a3d54e7?auto=format&fit=crop&w=900&q=75",
+    image:
+      "https://images.unsplash.com/photo-1625944525533-473f1a3d54e7?auto=format&fit=crop&w=900&q=75",
     category: "Local",
     prepTime: "9",
     rating: "4.3",
@@ -491,9 +645,39 @@ const reviews: Review[] = [
 const orders: Order[] = [];
 
 const discounts: Discount[] = [
-  { id: "d-launch", restaurantId: "r-jollof-studio", code: "SKIP10", type: "percent", value: "10", active: "1", expiresAt: "2026-12-31", minOrder: "3000", uses: "42" },
-  { id: "d-wrap", restaurantId: "r-shawarma-lab", code: "WRAP500", type: "fixed", value: "500", active: "1", expiresAt: "2026-12-31", minOrder: "3500", uses: "18" },
-  { id: "d-burger", restaurantId: "r-burger-district", code: "DISTRICT15", type: "percent", value: "15", active: "1", expiresAt: "2026-12-31", minOrder: "5000", uses: "23" },
+  {
+    id: "d-launch",
+    restaurantId: "r-jollof-studio",
+    code: "SKIP10",
+    type: "percent",
+    value: "10",
+    active: "1",
+    expiresAt: "2026-12-31",
+    minOrder: "3000",
+    uses: "42",
+  },
+  {
+    id: "d-wrap",
+    restaurantId: "r-shawarma-lab",
+    code: "WRAP500",
+    type: "fixed",
+    value: "500",
+    active: "1",
+    expiresAt: "2026-12-31",
+    minOrder: "3500",
+    uses: "18",
+  },
+  {
+    id: "d-burger",
+    restaurantId: "r-burger-district",
+    code: "DISTRICT15",
+    type: "percent",
+    value: "15",
+    active: "1",
+    expiresAt: "2026-12-31",
+    minOrder: "5000",
+    uses: "23",
+  },
 ];
 
 function mergeSeedRows<T extends { id: string }>(file: string, seedRows: T[]) {

@@ -83,6 +83,13 @@ const defaultLandingStats: PlatformStats = {
   updatedAt: "",
 };
 
+const heroHeadlines = [
+  "I hate wasting time when I am hungry.",
+  "Lunch should not steal my afternoon.",
+  "Good food should be ready when I arrive.",
+  "I want to order now and pick up fast.",
+];
+
 function useReveal() {
   const ref = useRef<HTMLDivElement | null>(null);
   const [shown, setShown] = useState(false);
@@ -151,19 +158,27 @@ function FoodFan() {
 
 function Landing() {
   const [stats, setStats] = useState<PlatformStats>(defaultLandingStats);
+  const [headlineIndex, setHeadlineIndex] = useState(0);
+  const [typedHeadline, setTypedHeadline] = useState(heroHeadlines[0]);
+  const currentHeadline = heroHeadlines[headlineIndex];
 
   useEffect(() => {
     let cancelled = false;
     async function loadStats() {
-      ensureSeed();
-      const [published, users, restaurants, orders] = await Promise.all([
-        backend.platformStats(),
-        backend.users(),
-        backend.restaurants(),
-        backend.orders(),
-      ]);
-      if (cancelled) return;
-      setStats(getPublishedStats(published) ?? deriveLandingStats(users, restaurants, orders));
+      try {
+        ensureSeed();
+        const [users, restaurants, orders] = await Promise.all([
+          backend.users(),
+          backend.restaurants(),
+          backend.orders(),
+        ]);
+        const published = await backend.platformStats().catch(() => []);
+        if (cancelled) return;
+        setStats(mergeLandingStats(deriveLandingStats(users, restaurants, orders), published[0]));
+      } catch (error) {
+        console.error("Landing stats could not be loaded", error);
+        if (!cancelled) setStats(defaultLandingStats);
+      }
     }
     void loadStats();
     const timer = window.setInterval(() => void loadStats(), 10000);
@@ -172,6 +187,26 @@ function Landing() {
       window.clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setHeadlineIndex((index) => (index + 1) % heroHeadlines.length);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let character = 0;
+    setTypedHeadline("");
+    const timer = window.setInterval(() => {
+      character += 1;
+      setTypedHeadline(currentHeadline.slice(0, character));
+      if (character >= currentHeadline.length) {
+        window.clearInterval(timer);
+      }
+    }, 28);
+    return () => window.clearInterval(timer);
+  }, [currentHeadline]);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#fbfaf7] text-[#201b17]">
@@ -220,8 +255,9 @@ function Landing() {
                 Osun State
               </span>
 
-              <h1 className="mt-5 text-5xl font-black leading-[1.02] tracking-[-0.03em] text-[#201b17] md:text-6xl">
-                I hate wasting time when I am hungry.
+              <h1 className="mt-5 min-h-[3.15em] text-5xl font-black leading-[1.02] tracking-[-0.03em] text-[#201b17] md:min-h-[2.1em] md:text-6xl">
+                <span>{typedHeadline}</span>
+                <span className="ml-1 inline-block h-[0.82em] w-[4px] translate-y-1 rounded-full bg-[#ff6b2d] align-baseline animate-type-caret" />
               </h1>
 
               <p className="mt-5 max-w-lg text-base leading-7 text-[#6f6259] md:text-lg">
@@ -406,7 +442,9 @@ function Landing() {
             <span className="h-5 w-5 rounded-full bg-[#ff6b2d]" />
             BitePass
           </div>
-          <p className="text-xs">Copyright {new Date().getFullYear()} BitePass. All rights reserved.</p>
+          <p className="text-xs">
+            Copyright {new Date().getFullYear()} BitePass. All rights reserved.
+          </p>
           <div className="flex flex-wrap justify-center gap-5">
             <a href="#how" className="hover:text-[#201b17]">
               How it works
@@ -427,21 +465,38 @@ function Landing() {
   );
 }
 
-function deriveLandingStats(users: User[], restaurants: Restaurant[], orders: Order[]): PlatformStats {
+function deriveLandingStats(
+  users: User[],
+  restaurants: Restaurant[],
+  orders: Order[],
+): PlatformStats {
   return {
     id: "public",
-    foodies: String(Math.max(Number(defaultLandingStats.foodies), users.filter((entry) => entry.role === "customer").length)),
+    foodies: String(
+      Math.max(
+        Number(defaultLandingStats.foodies),
+        users.filter((entry) => entry.role === "customer").length,
+      ),
+    ),
     kitchens: String(Math.max(Number(defaultLandingStats.kitchens), restaurants.length)),
-    avgMinutesSaved: String(Math.max(Number(defaultLandingStats.avgMinutesSaved), orders.length ? 6 : 0)),
+    avgMinutesSaved: String(
+      Math.max(Number(defaultLandingStats.avgMinutesSaved), orders.length ? 6 : 0),
+    ),
     updatedAt: new Date().toISOString(),
   };
 }
 
-function getPublishedStats(stats: PlatformStats[]) {
-  const published = stats[0];
-  if (!published) return null;
-  const hasRealValue = [published.foodies, published.kitchens, published.avgMinutesSaved].some((value) => Number(value) > 0);
-  return hasRealValue ? published : null;
+function mergeLandingStats(liveStats: PlatformStats, published?: PlatformStats): PlatformStats {
+  if (!published) return liveStats;
+  return {
+    id: "public",
+    foodies: String(Math.max(Number(liveStats.foodies), Number(published.foodies || 0))),
+    kitchens: String(Math.max(Number(liveStats.kitchens), Number(published.kitchens || 0))),
+    avgMinutesSaved: String(
+      Math.max(Number(liveStats.avgMinutesSaved), Number(published.avgMinutesSaved || 0)),
+    ),
+    updatedAt: liveStats.updatedAt,
+  };
 }
 
 function formatLandingCount(value: string) {

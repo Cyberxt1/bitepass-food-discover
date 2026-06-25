@@ -3,7 +3,12 @@ import { Home, Search, ShoppingBag, Receipt, User } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { cn } from "@/lib/utils";
 
-const items: { to: "/discover" | "/search" | "/cart" | "/orders" | "/profile"; label: string; icon: typeof Home; badge?: boolean }[] = [
+const items: {
+  to: "/discover" | "/search" | "/cart" | "/orders" | "/profile";
+  label: string;
+  icon: typeof Home;
+  badge?: boolean;
+}[] = [
   { to: "/discover", label: "Home", icon: Home },
   { to: "/search", label: "Search", icon: Search },
   { to: "/cart", label: "Cart", icon: ShoppingBag, badge: true },

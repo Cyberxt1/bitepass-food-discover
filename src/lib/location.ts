@@ -18,7 +18,9 @@ export function getStoredLocation(details?: LocationCarrier | null): LocationDet
   const lat = Number(details.lat);
   const lng = Number(details.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  const address = isGenericLocationName(details.address) ? coordinateLocationName({ lat, lng }) : details.address;
+  const address = isGenericLocationName(details.address)
+    ? coordinateLocationName({ lat, lng })
+    : details.address;
   return { lat, lng, address };
 }
 
@@ -91,10 +93,13 @@ export async function reverseGeocode(coords: Coordinates): Promise<string> {
       longitude: String(coords.lng),
       localityLanguage: "en",
     });
-    const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?${params}`, {
-      signal: fallbackController.signal,
-      headers: { Accept: "application/json" },
-    });
+    const response = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?${params}`,
+      {
+        signal: fallbackController.signal,
+        headers: { Accept: "application/json" },
+      },
+    );
     if (response.ok) {
       const data = (await response.json()) as {
         locality?: string;
@@ -123,7 +128,9 @@ export async function getCurrentLocationDetails(): Promise<LocationDetails> {
   return { ...coords, address };
 }
 
-export async function getPreferredLocationDetails(details?: LocationCarrier | null): Promise<LocationDetails> {
+export async function getPreferredLocationDetails(
+  details?: LocationCarrier | null,
+): Promise<LocationDetails> {
   const stored = getStoredLocation(details);
   if (stored) return stored;
   throw new Error("Location is not available");
@@ -148,9 +155,7 @@ export function distanceKm(a: Coordinates, b: Coordinates): number {
   const lat1 = toRad(a.lat);
   const lat2 = toRad(b.lat);
 
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
 
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }

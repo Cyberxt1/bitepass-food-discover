@@ -5,7 +5,8 @@ import { useNotifications } from "@/lib/notifications";
 export const Route = createFileRoute("/notifications")({ component: NotificationsPage });
 
 function NotificationsPage() {
-  const { notifications, preferences, updatePreferences, markAllRead, markRead, clearAll } = useNotifications();
+  const { notifications, preferences, updatePreferences, markAllRead, markRead, clearAll } =
+    useNotifications();
   const unread = notifications.filter((notification) => !notification.read).length;
 
   return (
@@ -45,7 +46,9 @@ function NotificationsPage() {
             <div className="grid place-items-center rounded-3xl bg-card px-6 py-16 text-center shadow-soft">
               <Bell className="h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-base font-semibold">No notifications yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Updates about orders and activity will show here.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Updates about orders and activity will show here.
+              </p>
               <Link
                 to="/discover"
                 className="mt-6 rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow"
@@ -64,16 +67,24 @@ function NotificationsPage() {
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${notification.read ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
+                  <div
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${notification.read ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}
+                  >
                     <Info className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-sm font-semibold">{notification.title}</p>
-                      {!notification.read && <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />}
+                      {!notification.read && (
+                        <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
+                      )}
                     </div>
-                    <p className="mt-1 text-xs capitalize text-muted-foreground">{notification.level}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{formatNotificationTime(notification.createdAt)}</p>
+                    <p className="mt-1 text-xs capitalize text-muted-foreground">
+                      {notification.level}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatNotificationTime(notification.createdAt)}
+                    </p>
                   </div>
                 </div>
               </button>
@@ -88,9 +99,21 @@ function NotificationsPage() {
               <h2 className="text-sm font-bold">Preferences</h2>
             </div>
             <div className="space-y-2">
-              <PreferenceRow label="In-app alerts" checked={preferences.enabled} onChange={(enabled) => updatePreferences({ enabled })} />
-              <PreferenceRow label="Order updates" checked={preferences.orderUpdates} onChange={(orderUpdates) => updatePreferences({ orderUpdates })} />
-              <PreferenceRow label="Promos" checked={preferences.promos} onChange={(promos) => updatePreferences({ promos })} />
+              <PreferenceRow
+                label="In-app alerts"
+                checked={preferences.enabled}
+                onChange={(enabled) => updatePreferences({ enabled })}
+              />
+              <PreferenceRow
+                label="Order updates"
+                checked={preferences.orderUpdates}
+                onChange={(orderUpdates) => updatePreferences({ orderUpdates })}
+              />
+              <PreferenceRow
+                label="Promos"
+                checked={preferences.promos}
+                onChange={(promos) => updatePreferences({ promos })}
+              />
             </div>
           </section>
         </aside>
@@ -99,11 +122,24 @@ function NotificationsPage() {
   );
 }
 
-function PreferenceRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+function PreferenceRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
   return (
     <label className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background px-3 py-2.5">
       <span className="text-xs font-bold">{label}</span>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4 accent-primary" />
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 accent-primary"
+      />
     </label>
   );
 }

@@ -17,7 +17,7 @@ import {
   Clock,
   Star,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import type { Meal, Restaurant } from "@/lib/seed";
@@ -50,7 +50,12 @@ const categories = [
   { name: "Swallow", hint: "Local plates", icon: Wheat, accent: "bg-amber-500/10 text-amber-700" },
   { name: "Soup", hint: "Hot bowls", icon: Soup, accent: "bg-lime-500/10 text-lime-700" },
   { name: "Noodles", hint: "Fast meals", icon: Utensils, accent: "bg-sky-500/10 text-sky-700" },
-  { name: "Drinks", hint: "Cold sips", icon: CupSoda, accent: "bg-fuchsia-500/10 text-fuchsia-700" },
+  {
+    name: "Drinks",
+    hint: "Cold sips",
+    icon: CupSoda,
+    accent: "bg-fuchsia-500/10 text-fuchsia-700",
+  },
 ];
 
 function Discover() {
@@ -69,7 +74,11 @@ function Discover() {
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [cravingIndex, setCravingIndex] = useState(0);
   const [deckDrag, setDeckDrag] = useState({ x: 0, y: 0 });
-  const [deckSwipe, setDeckSwipe] = useState<{ x: number; y: number; action: "like" | "mute" | "next" | "previous" } | null>(null);
+  const [deckSwipe, setDeckSwipe] = useState<{
+    x: number;
+    y: number;
+    action: "like" | "mute" | "next" | "previous";
+  } | null>(null);
   const seenNearbyIdsRef = useRef<Set<string> | null>(null);
   const deckTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const cravingsRef = useRef<HTMLDivElement | null>(null);
@@ -78,7 +87,10 @@ function Discover() {
     let cancelled = false;
 
     const loadDiscoverData = async () => {
-      const [nextRestaurants, nextMeals] = await Promise.all([backend.restaurants(), backend.meals()]);
+      const [nextRestaurants, nextMeals] = await Promise.all([
+        backend.restaurants(),
+        backend.meals(),
+      ]);
       if (cancelled) return;
       setRestaurants(nextRestaurants);
       setMeals(nextMeals);
@@ -133,23 +145,34 @@ function Discover() {
     }
   };
 
-  const restaurantsWithDistance = coords
-    ? restaurants
-        .map((restaurant) => {
-          const target = restaurantCoords(restaurant);
-          const distance = target ? distanceKm(coords, target) : Number.POSITIVE_INFINITY;
-          return { restaurant, distance };
-        })
-        .sort((a, b) => a.distance - b.distance)
-    : [];
+  const restaurantsWithDistance = useMemo(
+    () =>
+      coords
+        ? restaurants
+            .map((restaurant) => {
+              const target = restaurantCoords(restaurant);
+              const distance = target ? distanceKm(coords, target) : Number.POSITIVE_INFINITY;
+              return { restaurant, distance };
+            })
+            .sort((a, b) => a.distance - b.distance)
+        : [],
+    [coords, restaurants],
+  );
 
-  const nearbyRestaurants = coords
-    ? restaurantsWithDistance
-        .filter(({ distance }) => distance <= NEARBY_RADIUS_KM)
-        .map(({ restaurant }) => restaurant)
-    : [];
-  const visibleNearbyRestaurants = nearbyRestaurants.filter((restaurant) => !mutedRestaurantIds.has(restaurant.id));
-  const displayLimit = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches ? 6 : 4;
+  const nearbyRestaurants = useMemo(
+    () =>
+      coords
+        ? restaurantsWithDistance
+            .filter(({ distance }) => distance <= NEARBY_RADIUS_KM)
+            .map(({ restaurant }) => restaurant)
+        : [],
+    [coords, restaurantsWithDistance],
+  );
+  const visibleNearbyRestaurants = nearbyRestaurants.filter(
+    (restaurant) => !mutedRestaurantIds.has(restaurant.id),
+  );
+  const displayLimit =
+    typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches ? 6 : 4;
   const displayRestaurants = (coords ? visibleNearbyRestaurants : []).slice(0, displayLimit);
 
   useEffect(() => {
@@ -164,7 +187,9 @@ function Discover() {
       return;
     }
 
-    const newRestaurants = nearbyRestaurants.filter((restaurant) => !seenNearbyIdsRef.current?.has(restaurant.id));
+    const newRestaurants = nearbyRestaurants.filter(
+      (restaurant) => !seenNearbyIdsRef.current?.has(restaurant.id),
+    );
     seenNearbyIdsRef.current = nextIds;
     if (newRestaurants.length === 0) return;
 
@@ -191,10 +216,14 @@ function Discover() {
     return target ? formatDistance(distanceKm(coords, target)) : undefined;
   };
 
-  const currentDeckRestaurant = visibleNearbyRestaurants[deckIndex % Math.max(visibleNearbyRestaurants.length, 1)];
+  const currentDeckRestaurant =
+    visibleNearbyRestaurants[deckIndex % Math.max(visibleNearbyRestaurants.length, 1)];
   const moveDeck = (direction: 1 | -1) => {
     if (visibleNearbyRestaurants.length === 0) return;
-    setDeckIndex((value) => (value + direction + visibleNearbyRestaurants.length) % visibleNearbyRestaurants.length);
+    setDeckIndex(
+      (value) =>
+        (value + direction + visibleNearbyRestaurants.length) % visibleNearbyRestaurants.length,
+    );
   };
   const likeCurrentRestaurant = () => {
     if (!currentDeckRestaurant) return;
@@ -242,7 +271,11 @@ function Discover() {
     : `translate(${deckDrag.x}px, ${deckDrag.y}px) rotate(${Math.max(-10, Math.min(10, deckDrag.x / 18))}deg)`;
   return (
     <>
-      <AppHeader locationLabel={locationLabel} subtitle="Welcome to BitePass" showNotifications={false} />
+      <AppHeader
+        locationLabel={locationLabel}
+        subtitle="Welcome to BitePass"
+        showNotifications={false}
+      />
       <main className="mx-auto w-full max-w-6xl space-y-5 px-4 py-3 sm:px-6 lg:px-8 lg:py-6">
         <section className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
           <Link
@@ -250,7 +283,9 @@ function Discover() {
             className="flex min-h-12 min-w-0 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2.5 shadow-soft transition hover:-translate-y-0.5 hover:bg-muted"
           >
             <Search className="h-4 w-4 shrink-0 text-primary" />
-            <span className="truncate text-sm font-semibold text-muted-foreground">Search meals or restaurants</span>
+            <span className="truncate text-sm font-semibold text-muted-foreground">
+              Search meals or restaurants
+            </span>
           </Link>
           <Link
             to="/notifications"
@@ -283,7 +318,10 @@ function Discover() {
                   <Utensils className="h-4 w-4 text-primary" />
                   Cravings
                 </h2>
-                <Link to="/search" className="hidden items-center gap-1 text-xs font-bold text-primary sm:flex">
+                <Link
+                  to="/search"
+                  className="hidden items-center gap-1 text-xs font-bold text-primary sm:flex"
+                >
                   Browse all <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
@@ -309,12 +347,18 @@ function Discover() {
                         search={{ q: category.name }}
                         className="group flex min-h-16 w-36 shrink-0 snap-start items-center gap-3 rounded-2xl px-3 py-2.5 transition hover:bg-muted"
                       >
-                        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl transition group-hover:scale-105 ${category.accent}`}>
+                        <span
+                          className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl transition group-hover:scale-105 ${category.accent}`}
+                        >
                           <Icon className="h-4.5 w-4.5" />
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-sm font-black leading-tight">{category.name}</span>
-                          <span className="mt-0.5 block truncate text-[11px] font-semibold text-muted-foreground">{category.hint}</span>
+                          <span className="block truncate text-sm font-black leading-tight">
+                            {category.name}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[11px] font-semibold text-muted-foreground">
+                            {category.hint}
+                          </span>
                         </span>
                       </Link>
                     );
@@ -326,7 +370,9 @@ function Discover() {
                       key={dot}
                       type="button"
                       aria-label={`Show cravings group ${dot + 1}`}
-                      onClick={() => cravingsRef.current?.scrollTo({ left: dot * 144 * 2, behavior: "smooth" })}
+                      onClick={() =>
+                        cravingsRef.current?.scrollTo({ left: dot * 144 * 2, behavior: "smooth" })
+                      }
                       className={`h-1.5 rounded-full transition-all ${Math.min(2, Math.floor(cravingIndex / 2)) === dot ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/35"}`}
                     />
                   ))}
@@ -364,14 +410,22 @@ function Discover() {
               </div>
 
               {!coords && !loading ? (
-                <EmptyPanel title="Set your location to see nearby restaurants" detail="Tap refresh above or use location here. Search stays available when you want to browse manually." />
+                <EmptyPanel
+                  title="Set your location to see nearby restaurants"
+                  detail="Tap refresh above or use location here. Search stays available when you want to browse manually."
+                />
               ) : coords && !loading && visibleNearbyRestaurants.length === 0 ? (
-                <EmptyPanel title="No restaurants within 40 km yet" detail="Try searching while more kitchens join your area." />
+                <EmptyPanel
+                  title="No restaurants within 40 km yet"
+                  detail="Try searching while more kitchens join your area."
+                />
               ) : (
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
                   {loading
                     ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-                    : displayRestaurants.map((r) => <RestaurantCard key={r.id} r={r} distanceLabel={distanceFor(r)} compact />)}
+                    : displayRestaurants.map((r) => (
+                        <RestaurantCard key={r.id} r={r} distanceLabel={distanceFor(r)} compact />
+                      ))}
                 </div>
               )}
             </section>
@@ -389,15 +443,25 @@ function Discover() {
               <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
                 {loading
                   ? Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink">
+                      <div
+                        key={i}
+                        className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink"
+                      >
                         <SkeletonCard />
                       </div>
                     ))
                   : trending.slice(0, 3).map((m) => {
                       const rest = restaurants.find((r) => r.id === m.restaurantId);
                       return (
-                        <div key={m.id} className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink">
-                          <MealCard meal={m} restaurantName={rest?.name} onQuickView={setSelectedMeal} />
+                        <div
+                          key={m.id}
+                          className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink"
+                        >
+                          <MealCard
+                            meal={m}
+                            restaurantName={rest?.name}
+                            onQuickView={setSelectedMeal}
+                          />
                         </div>
                       );
                     })}
@@ -411,14 +475,19 @@ function Discover() {
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center sm:pb-10"
           onClick={() => setNearbyDeckOpen(false)}
         >
-          <div className="relative w-full max-w-[340px]" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="relative w-full max-w-[340px]"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div
               data-nearby-card="active"
               className="overflow-hidden rounded-[1.5rem] bg-card shadow-card touch-none"
               style={{
                 transform: deckTransform,
                 opacity: deckSwipe ? 0.1 : 1,
-                transition: deckSwipe ? "transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 220ms ease" : "transform 120ms ease-out",
+                transition: deckSwipe
+                  ? "transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 220ms ease"
+                  : "transform 120ms ease-out",
               }}
               onTouchStart={(event) => {
                 const touch = event.touches[0];
@@ -435,21 +504,34 @@ function Discover() {
               onTouchEnd={(event) => {
                 const touch = event.changedTouches[0];
                 if (deckTouchStartRef.current && touch) {
-                  handleDeckTouch(deckTouchStartRef.current.x, deckTouchStartRef.current.y, touch.clientX, touch.clientY);
+                  handleDeckTouch(
+                    deckTouchStartRef.current.x,
+                    deckTouchStartRef.current.y,
+                    touch.clientX,
+                    touch.clientY,
+                  );
                 }
                 deckTouchStartRef.current = null;
               }}
             >
               <div className="relative aspect-[4/3.25] bg-muted">
                 {currentDeckRestaurant.image && (
-                  <img src={currentDeckRestaurant.image} alt={currentDeckRestaurant.name} className="h-full w-full object-cover" />
+                  <img
+                    src={currentDeckRestaurant.image}
+                    alt={currentDeckRestaurant.name}
+                    className="h-full w-full object-cover"
+                  />
                 )}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 text-white">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="line-clamp-1 text-xl font-black">{currentDeckRestaurant.name}</p>
+                      <p className="line-clamp-1 text-xl font-black">
+                        {currentDeckRestaurant.name}
+                      </p>
                       <p className="mt-1 line-clamp-1 text-sm font-semibold text-white/82">
-                        {shortLocationLabel(currentDeckRestaurant.address || currentDeckRestaurant.cuisine)}
+                        {shortLocationLabel(
+                          currentDeckRestaurant.address || currentDeckRestaurant.cuisine,
+                        )}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full bg-white/18 px-3 py-1 text-xs font-black backdrop-blur">
@@ -464,9 +546,15 @@ function Discover() {
                 )}
               </div>
               <div className="space-y-3 p-3.5">
-                <p className="line-clamp-1 text-sm leading-6 text-muted-foreground">{currentDeckRestaurant.description}</p>
+                <p className="line-clamp-1 text-sm leading-6 text-muted-foreground">
+                  {currentDeckRestaurant.description}
+                </p>
                 <div className="grid grid-cols-[1fr_1.4fr] gap-2">
-                  <button type="button" onClick={muteCurrentRestaurant} className="grid place-items-center rounded-2xl bg-muted py-3 text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={muteCurrentRestaurant}
+                    className="grid place-items-center rounded-2xl bg-muted py-3 text-muted-foreground"
+                  >
                     <EyeOff className="h-4 w-4" />
                   </button>
                   <button
@@ -518,8 +606,14 @@ function MealQuickView({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center sm:pb-10" onClick={onClose}>
-      <div className="w-full max-w-md rounded-[1.75rem] bg-card p-4 shadow-card animate-slide-up" onClick={(event) => event.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center sm:pb-10"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-[1.75rem] bg-card p-4 shadow-card animate-slide-up"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="space-y-4 p-4">
           <div className="flex items-start gap-3">
             <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-muted shadow-soft">
@@ -530,13 +624,23 @@ function MealQuickView({
                   <span className="text-xs font-black leading-tight">{meal.name}</span>
                 </div>
               )}
-              {meal.popular === "1" && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />}
+              {meal.popular === "1" && (
+                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
+              )}
             </div>
             <div className="min-w-0">
               <h3 className="text-xl font-black leading-tight">{meal.name}</h3>
-              <p className="mt-1 text-sm font-semibold text-muted-foreground">{restaurant?.name ?? "Restaurant"}</p>
-              {restaurant?.address && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{restaurant.address}</p>}
-              <span className="mt-2 inline-block text-base font-black text-primary">{naira(meal.price)}</span>
+              <p className="mt-1 text-sm font-semibold text-muted-foreground">
+                {restaurant?.name ?? "Restaurant"}
+              </p>
+              {restaurant?.address && (
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                  {restaurant.address}
+                </p>
+              )}
+              <span className="mt-2 inline-block text-base font-black text-primary">
+                {naira(meal.price)}
+              </span>
             </div>
           </div>
           <p className="text-sm leading-6 text-muted-foreground">{meal.description}</p>
@@ -549,7 +653,9 @@ function MealQuickView({
               <Clock className="h-3.5 w-3.5" />
               {meal.prepTime} min
             </span>
-            {meal.servingUnit && <span className="rounded-full bg-muted px-2.5 py-1">Per {meal.servingUnit}</span>}
+            {meal.servingUnit && (
+              <span className="rounded-full bg-muted px-2.5 py-1">Per {meal.servingUnit}</span>
+            )}
           </div>
           <Link
             to="/meal/$mealId"
@@ -564,9 +670,19 @@ function MealQuickView({
   );
 }
 
-function EmptyPanel({ title, detail, compact = false }: { title: string; detail: string; compact?: boolean }) {
+function EmptyPanel({
+  title,
+  detail,
+  compact = false,
+}: {
+  title: string;
+  detail: string;
+  compact?: boolean;
+}) {
   return (
-    <div className={`rounded-2xl border border-dashed border-border bg-card/70 text-center ${compact ? "px-4 py-5" : "px-4 py-10"}`}>
+    <div
+      className={`rounded-2xl border border-dashed border-border bg-card/70 text-center ${compact ? "px-4 py-5" : "px-4 py-10"}`}
+    >
       <p className="text-sm font-black">{title}</p>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
     </div>

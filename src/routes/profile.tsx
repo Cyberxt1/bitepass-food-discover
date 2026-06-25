@@ -1,5 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, Bell, Headphones, LocateFixed, LogOut, Moon, Receipt, Send, Settings, Sun, User as UserIcon } from "lucide-react";
+import {
+  CheckCircle2,
+  Bell,
+  Headphones,
+  LocateFixed,
+  LogOut,
+  Moon,
+  Receipt,
+  Send,
+  Settings,
+  Sun,
+  User as UserIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { getDashboardPath, useAuth } from "@/lib/auth";
 import { getCurrentLocationDetails, shortLocationLabel } from "@/lib/location";
@@ -23,7 +35,9 @@ function ProfilePage() {
     return (
       <div>
         <header className="sticky top-0 z-30 glass border-b border-border/40">
-          <div className="px-4 py-3"><h1 className="text-base font-bold">Settings</h1></div>
+          <div className="px-4 py-3">
+            <h1 className="text-base font-bold">Settings</h1>
+          </div>
         </header>
         <main className="px-4 pt-4">
           <div className="rounded-2xl bg-card p-6 text-center shadow-soft">
@@ -31,7 +45,10 @@ function ProfilePage() {
               <UserIcon className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="mt-3 text-sm font-semibold">You're not signed in</p>
-            <Link to="/login" className="mt-4 inline-block rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">
+            <Link
+              to="/login"
+              className="mt-4 inline-block rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow"
+            >
               Sign in
             </Link>
           </div>
@@ -58,7 +75,9 @@ function ProfilePage() {
       });
       notify("success", "Location updated", { id: "settings-location-updated" });
     } catch (error) {
-      notify("error", error instanceof Error ? error.message : "Location update failed", { id: "settings-location-error" });
+      notify("error", error instanceof Error ? error.message : "Location update failed", {
+        id: "settings-location-error",
+      });
     } finally {
       setLocating(false);
     }
@@ -106,10 +125,14 @@ function ProfilePage() {
       <main className="mx-auto grid max-w-6xl gap-4 px-4 pt-4 sm:px-6 lg:grid-cols-[320px_1fr] lg:px-8 lg:pt-8">
         <aside className="space-y-4">
           <section className="rounded-3xl bg-gradient-warm p-5 text-white shadow-glow">
-            <div className="grid h-14 w-14 place-items-center rounded-full bg-white/20 text-2xl font-black backdrop-blur">{user.avatar}</div>
+            <div className="grid h-14 w-14 place-items-center rounded-full bg-white/20 text-2xl font-black backdrop-blur">
+              {user.avatar}
+            </div>
             <p className="mt-4 text-xl font-bold">{user.name}</p>
             <p className="text-sm opacity-90">{user.email}</p>
-            <span className="mt-4 inline-flex rounded-full bg-white/25 px-3 py-1 text-xs font-semibold uppercase">{user.role}</span>
+            <span className="mt-4 inline-flex rounded-full bg-white/25 px-3 py-1 text-xs font-semibold uppercase">
+              {user.role}
+            </span>
           </section>
 
           <button
@@ -122,13 +145,23 @@ function ProfilePage() {
 
         <section className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <Link to="/orders" className="rounded-3xl bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card">
-              <div className="mb-4 inline-flex rounded-2xl bg-muted p-3"><Receipt className="h-5 w-5" /></div>
+            <Link
+              to="/orders"
+              className="rounded-3xl bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card"
+            >
+              <div className="mb-4 inline-flex rounded-2xl bg-muted p-3">
+                <Receipt className="h-5 w-5" />
+              </div>
               <p className="text-lg font-bold">Orders</p>
               <p className="mt-1 text-sm text-muted-foreground">Track current and past orders.</p>
             </Link>
-            <Link to="/notifications" className="rounded-3xl bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card">
-              <div className="mb-4 inline-flex rounded-2xl bg-muted p-3"><Bell className="h-5 w-5" /></div>
+            <Link
+              to="/notifications"
+              className="rounded-3xl bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card"
+            >
+              <div className="mb-4 inline-flex rounded-2xl bg-muted p-3">
+                <Bell className="h-5 w-5" />
+              </div>
               <p className="text-lg font-bold">Notifications</p>
               <p className="mt-1 text-sm text-muted-foreground">Review alerts and order updates.</p>
             </Link>
@@ -142,7 +175,9 @@ function ProfilePage() {
                   type="button"
                   onClick={() => setTheme(item)}
                   className={`rounded-2xl border px-3 py-3 text-sm font-bold capitalize transition ${
-                    theme === item ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground"
+                    theme === item
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-background text-muted-foreground"
                   }`}
                 >
                   {item === "light" && <Sun className="mx-auto mb-1 h-4 w-4" />}
@@ -154,7 +189,10 @@ function ProfilePage() {
             </div>
           </SettingsCard>
 
-          <SettingsCard title="Location" detail={user.address ? shortLocationLabel(user.address) : "No saved location"}>
+          <SettingsCard
+            title="Location"
+            detail={user.address ? shortLocationLabel(user.address) : "No saved location"}
+          >
             <button
               type="button"
               onClick={refreshLocation}
@@ -166,15 +204,33 @@ function ProfilePage() {
             </button>
           </SettingsCard>
 
-          <SettingsCard title="Notification Preferences" detail="Control what BitePass can alert you about.">
+          <SettingsCard
+            title="Notification Preferences"
+            detail="Control what BitePass can alert you about."
+          >
             <div className="space-y-2">
-              <PreferenceRow label="In-app notifications" checked={preferences.enabled} onChange={(checked) => updatePreferences({ enabled: checked })} />
-              <PreferenceRow label="Order updates" checked={preferences.orderUpdates} onChange={(checked) => updatePreferences({ orderUpdates: checked })} />
-              <PreferenceRow label="Promos and discounts" checked={preferences.promos} onChange={(checked) => updatePreferences({ promos: checked })} />
+              <PreferenceRow
+                label="In-app notifications"
+                checked={preferences.enabled}
+                onChange={(checked) => updatePreferences({ enabled: checked })}
+              />
+              <PreferenceRow
+                label="Order updates"
+                checked={preferences.orderUpdates}
+                onChange={(checked) => updatePreferences({ orderUpdates: checked })}
+              />
+              <PreferenceRow
+                label="Promos and discounts"
+                checked={preferences.promos}
+                onChange={(checked) => updatePreferences({ promos: checked })}
+              />
             </div>
           </SettingsCard>
 
-          <SettingsCard title="Feedback Hub" detail="Contact help, report order issues, or send product feedback.">
+          <SettingsCard
+            title="Feedback Hub"
+            detail="Contact help, report order issues, or send product feedback."
+          >
             <div className="flex items-start gap-3 rounded-2xl bg-muted/50 p-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
                 <Headphones className="h-5 w-5" />
@@ -207,7 +263,11 @@ function ProfilePage() {
                 disabled={sendingFeedback}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-4 text-sm font-black text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-60"
               >
-                {sendingFeedback ? <CheckCircle2 className="h-4 w-4 animate-pulse" /> : <Send className="h-4 w-4" />}
+                {sendingFeedback ? (
+                  <CheckCircle2 className="h-4 w-4 animate-pulse" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
                 Send feedback
               </button>
             </div>
@@ -227,7 +287,15 @@ function ProfilePage() {
   );
 }
 
-function SettingsCard({ title, detail, children }: { title: string; detail: string; children: React.ReactNode }) {
+function SettingsCard({
+  title,
+  detail,
+  children,
+}: {
+  title: string;
+  detail: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-3xl bg-card p-5 shadow-soft">
       <div className="mb-4">
@@ -239,7 +307,15 @@ function SettingsCard({ title, detail, children }: { title: string; detail: stri
   );
 }
 
-function PreferenceRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+function PreferenceRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
   return (
     <label className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3">
       <span className="text-sm font-semibold">{label}</span>
@@ -256,7 +332,9 @@ function PreferenceRow({ label, checked, onChange }: { label: string; checked: b
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-muted/50 px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-1 break-words text-sm font-semibold">{value}</p>
     </div>
   );

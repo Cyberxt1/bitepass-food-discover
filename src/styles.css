@@ -161,6 +161,7 @@
   .animate-pulse-ring {
     animation: pulseRing 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+  .animate-type-caret { animation: typeCaret 0.82s steps(1, end) infinite; }
   .animate-fire-pop { animation: firePop 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
   .animate-card-pop { animation: cardPop 0.36s cubic-bezier(0.16, 1, 0.3, 1) both; }
   [data-swipe-direction="next"] { animation: tabEnterNext 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -178,6 +179,10 @@
 @keyframes pulseRing {
   0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 50%, transparent); }
   100% { box-shadow: 0 0 0 14px transparent; }
+}
+@keyframes typeCaret {
+  0%, 48% { opacity: 1; }
+  49%, 100% { opacity: 0; }
 }
 @keyframes firePop {
   0% { transform: scale(0.82) rotate(-8deg); filter: saturate(1); }

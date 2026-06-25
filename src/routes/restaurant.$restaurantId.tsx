@@ -1,5 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Check, Clock, Flame, Loader2, MapPin, MessageSquare, Send, ShoppingBag, Star, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Clock,
+  Flame,
+  Loader2,
+  MapPin,
+  MessageSquare,
+  Send,
+  ShoppingBag,
+  Star,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { backend } from "@/lib/backend";
@@ -27,37 +39,43 @@ function RestaurantPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    Promise.all([backend.restaurants(), backend.meals(), backend.reviews()]).then(([restaurants, allMeals, allReviews]) => {
-      if (cancelled) return;
-      const restaurantMeals = allMeals.filter((m) => m.restaurantId === restaurantId);
-      const mealIds = new Set(restaurantMeals.map((m) => m.id));
-      setRestaurant(restaurants.find((r) => r.id === restaurantId));
-      setMeals(restaurantMeals);
-      setReviews(
-        allReviews
-          .filter((r) => r.restaurantId === restaurantId || mealIds.has(r.mealId))
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-      );
-      setLoading(false);
-    }).catch(() => {
-      if (!cancelled) setLoading(false);
-    });
+    Promise.all([backend.restaurants(), backend.meals(), backend.reviews()])
+      .then(([restaurants, allMeals, allReviews]) => {
+        if (cancelled) return;
+        const restaurantMeals = allMeals.filter((m) => m.restaurantId === restaurantId);
+        const mealIds = new Set(restaurantMeals.map((m) => m.id));
+        setRestaurant(restaurants.find((r) => r.id === restaurantId));
+        setMeals(restaurantMeals);
+        setReviews(
+          allReviews
+            .filter((r) => r.restaurantId === restaurantId || mealIds.has(r.mealId))
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+        );
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
   }, [restaurantId]);
 
   if (loading) return <RestaurantLoading />;
-  if (!restaurant) return (
-    <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
-      <div>
-        <p className="text-sm font-bold">Restaurant not found</p>
-        <Link to="/discover" className="mt-4 inline-flex rounded-full bg-gradient-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-glow">
-          Back to discover
-        </Link>
+  if (!restaurant)
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
+        <div>
+          <p className="text-sm font-bold">Restaurant not found</p>
+          <Link
+            to="/discover"
+            className="mt-4 inline-flex rounded-full bg-gradient-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-glow"
+          >
+            Back to discover
+          </Link>
+        </div>
       </div>
-    </div>
-  );
+    );
 
   const avgRating = reviews.length
     ? (reviews.reduce((sum, review) => sum + Number(review.rating), 0) / reviews.length).toFixed(1)
@@ -71,7 +89,9 @@ function RestaurantPage() {
       return;
     }
     if (!comment.trim()) {
-      notify("error", "Write a short comment before sending feedback", { id: "review-comment-required" });
+      notify("error", "Write a short comment before sending feedback", {
+        id: "review-comment-required",
+      });
       return;
     }
 
@@ -106,12 +126,19 @@ function RestaurantPage() {
   return (
     <div>
       <div className="relative bg-[linear-gradient(135deg,oklch(0.2_0.04_45),oklch(0.46_0.14_36))] px-4 pb-16 pt-4 text-white lg:px-8 lg:pb-20">
-        <Link to="/discover" className="grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft">
+        <Link
+          to="/discover"
+          className="grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft"
+        >
           <ArrowLeft className="h-4 w-4 text-foreground" />
         </Link>
         <div className="mx-auto mt-8 max-w-6xl">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/75">{restaurant.cuisine}</p>
-          <h1 className="mt-2 max-w-2xl text-3xl font-black leading-tight lg:text-5xl">{restaurant.name}</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/75">
+            {restaurant.cuisine}
+          </p>
+          <h1 className="mt-2 max-w-2xl text-3xl font-black leading-tight lg:text-5xl">
+            {restaurant.name}
+          </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78">{restaurant.description}</p>
         </div>
       </div>
@@ -129,18 +156,40 @@ function RestaurantPage() {
             </span>
           </div>
           <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{restaurant.prepTime} min prep</span>
-            <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{restaurant.distance} km away</span>
-            {restaurant.address && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{shortLocationLabel(restaurant.address)}</span>}
+            <span className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              {restaurant.prepTime} min prep
+            </span>
+            <span className="flex items-center gap-1">
+              <MapPin className="h-3.5 w-3.5" />
+              {restaurant.distance} km away
+            </span>
+            {restaurant.address && (
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5" />
+                {shortLocationLabel(restaurant.address)}
+              </span>
+            )}
             <span>{reviews.length} reviews</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {restaurant.tags.split("|").filter(Boolean).map((t) => (
-              <span key={t} className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-foreground">{t}</span>
-            ))}
+            {restaurant.tags
+              .split("|")
+              .filter(Boolean)
+              .map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-foreground"
+                >
+                  {t}
+                </span>
+              ))}
           </div>
           <div className="mt-4 flex gap-2">
-            <button onClick={() => setTab("menu")} className="flex-1 rounded-xl bg-gradient-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-glow">
+            <button
+              onClick={() => setTab("menu")}
+              className="flex-1 rounded-xl bg-gradient-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-glow"
+            >
               View menu
             </button>
           </div>
@@ -197,7 +246,15 @@ function RestaurantLoading() {
   );
 }
 
-function MenuSection({ meals, restaurant, closed }: { meals: Meal[]; restaurant: Restaurant; closed: boolean }) {
+function MenuSection({
+  meals,
+  restaurant,
+  closed,
+}: {
+  meals: Meal[];
+  restaurant: Restaurant;
+  closed: boolean;
+}) {
   const { user } = useAuth();
   const categories = Array.from(new Set(meals.map((meal) => meal.category || "Meals")));
   const [category, setCategory] = useState(categories[0] ?? "Meals");
@@ -226,10 +283,14 @@ function MenuSection({ meals, restaurant, closed }: { meals: Meal[]; restaurant:
       if (liked) next.delete(meal.id);
       else next.add(meal.id);
       window.localStorage.setItem(key, JSON.stringify([...next]));
-      notify(liked ? "info" : "success", liked ? "Removed from cravings" : `${meal.name} saved to cravings`, {
-        id: `meal-like:${meal.id}:${liked ? "off" : "on"}`,
-        persist: false,
-      });
+      notify(
+        liked ? "info" : "success",
+        liked ? "Removed from cravings" : `${meal.name} saved to cravings`,
+        {
+          id: `meal-like:${meal.id}:${liked ? "off" : "on"}`,
+          persist: false,
+        },
+      );
       return next;
     });
   };
@@ -240,7 +301,9 @@ function MenuSection({ meals, restaurant, closed }: { meals: Meal[]; restaurant:
       {meals.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
           <p className="text-sm font-semibold">No menu items yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">This restaurant has not published a menu.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            This restaurant has not published a menu.
+          </p>
         </div>
       ) : (
         <>
@@ -251,7 +314,9 @@ function MenuSection({ meals, restaurant, closed }: { meals: Meal[]; restaurant:
                 type="button"
                 onClick={() => setCategory(item)}
                 className={`shrink-0 rounded-full px-4 py-2 text-xs font-black transition ${
-                  category === item ? "bg-foreground text-background" : "bg-card text-muted-foreground shadow-soft"
+                  category === item
+                    ? "bg-foreground text-background"
+                    : "bg-card text-muted-foreground shadow-soft"
                 }`}
               >
                 {item}
@@ -264,14 +329,24 @@ function MenuSection({ meals, restaurant, closed }: { meals: Meal[]; restaurant:
                 key={meal.id}
                 className="flex min-w-0 items-center gap-3 rounded-2xl bg-card p-2 text-left shadow-soft transition hover:bg-muted"
               >
-                <button type="button" onClick={() => setSelectedMeal(meal)} className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted text-left">
+                <button
+                  type="button"
+                  onClick={() => setSelectedMeal(meal)}
+                  className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted text-left"
+                >
                   {meal.image ? (
                     <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="grid h-full place-items-center px-2 text-center text-[10px] font-black">{meal.name}</div>
+                    <div className="grid h-full place-items-center px-2 text-center text-[10px] font-black">
+                      {meal.name}
+                    </div>
                   )}
                 </button>
-                <button type="button" onClick={() => setSelectedMeal(meal)} className="min-w-0 flex-1 text-left">
+                <button
+                  type="button"
+                  onClick={() => setSelectedMeal(meal)}
+                  className="min-w-0 flex-1 text-left"
+                >
                   <p className="line-clamp-1 text-sm font-black">{meal.name}</p>
                   <p className="line-clamp-1 text-xs text-muted-foreground">{meal.description}</p>
                   <p className="mt-1 text-sm font-black text-primary">{naira(meal.price)}</p>
@@ -284,7 +359,9 @@ function MenuSection({ meals, restaurant, closed }: { meals: Meal[]; restaurant:
                       ? "border-primary/30 bg-primary/10 text-primary"
                       : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
-                  aria-label={likedMealIds.has(meal.id) ? "Remove from cravings" : "Save to cravings"}
+                  aria-label={
+                    likedMealIds.has(meal.id) ? "Remove from cravings" : "Save to cravings"
+                  }
                 >
                   <Flame className={`h-4 w-4 ${likedMealIds.has(meal.id) ? "fill-current" : ""}`} />
                 </button>
@@ -293,12 +370,29 @@ function MenuSection({ meals, restaurant, closed }: { meals: Meal[]; restaurant:
           </div>
         </>
       )}
-      {selectedMeal && <MealDetailModal meal={selectedMeal} restaurant={restaurant} closed={closed} onClose={() => setSelectedMeal(null)} />}
+      {selectedMeal && (
+        <MealDetailModal
+          meal={selectedMeal}
+          restaurant={restaurant}
+          closed={closed}
+          onClose={() => setSelectedMeal(null)}
+        />
+      )}
     </section>
   );
 }
 
-function MealDetailModal({ meal, restaurant, closed, onClose }: { meal: Meal; restaurant: Restaurant; closed: boolean; onClose: () => void }) {
+function MealDetailModal({
+  meal,
+  restaurant,
+  closed,
+  onClose,
+}: {
+  meal: Meal;
+  restaurant: Restaurant;
+  closed: boolean;
+  onClose: () => void;
+}) {
   const { add, items } = useCart();
   const [added, setAdded] = useState(false);
 
@@ -329,21 +423,35 @@ function MealDetailModal({ meal, restaurant, closed, onClose }: { meal: Meal; re
       options: [],
     });
     setAdded(true);
-    notify("success", `${meal.name} added to cart`, { id: `restaurant-menu-add:${meal.id}:${Date.now()}` });
+    notify("success", `${meal.name} added to cart`, {
+      id: `restaurant-menu-add:${meal.id}:${Date.now()}`,
+    });
     window.setTimeout(() => setAdded(false), 1300);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-24 pt-10 backdrop-blur-sm sm:items-center sm:pb-10" onClick={onClose}>
-      <div className="w-full max-w-md rounded-[1.5rem] bg-card p-4 shadow-card animate-slide-up" onClick={(event) => event.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-24 pt-10 backdrop-blur-sm sm:items-center sm:pb-10"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-[1.5rem] bg-card p-4 shadow-card animate-slide-up"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex items-start gap-3">
           <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-muted">
-            {meal.image ? <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" /> : null}
+            {meal.image ? (
+              <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
+            ) : null}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <h3 className="text-lg font-black leading-tight">{meal.name}</h3>
-              <button type="button" onClick={onClose} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted">
+              <button
+                type="button"
+                onClick={onClose}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -409,7 +517,9 @@ function ReviewsSection({
         <div className="mt-3 flex gap-1">
           {[1, 2, 3, 4, 5].map((value) => (
             <button key={value} type="button" onClick={() => setRating(value)} className="p-1">
-              <Star className={`h-5 w-5 ${value <= rating ? "fill-warning text-warning" : "text-muted-foreground"}`} />
+              <Star
+                className={`h-5 w-5 ${value <= rating ? "fill-warning text-warning" : "text-muted-foreground"}`}
+              />
             </button>
           ))}
         </div>
@@ -443,7 +553,9 @@ function ReviewsSection({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-bold">{review.userName}</p>
-                  <p className="text-[11px] text-muted-foreground">{new Date(review.createdAt).toLocaleString()}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(review.createdAt).toLocaleString()}
+                  </p>
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-lg bg-success/10 px-2 py-1 text-xs font-bold text-success">
                   <Star className="h-3 w-3 fill-current" />

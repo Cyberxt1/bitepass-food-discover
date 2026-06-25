@@ -1,9 +1,26 @@
 import { FILES, appendRow, deleteRow, readTable, updateRow } from "./csv-store";
 import { isSupabaseConfigured, supabase } from "./supabase";
-import type { Discount, Feedback, Meal, Order, PlatformStats, Restaurant, Review, User } from "./seed";
+import type {
+  Discount,
+  Feedback,
+  Meal,
+  Order,
+  PlatformStats,
+  Restaurant,
+  Review,
+  User,
+} from "./seed";
 import { trackAuditEvent } from "./audit";
 
-type CollectionName = "users" | "restaurants" | "meals" | "orders" | "discounts" | "reviews" | "feedback" | "platformStats";
+type CollectionName =
+  | "users"
+  | "restaurants"
+  | "meals"
+  | "orders"
+  | "discounts"
+  | "reviews"
+  | "feedback"
+  | "platformStats";
 type Row = { id: string } & Record<string, unknown>;
 
 const useSupabase = import.meta.env.VITE_DATA_BACKEND === "supabase" && isSupabaseConfigured;
@@ -63,9 +80,16 @@ async function setCollectionDoc<T extends Row>(name: CollectionName, item: T) {
   upsertLocal(fileFor[name], item);
 }
 
-async function patchCollectionDoc(name: CollectionName, id: string, patch: Record<string, unknown>) {
+async function patchCollectionDoc(
+  name: CollectionName,
+  id: string,
+  patch: Record<string, unknown>,
+) {
   if (useSupabase && supabase) {
-    const { error } = await supabase.from(name).update(cleanRow({ id, ...patch })).eq("id", id);
+    const { error } = await supabase
+      .from(name)
+      .update(cleanRow({ id, ...patch }))
+      .eq("id", id);
     if (error) throw error;
     updateRow(fileFor[name], (row) => row.id === id, patch);
     return;
@@ -125,7 +149,8 @@ export const backend = {
     return writeWithFallback(() => setCollectionDoc("orders", order));
   },
   addMeal: (meal: Meal) => writeWithFallback(() => setCollectionDoc("meals", meal)),
-  addDiscount: (discount: Discount) => writeWithFallback(() => setCollectionDoc("discounts", discount)),
+  addDiscount: (discount: Discount) =>
+    writeWithFallback(() => setCollectionDoc("discounts", discount)),
   addReview: (review: Review) => {
     trackAuditEvent({
       type: "review_created",
@@ -151,7 +176,8 @@ export const backend = {
     return writeWithFallback(() => setCollectionDoc("feedback", feedback));
   },
 
-  updateUser: (id: string, patch: Partial<User>) => writeWithFallback(() => patchCollectionDoc("users", id, patch)),
+  updateUser: (id: string, patch: Partial<User>) =>
+    writeWithFallback(() => patchCollectionDoc("users", id, patch)),
   updateRestaurant: (id: string, patch: Partial<Restaurant>) => {
     trackAuditEvent({
       type: "restaurant_updated",
@@ -168,13 +194,18 @@ export const backend = {
       targetId: id,
       targetType: "order",
       title: `Order #${id.slice(-5)} updated`,
-      detail: Object.entries(patch).map(([key, value]) => `${key}: ${value}`).join(", "),
+      detail: Object.entries(patch)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(", "),
     });
     return writeWithFallback(() => patchCollectionDoc("orders", id, patch));
   },
-  updateMeal: (id: string, patch: Partial<Meal>) => writeWithFallback(() => patchCollectionDoc("meals", id, patch)),
-  updateFeedback: (id: string, patch: Partial<Feedback>) => writeWithFallback(() => patchCollectionDoc("feedback", id, patch)),
-  updatePlatformStats: (stats: PlatformStats) => writeWithFallback(() => setCollectionDoc("platformStats", stats)),
+  updateMeal: (id: string, patch: Partial<Meal>) =>
+    writeWithFallback(() => patchCollectionDoc("meals", id, patch)),
+  updateFeedback: (id: string, patch: Partial<Feedback>) =>
+    writeWithFallback(() => patchCollectionDoc("feedback", id, patch)),
+  updatePlatformStats: (stats: PlatformStats) =>
+    writeWithFallback(() => setCollectionDoc("platformStats", stats)),
   updateDiscount: (id: string, patch: Partial<Discount>) =>
     writeWithFallback(() => patchCollectionDoc("discounts", id, patch)),
 

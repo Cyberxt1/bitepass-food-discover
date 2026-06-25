@@ -51,7 +51,9 @@ function OrderDetail() {
     const activeOrder = currentOrder;
     let cancelled = false;
     async function loadRestaurant() {
-      const found = (await backend.restaurants()).find((restaurant) => restaurant.id === activeOrder.restaurantId);
+      const found = (await backend.restaurants()).find(
+        (restaurant) => restaurant.id === activeOrder.restaurantId,
+      );
       if (!cancelled) setRestaurantName(found?.name ?? "restaurant");
     }
     void loadRestaurant();
@@ -108,7 +110,10 @@ function OrderDetail() {
     <div>
       <header className="sticky top-0 z-30 glass border-b border-border/40">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <Link to="/orders" className="grid h-9 w-9 place-items-center rounded-full bg-card shadow-soft">
+          <Link
+            to="/orders"
+            className="grid h-9 w-9 place-items-center rounded-full bg-card shadow-soft"
+          >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <h1 className="text-base font-bold">Order #{order.id.slice(-5)}</h1>
@@ -117,10 +122,16 @@ function OrderDetail() {
 
       <main className="mx-auto grid max-w-5xl gap-4 px-4 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8 lg:pt-8">
         <div className="rounded-3xl bg-gradient-warm p-5 text-white shadow-glow animate-slide-up">
-          <p className="text-xs uppercase tracking-wider opacity-85">{order.status === "completed" ? "Order finished" : "Order sent to store"}</p>
-          <p className="mt-1 font-mono text-4xl font-bold">{order.status === "completed" ? "DONE" : "PAID"}</p>
+          <p className="text-xs uppercase tracking-wider opacity-85">
+            {order.status === "completed" ? "Order finished" : "Order sent to store"}
+          </p>
+          <p className="mt-1 font-mono text-4xl font-bold">
+            {order.status === "completed" ? "DONE" : "PAID"}
+          </p>
           <p className="mt-1 text-xs opacity-85">Pickup at {restaurantName}</p>
-          <p className="mt-1 text-xs opacity-85">Requested pickup: {new Date(order.pickupTime).toLocaleString()}</p>
+          <p className="mt-1 text-xs opacity-85">
+            Requested pickup: {new Date(order.pickupTime).toLocaleString()}
+          </p>
         </div>
 
         <div className="rounded-2xl bg-card p-4 shadow-soft lg:row-span-2">
@@ -132,13 +143,19 @@ function OrderDetail() {
               return (
                 <div key={step} className="flex items-center gap-3">
                   <div className="relative">
-                    {active && <span className="absolute inset-0 animate-pulse-ring rounded-full" />}
-                    <div className={`grid h-9 w-9 place-items-center rounded-full transition ${done ? "bg-gradient-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    {active && (
+                      <span className="absolute inset-0 animate-pulse-ring rounded-full" />
+                    )}
+                    <div
+                      className={`grid h-9 w-9 place-items-center rounded-full transition ${done ? "bg-gradient-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                    >
                       <Meta.icon className="h-4 w-4" />
                     </div>
                   </div>
                   <div className="flex-1">
-                    <p className={`text-sm ${done ? "font-semibold" : "text-muted-foreground"}`}>{Meta.label}</p>
+                    <p className={`text-sm ${done ? "font-semibold" : "text-muted-foreground"}`}>
+                      {Meta.label}
+                    </p>
                   </div>
                   {done && <Check className="h-4 w-4 text-success" />}
                 </div>
@@ -153,16 +170,27 @@ function OrderDetail() {
             {items.map((item, index) => (
               <li key={index} className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium">{item.qty}x {item.name}</p>
-                  {item.servingUnit && <p className="text-[11px] text-muted-foreground">Base: per {item.servingUnit}</p>}
+                  <p className="font-medium">
+                    {item.qty}x {item.name}
+                  </p>
+                  {item.servingUnit && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Base: per {item.servingUnit}
+                    </p>
+                  )}
                   {item.options && item.options.length > 0 && (
                     <p className="text-[11px] text-muted-foreground">
                       {item.options
-                        .map((option) => `${option.name}${option.qty && option.qty > 1 ? ` x${option.qty}` : ""} (+${naira(option.price)})`)
+                        .map(
+                          (option) =>
+                            `${option.name}${option.qty && option.qty > 1 ? ` x${option.qty}` : ""} (+${naira(option.price)})`,
+                        )
                         .join(", ")}
                     </p>
                   )}
-                  {item.notes && <p className="text-[11px] text-muted-foreground">Note: {item.notes}</p>}
+                  {item.notes && (
+                    <p className="text-[11px] text-muted-foreground">Note: {item.notes}</p>
+                  )}
                 </div>
                 <span className="text-sm font-semibold">{naira(item.qty * item.price)}</span>
               </li>
@@ -184,17 +212,28 @@ function OrderDetail() {
                 className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
               >
                 <option value="restaurant">Restaurant service</option>
-                {items.filter((item) => item.mealId).map((item) => (
-                  <option key={item.mealId} value={item.mealId}>
-                    {item.name}
-                  </option>
-                ))}
+                {items
+                  .filter((item) => item.mealId)
+                  .map((item) => (
+                    <option key={item.mealId} value={item.mealId}>
+                      {item.name}
+                    </option>
+                  ))}
               </select>
               <div>
                 <div className="mb-2 flex gap-1">
                   {[1, 2, 3, 4, 5].map((value) => (
-                    <button key={value} type="button" onClick={() => setReviewRating(value)} className="text-lg">
-                      <span className={value <= reviewRating ? "text-warning" : "text-muted-foreground"}>★</span>
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setReviewRating(value)}
+                      className="text-lg"
+                    >
+                      <span
+                        className={value <= reviewRating ? "text-warning" : "text-muted-foreground"}
+                      >
+                        ★
+                      </span>
                     </button>
                   ))}
                 </div>

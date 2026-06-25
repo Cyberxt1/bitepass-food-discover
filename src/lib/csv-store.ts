@@ -27,10 +27,14 @@ function splitLine(line: string): string[] {
   for (let i = 0; i < line.length; i++) {
     const c = line[i];
     if (c === '"') {
-      if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
-      else inQ = !inQ;
-    } else if (c === "," && !inQ) { out.push(cur); cur = ""; }
-    else cur += c;
+      if (inQ && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else inQ = !inQ;
+    } else if (c === "," && !inQ) {
+      out.push(cur);
+      cur = "";
+    } else cur += c;
   }
   out.push(cur);
   return out;
@@ -43,7 +47,9 @@ function toCSV(rows: Record<string, unknown>[]): string {
     const s = v == null ? "" : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  return [headers.join(","), ...rows.map((r) => headers.map((h) => esc(r[h])).join(","))].join("\n");
+  return [headers.join(","), ...rows.map((r) => headers.map((h) => esc(r[h])).join(","))].join(
+    "\n",
+  );
 }
 
 export function readFile(name: string): string {

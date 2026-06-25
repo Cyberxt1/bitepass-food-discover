@@ -1,9 +1,32 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  ChefHat, LogOut, Store, ShoppingBag, UtensilsCrossed, Tag, BarChart3,
-  Plus, Trash2, Power, TrendingUp, Clock, Pencil, Check, X, Menu, PanelLeftClose, PanelLeftOpen, ImagePlus,
-  User, Mail, Phone, MapPin, ArrowRight, ArrowLeft, Loader2,
+  ChefHat,
+  LogOut,
+  Store,
+  ShoppingBag,
+  UtensilsCrossed,
+  Tag,
+  BarChart3,
+  Plus,
+  Trash2,
+  Power,
+  TrendingUp,
+  Clock,
+  Pencil,
+  Check,
+  X,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ImagePlus,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  ArrowRight,
+  ArrowLeft,
+  Loader2,
 } from "lucide-react";
 import {
   Bar,
@@ -56,12 +79,13 @@ function BusinessDashboard() {
     let cancelled = false;
     async function loadDashboard() {
       const allRestaurants = await backend.restaurants();
-      const ownedRestaurant = activeUser.role === "admin"
-        ? allRestaurants[0]
-        : allRestaurants.find((r) => r.ownerId === activeUser.id);
+      const ownedRestaurant =
+        activeUser.role === "admin"
+          ? allRestaurants[0]
+          : allRestaurants.find((r) => r.ownerId === activeUser.id);
       if (!ownedRestaurant || cancelled) {
         if (!cancelled) {
-          setRestaurant((current) => current ? undefined : current);
+          setRestaurant((current) => (current ? undefined : current));
           setDashboardLoaded(true);
         }
         return;
@@ -73,8 +97,10 @@ function BusinessDashboard() {
       ]);
       if (cancelled) return;
       const restaurantOrders = allOrders.filter((o) => o.restaurantId === ownedRestaurant.id);
-      const paidQueue = restaurantOrders.filter((order) =>
-        order.paymentStatus === "paid" && ["received", "preparing", "ready"].includes(order.status),
+      const paidQueue = restaurantOrders.filter(
+        (order) =>
+          order.paymentStatus === "paid" &&
+          ["received", "preparing", "ready"].includes(order.status),
       );
       const nextOrderIds = new Set(paidQueue.map((order) => order.id));
 
@@ -113,7 +139,15 @@ function BusinessDashboard() {
   }, [user, restaurant?.id]);
 
   if (!user || !dashboardLoaded) return null;
-  if (!restaurant) return <RestaurantOnboarding userId={user.id} ownerName={user.name} refresh={refresh} logout={logout} />;
+  if (!restaurant)
+    return (
+      <RestaurantOnboarding
+        userId={user.id}
+        ownerName={user.name}
+        refresh={refresh}
+        logout={logout}
+      />
+    );
 
   const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
     { id: "analytics", label: "Analytics", icon: BarChart3 },
@@ -124,7 +158,9 @@ function BusinessDashboard() {
   const activeTab = tabs.find((t) => t.id === tab) ?? tabs[0];
 
   return (
-    <div className={`min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-72" : "lg:pl-20"}`}>
+    <div
+      className={`min-h-screen bg-background transition-[padding] duration-300 ${sidebarOpen ? "lg:pl-72" : "lg:pl-20"}`}
+    >
       {sidebarOpen && (
         <button
           type="button"
@@ -149,7 +185,13 @@ function BusinessDashboard() {
                 <p className="truncate text-sm font-bold leading-tight">{restaurant.name}</p>
                 <p className="text-[11px] text-muted-foreground">
                   Business dashboard ·{" "}
-                  <span className={restaurant.isOpen === "1" ? "text-success font-semibold" : "text-destructive font-semibold"}>
+                  <span
+                    className={
+                      restaurant.isOpen === "1"
+                        ? "text-success font-semibold"
+                        : "text-destructive font-semibold"
+                    }
+                  >
                     {restaurant.isOpen === "1" ? "Open now" : "Closed"}
                   </span>
                 </p>
@@ -162,7 +204,11 @@ function BusinessDashboard() {
             onClick={() => setSidebarOpen((open) => !open)}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
-            {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+            {sidebarOpen ? (
+              <PanelLeftClose className="h-4 w-4" />
+            ) : (
+              <PanelLeftOpen className="h-4 w-4" />
+            )}
           </button>
         </div>
 
@@ -173,7 +219,8 @@ function BusinessDashboard() {
               type="button"
               onClick={() => {
                 setTab(t.id);
-                if (typeof window !== "undefined" && window.innerWidth < 1024) setSidebarOpen(false);
+                if (typeof window !== "undefined" && window.innerWidth < 1024)
+                  setSidebarOpen(false);
               }}
               className={`flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition ${
                 tab === t.id
@@ -189,7 +236,10 @@ function BusinessDashboard() {
 
         <div className="border-t border-border p-3">
           <button
-            onClick={() => { logout(); nav({ to: "/" }); }}
+            onClick={() => {
+              logout();
+              nav({ to: "/" });
+            }}
             className={`flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive ${
               sidebarOpen ? "justify-start" : "justify-center"
             }`}
@@ -219,23 +269,40 @@ function BusinessDashboard() {
               <p className="text-sm font-bold leading-tight">{activeTab.label}</p>
               <p className="text-[11px] text-muted-foreground">
                 Business dashboard ·{" "}
-                <span className={restaurant.isOpen === "1" ? "text-success font-semibold" : "text-destructive font-semibold"}>
+                <span
+                  className={
+                    restaurant.isOpen === "1"
+                      ? "text-success font-semibold"
+                      : "text-destructive font-semibold"
+                  }
+                >
                   {restaurant.isOpen === "1" ? "Open now" : "Closed"}
                 </span>
               </p>
             </div>
           </div>
-          <span className={restaurant.isOpen === "1" ? "rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-bold text-success" : "rounded-full bg-destructive/15 px-2.5 py-1 text-[11px] font-bold text-destructive"}>
+          <span
+            className={
+              restaurant.isOpen === "1"
+                ? "rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-bold text-success"
+                : "rounded-full bg-destructive/15 px-2.5 py-1 text-[11px] font-bold text-destructive"
+            }
+          >
             {restaurant.isOpen === "1" ? "Open" : "Closed"}
           </span>
         </div>
 
         <div className="hidden">
           {tabs.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
               className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                tab === t.id ? "bg-gradient-primary text-primary-foreground shadow-soft" : "bg-muted text-muted-foreground hover:bg-accent"
-              }`}>
+                tab === t.id
+                  ? "bg-gradient-primary text-primary-foreground shadow-soft"
+                  : "bg-muted text-muted-foreground hover:bg-accent"
+              }`}
+            >
               <t.icon className="h-3.5 w-3.5" /> {t.label}
             </button>
           ))}
@@ -391,7 +458,9 @@ function RestaurantOnboarding({
               <ChefHat className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="mt-4 text-2xl font-bold">Set up your restaurant</h1>
-            <p className="mt-1 text-sm text-muted-foreground">A few quick details so nearby shoppers can find you.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              A few quick details so nearby shoppers can find you.
+            </p>
           </div>
 
           <div className="mt-6 grid grid-cols-3 gap-2">
@@ -399,7 +468,9 @@ function RestaurantOnboarding({
               <div
                 key={item.label}
                 className={`rounded-2xl px-3 py-2 text-center text-[11px] font-bold ${
-                  index === step ? "bg-gradient-primary text-primary-foreground shadow-soft" : "bg-card text-muted-foreground"
+                  index === step
+                    ? "bg-gradient-primary text-primary-foreground shadow-soft"
+                    : "bg-card text-muted-foreground"
                 }`}
               >
                 {item.label}
@@ -408,7 +479,9 @@ function RestaurantOnboarding({
           </div>
 
           <div className="mt-5">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{steps[step].title}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+              {steps[step].title}
+            </p>
 
             {step === 0 && (
               <div className="mt-3 space-y-3">
@@ -434,13 +507,21 @@ function RestaurantOnboarding({
             {step === 1 && (
               <div className="mt-3 space-y-3">
                 <div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Restaurant photo</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Restaurant photo
+                  </span>
                   <div className="mt-1 grid gap-3 sm:grid-cols-[128px_1fr] sm:items-center">
                     <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-card">
                       {form.image ? (
-                        <img src={form.image} alt={form.restaurant || "Restaurant preview"} className="h-full w-full object-cover" />
+                        <img
+                          src={form.image}
+                          alt={form.restaurant || "Restaurant preview"}
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
-                        <div className="grid h-full place-items-center text-xs font-semibold text-muted-foreground">No photo</div>
+                        <div className="grid h-full place-items-center text-xs font-semibold text-muted-foreground">
+                          No photo
+                        </div>
                       )}
                     </div>
                     <div className="space-y-2">
@@ -464,7 +545,9 @@ function RestaurantOnboarding({
                           Remove
                         </button>
                       )}
-                      <p className="text-[11px] leading-4 text-muted-foreground">JPG/PNG only, max 1 MB.</p>
+                      <p className="text-[11px] leading-4 text-muted-foreground">
+                        JPG/PNG only, max 1 MB.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -499,7 +582,9 @@ function RestaurantOnboarding({
             {step === 2 && (
               <div className="mt-3 space-y-3">
                 <LocationPreview
-                  coords={Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng) ? coords : null}
+                  coords={
+                    Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng) ? coords : null
+                  }
                   address={form.address}
                   emptyText="Pin your restaurant location."
                 />
@@ -509,7 +594,11 @@ function RestaurantOnboarding({
                   disabled={locating}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card py-3.5 text-sm font-semibold shadow-soft transition hover:bg-muted disabled:opacity-60"
                 >
-                  {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                  {locating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MapPin className="h-4 w-4" />
+                  )}
                   {locating ? "Getting location..." : "Use current location"}
                 </button>
                 <textarea
@@ -543,7 +632,11 @@ function RestaurantOnboarding({
               className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 text-sm font-bold text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-60"
             >
               {saving ? "Creating..." : step === steps.length - 1 ? "Finish setup" : "Continue"}
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowRight className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>
@@ -552,7 +645,13 @@ function RestaurantOnboarding({
   );
 }
 
-function OnboardingField({ icon: Icon, children }: { icon: typeof Store; children: React.ReactNode }) {
+function OnboardingField({
+  icon: Icon,
+  children,
+}: {
+  icon: typeof Store;
+  children: React.ReactNode;
+}) {
   return (
     <label className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 focus-within:border-primary">
       <Icon className="h-4 w-4 text-muted-foreground" />
@@ -591,7 +690,8 @@ function Overview({
 
   // 7-day revenue trend
   const trend = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
     const key = d.toDateString();
     const dayOrders = completed.filter((o) => new Date(o.createdAt).toDateString() === key);
     const rev = dayOrders.reduce((s, o) => s + Number(o.total), 0);
@@ -605,7 +705,10 @@ function Overview({
   const weeklyRevenue = trend.reduce((sum, day) => sum + day.rev, 0);
   const totalTrendOrders = trend.reduce((sum, day) => sum + day.orders, 0);
   const averageRevenue = weeklyRevenue / trend.length;
-  const bestDay = trend.reduce((best, current) => (current.rev > best.rev ? current : best), trend[0]);
+  const bestDay = trend.reduce(
+    (best, current) => (current.rev > best.rev ? current : best),
+    trend[0],
+  );
 
   return (
     <div className="space-y-5">
@@ -613,13 +716,19 @@ function Overview({
         <Kpi icon={TrendingUp} label="Total revenue" value={naira(revenue)} accent />
         <Kpi icon={ShoppingBag} label="Today" value={`${todayOrders.length} orders`} />
         <Kpi icon={Clock} label="Active queue" value={`${active.length}`} />
-        <Kpi icon={UtensilsCrossed} label="Available dishes" value={`${availMeals} / ${meals.length}`} />
+        <Kpi
+          icon={UtensilsCrossed}
+          label="Available dishes"
+          value={`${availMeals} / ${meals.length}`}
+        />
       </div>
 
       <Card title="Restaurant status" subtitle="Control whether customers see you as available">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className={`text-sm font-bold ${restaurant.isOpen === "1" ? "text-success" : "text-destructive"}`}>
+            <p
+              className={`text-sm font-bold ${restaurant.isOpen === "1" ? "text-success" : "text-destructive"}`}
+            >
               {restaurant.isOpen === "1" ? "Open now" : "Closed"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -644,25 +753,41 @@ function Overview({
       <Card title="Sales snapshot" subtitle="Last 7 days">
         <div className="grid gap-2 sm:grid-cols-3">
           <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">This week</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              This week
+            </p>
             <p className="mt-1 text-lg font-bold text-foreground">{naira(weeklyRevenue)}</p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Orders</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Orders
+            </p>
             <p className="mt-1 text-lg font-bold text-foreground">{totalTrendOrders}</p>
-            <p className="text-[11px] text-muted-foreground">{naira(Math.round(averageRevenue))} avg/day</p>
+            <p className="text-[11px] text-muted-foreground">
+              {naira(Math.round(averageRevenue))} avg/day
+            </p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Best day</p>
-            <p className="mt-1 text-lg font-bold text-foreground">{bestDay.rev > 0 ? bestDay.day : "No sales yet"}</p>
-            <p className="text-[11px] text-muted-foreground">{bestDay.rev > 0 ? naira(bestDay.rev) : "Complete orders to build a trend"}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Best day
+            </p>
+            <p className="mt-1 text-lg font-bold text-foreground">
+              {bestDay.rev > 0 ? bestDay.day : "No sales yet"}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {bestDay.rev > 0 ? naira(bestDay.rev) : "Complete orders to build a trend"}
+            </p>
           </div>
         </div>
 
         <div className="mt-4 rounded-[28px] border border-border/60 bg-background p-3">
           <div className="mb-3 flex flex-wrap gap-3 text-[11px] font-bold text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Revenue</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Orders</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Revenue
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-success" /> Orders
+            </span>
           </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -708,7 +833,9 @@ function Overview({
                     name === "rev" ? "Revenue" : "Orders",
                   ]}
                   labelFormatter={(_, payload) => {
-                    const item = payload?.[0]?.payload as { fullDate?: string; orders?: number } | undefined;
+                    const item = payload?.[0]?.payload as
+                      | { fullDate?: string; orders?: number }
+                      | undefined;
                     if (!item) return "";
                     return `${item.fullDate} - ${item.orders ?? 0} order${item.orders === 1 ? "" : "s"}`;
                   }}
@@ -737,10 +864,15 @@ function Overview({
 
       <div className="grid gap-3 md:grid-cols-2">
         <Card title="Active orders" subtitle={`${active.length} in queue`}>
-          {active.length === 0 ? <p className="text-xs text-muted-foreground">All clear ✨</p> : (
+          {active.length === 0 ? (
+            <p className="text-xs text-muted-foreground">All clear ✨</p>
+          ) : (
             <ul className="space-y-2">
               {active.slice(0, 4).map((o) => (
-                <li key={o.id} className="flex items-center justify-between rounded-xl bg-muted/60 p-2.5 text-xs">
+                <li
+                  key={o.id}
+                  className="flex items-center justify-between rounded-xl bg-muted/60 p-2.5 text-xs"
+                >
                   <span className="font-bold">#{o.id.slice(-5)}</span>
                   <span className="capitalize text-muted-foreground">{o.status}</span>
                   <span className="font-bold text-primary">{naira(o.total)}</span>
@@ -751,15 +883,25 @@ function Overview({
         </Card>
 
         <Card title="Active discounts" subtitle={`${activeDisc} live`}>
-          {activeDisc === 0 ? <p className="text-xs text-muted-foreground">No active promotions.</p> : (
+          {activeDisc === 0 ? (
+            <p className="text-xs text-muted-foreground">No active promotions.</p>
+          ) : (
             <ul className="space-y-2">
-              {discounts.filter((d) => d.active === "1").slice(0, 4).map((d) => (
-                <li key={d.id} className="flex items-center justify-between rounded-xl bg-muted/60 p-2.5 text-xs">
-                  <span className="font-mono font-bold">{d.code}</span>
-                  <span className="text-muted-foreground">{d.type === "percent" ? `${d.value}% off` : `${naira(d.value)} off`}</span>
-                  <span className="text-muted-foreground">{d.uses} used</span>
-                </li>
-              ))}
+              {discounts
+                .filter((d) => d.active === "1")
+                .slice(0, 4)
+                .map((d) => (
+                  <li
+                    key={d.id}
+                    className="flex items-center justify-between rounded-xl bg-muted/60 p-2.5 text-xs"
+                  >
+                    <span className="font-mono font-bold">{d.code}</span>
+                    <span className="text-muted-foreground">
+                      {d.type === "percent" ? `${d.value}% off` : `${naira(d.value)} off`}
+                    </span>
+                    <span className="text-muted-foreground">{d.uses} used</span>
+                  </li>
+                ))}
             </ul>
           )}
         </Card>
@@ -772,7 +914,13 @@ function Overview({
 function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }) {
   const [filter, setFilter] = useState<"all" | "active" | "completed">("active");
   const flow = ["received", "preparing", "ready", "completed"];
-  const statusRank: Record<string, number> = { received: 0, preparing: 1, ready: 2, completed: 3, cancelled: 4 };
+  const statusRank: Record<string, number> = {
+    received: 0,
+    preparing: 1,
+    ready: 2,
+    completed: 3,
+    cancelled: 4,
+  };
   const actionLabel: Record<string, string> = {
     preparing: "Accept & start",
     ready: "Mark ready",
@@ -780,7 +928,13 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
   };
 
   const filtered = orders
-    .filter((o) => filter === "all" ? true : filter === "active" ? ["received", "preparing", "ready"].includes(o.status) : o.status === "completed")
+    .filter((o) =>
+      filter === "all"
+        ? true
+        : filter === "active"
+          ? ["received", "preparing", "ready"].includes(o.status)
+          : o.status === "completed",
+    )
     .sort((a, b) => {
       const rankDiff = (statusRank[a.status] ?? 9) - (statusRank[b.status] ?? 9);
       if (filter === "active" && rankDiff !== 0) return rankDiff;
@@ -800,10 +954,17 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
     <div className="space-y-4">
       <div className="flex gap-2">
         {(["active", "completed", "all"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)}
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
             className={`rounded-full px-4 py-1.5 text-xs font-semibold transition capitalize ${
-              filter === f ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-accent"
-            }`}>{f}</button>
+              filter === f
+                ? "bg-foreground text-background"
+                : "bg-muted text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            {f}
+          </button>
         ))}
       </div>
 
@@ -815,7 +976,13 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
       ) : (
         <div className="space-y-3">
           {filtered.map((o) => {
-            const items = JSON.parse(o.items) as { name: string; qty: number; price: number; servingUnit?: string; options?: { name: string; price: number; qty?: number }[] }[];
+            const items = JSON.parse(o.items) as {
+              name: string;
+              qty: number;
+              price: number;
+              servingUnit?: string;
+              options?: { name: string; price: number; qty?: number }[];
+            }[];
             const idx = flow.indexOf(o.status);
             const next = idx >= 0 && idx < flow.length - 1 ? flow[idx + 1] : null;
             const isNewPaid = o.paymentStatus === "paid" && o.status === "received";
@@ -823,7 +990,9 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
               <div
                 key={o.id}
                 className={`rounded-2xl border p-4 shadow-soft animate-slide-up ${
-                  isNewPaid ? "border-primary/45 bg-primary/8 ring-2 ring-primary/10" : "border-transparent bg-card"
+                  isNewPaid
+                    ? "border-primary/45 bg-primary/8 ring-2 ring-primary/10"
+                    : "border-transparent bg-card"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -836,20 +1005,34 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</p>
-                    <p className="text-[11px] text-muted-foreground">Pickup: {new Date(o.pickupTime).toLocaleString()}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {new Date(o.createdAt).toLocaleString()}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Pickup: {new Date(o.pickupTime).toLocaleString()}
+                    </p>
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">
                     {o.paymentStatus === "paid" && (
-                      <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-[11px] font-bold text-success">Paid</span>
+                      <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-[11px] font-bold text-success">
+                        Paid
+                      </span>
                     )}
-                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${
-                      o.status === "completed" ? "bg-muted text-muted-foreground" :
-                      o.status === "ready" ? "bg-success/15 text-success" :
-                      o.status === "preparing" ? "bg-warning/15 text-warning" :
-                      o.status === "cancelled" ? "bg-destructive/15 text-destructive" :
-                      "bg-primary/15 text-primary"
-                    }`}>{o.status}</span>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${
+                        o.status === "completed"
+                          ? "bg-muted text-muted-foreground"
+                          : o.status === "ready"
+                            ? "bg-success/15 text-success"
+                            : o.status === "preparing"
+                              ? "bg-warning/15 text-warning"
+                              : o.status === "cancelled"
+                                ? "bg-destructive/15 text-destructive"
+                                : "bg-primary/15 text-primary"
+                      }`}
+                    >
+                      {o.status}
+                    </span>
                   </div>
                 </div>
                 <ul className="mt-3 space-y-1 text-xs">
@@ -858,11 +1041,18 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                       <span>
                         {it.qty} x {it.name}
                         {it.servingUnit && (
-                          <span className="block text-[11px] text-muted-foreground">Base: per {it.servingUnit}</span>
+                          <span className="block text-[11px] text-muted-foreground">
+                            Base: per {it.servingUnit}
+                          </span>
                         )}
                         {it.options && it.options.length > 0 && (
                           <span className="block text-[11px] text-muted-foreground">
-                            {it.options.map((option) => `${option.name}${option.qty && option.qty > 1 ? ` x${option.qty}` : ""}`).join(", ")}
+                            {it.options
+                              .map(
+                                (option) =>
+                                  `${option.name}${option.qty && option.qty > 1 ? ` x${option.qty}` : ""}`,
+                              )
+                              .join(", ")}
                           </span>
                         )}
                       </span>
@@ -873,15 +1063,21 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
                   <span className="text-sm font-bold">Total: {naira(o.total)}</span>
                   <div className="flex gap-2">
-                    {o.status !== "received" && o.status !== "completed" && o.status !== "cancelled" && (
-                      <button onClick={() => cancel(o.id)}
-                        className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive transition">
-                        Cancel
-                      </button>
-                    )}
+                    {o.status !== "received" &&
+                      o.status !== "completed" &&
+                      o.status !== "cancelled" && (
+                        <button
+                          onClick={() => cancel(o.id)}
+                          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive transition"
+                        >
+                          Cancel
+                        </button>
+                      )}
                     {next && (
-                      <button onClick={() => advance(o.id, next)}
-                        className="rounded-full bg-gradient-primary px-4 py-1.5 text-xs font-bold text-primary-foreground shadow-soft transition active:scale-95">
+                      <button
+                        onClick={() => advance(o.id, next)}
+                        className="rounded-full bg-gradient-primary px-4 py-1.5 text-xs font-bold text-primary-foreground shadow-soft transition active:scale-95"
+                      >
                         {actionLabel[next] ?? `Set ${next}`}
                       </button>
                     )}
@@ -897,7 +1093,15 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
 }
 
 /* ---------------- MENU ---------------- */
-function MenuTab({ restaurantId, meals, refresh }: { restaurantId: string; meals: Meal[]; refresh: () => void }) {
+function MenuTab({
+  restaurantId,
+  meals,
+  refresh,
+}: {
+  restaurantId: string;
+  meals: Meal[];
+  refresh: () => void;
+}) {
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -914,61 +1118,115 @@ function MenuTab({ restaurantId, meals, refresh }: { restaurantId: string; meals
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{meals.length} dishes · {meals.filter((m) => m.available === "1").length} available</p>
-        <button onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-glow transition active:scale-95">
+        <p className="text-sm text-muted-foreground">
+          {meals.length} dishes · {meals.filter((m) => m.available === "1").length} available
+        </p>
+        <button
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-glow transition active:scale-95"
+        >
           <Plus className="h-3.5 w-3.5" /> Add dish
         </button>
       </div>
 
-      {adding && <MealForm restaurantId={restaurantId} onCancel={() => setAdding(false)} onSaved={() => { setAdding(false); refresh(); }} />}
+      {adding && (
+        <MealForm
+          restaurantId={restaurantId}
+          onCancel={() => setAdding(false)}
+          onSaved={() => {
+            setAdding(false);
+            refresh();
+          }}
+        />
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
-        {meals.map((m) => editId === m.id ? (
-          <MealForm key={m.id} restaurantId={restaurantId} meal={m} onCancel={() => setEditId(null)} onSaved={() => { setEditId(null); refresh(); }} />
-        ) : (
-          <div key={m.id} className="rounded-2xl bg-card p-3 shadow-soft animate-slide-up">
-            <div className="flex gap-3">
-              {m.image && (
-                <img src={m.image} alt={m.name} className="h-20 w-20 shrink-0 rounded-xl object-cover" />
-              )}
-              <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="line-clamp-1 text-sm font-bold">{m.name}</p>
-                  <p className="line-clamp-1 text-[11px] text-muted-foreground">{m.description}</p>
+        {meals.map((m) =>
+          editId === m.id ? (
+            <MealForm
+              key={m.id}
+              restaurantId={restaurantId}
+              meal={m}
+              onCancel={() => setEditId(null)}
+              onSaved={() => {
+                setEditId(null);
+                refresh();
+              }}
+            />
+          ) : (
+            <div key={m.id} className="rounded-2xl bg-card p-3 shadow-soft animate-slide-up">
+              <div className="flex gap-3">
+                {m.image && (
+                  <img
+                    src={m.image}
+                    alt={m.name}
+                    className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                  />
+                )}
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="line-clamp-1 text-sm font-bold">{m.name}</p>
+                      <p className="line-clamp-1 text-[11px] text-muted-foreground">
+                        {m.description}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-bold text-primary">
+                      {naira(m.price)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span>{m.category}</span>
+                    <span>· {m.prepTime}m prep</span>
+                    <span>
+                      · Avail {m.availableFrom}:00–{m.availableTo}:00
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <button
+                      onClick={() => toggleAvail(m.id, m.available)}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold transition ${
+                        m.available === "1"
+                          ? "bg-success/15 text-success"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      <Power className="h-3 w-3" /> {m.available === "1" ? "Live" : "Hidden"}
+                    </button>
+                    <button
+                      onClick={() => setEditId(m.id)}
+                      className="grid h-6 w-6 place-items-center rounded-full bg-muted hover:bg-accent transition"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={() => remove(m.id)}
+                      className="grid h-6 w-6 place-items-center rounded-full bg-muted text-destructive hover:bg-destructive/10 transition"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
-                <span className="shrink-0 text-sm font-bold text-primary">{naira(m.price)}</span>
-              </div>
-              <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
-                <span>{m.category}</span>
-                <span>· {m.prepTime}m prep</span>
-                <span>· Avail {m.availableFrom}:00–{m.availableTo}:00</span>
-              </div>
-              <div className="mt-2 flex items-center gap-1.5">
-                <button onClick={() => toggleAvail(m.id, m.available)}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold transition ${
-                    m.available === "1" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
-                  }`}>
-                  <Power className="h-3 w-3" /> {m.available === "1" ? "Live" : "Hidden"}
-                </button>
-                <button onClick={() => setEditId(m.id)} className="grid h-6 w-6 place-items-center rounded-full bg-muted hover:bg-accent transition">
-                  <Pencil className="h-3 w-3" />
-                </button>
-                <button onClick={() => remove(m.id)} className="grid h-6 w-6 place-items-center rounded-full bg-muted text-destructive hover:bg-destructive/10 transition">
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </div>
               </div>
             </div>
-          </div>
-        ))}
+          ),
+        )}
       </div>
     </div>
   );
 }
 
-function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: string; meal?: Meal; onCancel: () => void; onSaved: () => void }) {
+function MealForm({
+  restaurantId,
+  meal,
+  onCancel,
+  onSaved,
+}: {
+  restaurantId: string;
+  meal?: Meal;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
   const [form, setForm] = useState({
     name: meal?.name || "",
     description: meal?.description || "",
@@ -997,7 +1255,10 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
   };
 
   const save = () => {
-    if (!form.name || !form.price) { toast.error("Name and price required"); return; }
+    if (!form.name || !form.price) {
+      toast.error("Name and price required");
+      return;
+    }
     if (meal) {
       void backend.updateMeal(meal.id, { ...form, image, options: stringifyMealOptions(options) });
       toast.success("Dish updated");
@@ -1008,7 +1269,10 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
         ...form,
         image,
         options: stringifyMealOptions(options),
-        rating: "0", reviewCount: "0", popular: "0", available: "1",
+        rating: "0",
+        reviewCount: "0",
+        popular: "0",
+        available: "1",
       });
       toast.success("Dish added");
     }
@@ -1017,9 +1281,15 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
 
   const F = (k: keyof typeof form, label: string, type = "text") => (
     <label className="block">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-      <input type={type} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })}
-        className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <input
+        type={type}
+        value={form[k]}
+        onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+        className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+      />
     </label>
   );
 
@@ -1027,17 +1297,30 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
     <div className="rounded-2xl border-2 border-primary/30 bg-card p-4 shadow-card md:col-span-2 animate-slide-up">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold">{meal ? "Edit dish" : "New dish"}</p>
-        <button onClick={onCancel} className="grid h-7 w-7 place-items-center rounded-full bg-muted"><X className="h-3.5 w-3.5" /></button>
+        <button
+          onClick={onCancel}
+          className="grid h-7 w-7 place-items-center rounded-full bg-muted"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <div className="md:col-span-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Dish image</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Dish image
+          </span>
           <div className="mt-1 grid gap-3 sm:grid-cols-[160px_1fr] sm:items-center">
             <div className="aspect-[4/3] overflow-hidden rounded-xl border border-border bg-muted">
               {image ? (
-                <img src={image} alt={form.name || "Dish preview"} className="h-full w-full object-cover" />
+                <img
+                  src={image}
+                  alt={form.name || "Dish preview"}
+                  className="h-full w-full object-cover"
+                />
               ) : (
-                <div className="grid h-full place-items-center text-xs font-semibold text-muted-foreground">No image</div>
+                <div className="grid h-full place-items-center text-xs font-semibold text-muted-foreground">
+                  No image
+                </div>
               )}
             </div>
             <div className="space-y-2">
@@ -1061,13 +1344,17 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
                   Remove
                 </button>
               )}
-              <p className="text-[11px] leading-4 text-muted-foreground">Images are compressed before saving so meal cards stay fast.</p>
+              <p className="text-[11px] leading-4 text-muted-foreground">
+                Images are compressed before saving so meal cards stay fast.
+              </p>
             </div>
           </div>
         </div>
         {F("name", "Name")}
         <label className="block">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Serving unit</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Serving unit
+          </span>
           <select
             value={form.servingUnit}
             onChange={(e) => setForm({ ...form, servingUnit: e.target.value })}
@@ -1083,9 +1370,15 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
         </label>
         {F("price", "Price (₦)", "number")}
         <label className="block md:col-span-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Description</span>
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" rows={2} />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Description
+          </span>
+          <textarea
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            rows={2}
+          />
         </label>
         {F("category", "Category")}
         {F("prepTime", "Prep time (min)", "number")}
@@ -1094,12 +1387,18 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
         <div className="md:col-span-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Add items and prices</p>
-              <p className="text-[11px] text-muted-foreground">Examples: extra spoon, with egg, with fish. Prices are in naira.</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Add items and prices
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Examples: extra spoon, with egg, with fish. Prices are in naira.
+              </p>
             </div>
             <button
               type="button"
-              onClick={() => setOptions((prev) => [...prev, { id: "opt" + Date.now(), name: "", price: 0 }])}
+              onClick={() =>
+                setOptions((prev) => [...prev, { id: "opt" + Date.now(), name: "", price: 0 }])
+              }
               className="rounded-full border border-border px-3 py-1.5 text-[11px] font-bold hover:bg-muted"
             >
               Add item
@@ -1112,11 +1411,18 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
               </div>
             )}
             {options.map((option, index) => (
-              <div key={option.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_86px_36px] gap-2 sm:grid-cols-[minmax(0,1fr)_110px_36px]">
+              <div
+                key={option.id}
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)_86px_36px] gap-2 sm:grid-cols-[minmax(0,1fr)_110px_36px]"
+              >
                 <input
                   value={option.name}
                   onChange={(e) =>
-                    setOptions((prev) => prev.map((item, i) => (i === index ? { ...item, name: e.target.value } : item)))
+                    setOptions((prev) =>
+                      prev.map((item, i) =>
+                        i === index ? { ...item, name: e.target.value } : item,
+                      ),
+                    )
                   }
                   placeholder="Item name"
                   className="min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
@@ -1125,7 +1431,11 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
                   type="number"
                   value={option.price}
                   onChange={(e) =>
-                    setOptions((prev) => prev.map((item, i) => (i === index ? { ...item, price: Number(e.target.value) } : item)))
+                    setOptions((prev) =>
+                      prev.map((item, i) =>
+                        i === index ? { ...item, price: Number(e.target.value) } : item,
+                      ),
+                    )
                   }
                   placeholder="₦ price"
                   className="min-w-0 rounded-lg border border-border bg-background px-2 py-2 text-sm outline-none focus:border-primary sm:px-3"
@@ -1142,8 +1452,10 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
           </div>
         </div>
       </div>
-      <button onClick={save}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-glow">
+      <button
+        onClick={save}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-glow"
+      >
         <Check className="h-3.5 w-3.5" /> {meal ? "Save changes" : "Create dish"}
       </button>
     </div>
@@ -1151,7 +1463,15 @@ function MealForm({ restaurantId, meal, onCancel, onSaved }: { restaurantId: str
 }
 
 /* ---------------- DISCOUNTS ---------------- */
-function DiscountsTab({ restaurantId, discounts, refresh }: { restaurantId: string; discounts: Discount[]; refresh: () => void }) {
+function DiscountsTab({
+  restaurantId,
+  discounts,
+  refresh,
+}: {
+  restaurantId: string;
+  discounts: Discount[];
+  refresh: () => void;
+}) {
   const [adding, setAdding] = useState(false);
 
   const toggle = (id: string, cur: string) => {
@@ -1166,41 +1486,64 @@ function DiscountsTab({ restaurantId, discounts, refresh }: { restaurantId: stri
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{discounts.length} codes · {discounts.filter((d) => d.active === "1").length} active</p>
-        <button onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-glow transition active:scale-95">
+        <p className="text-sm text-muted-foreground">
+          {discounts.length} codes · {discounts.filter((d) => d.active === "1").length} active
+        </p>
+        <button
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-glow transition active:scale-95"
+        >
           <Plus className="h-3.5 w-3.5" /> New code
         </button>
       </div>
 
-      {adding && <DiscountForm restaurantId={restaurantId} onCancel={() => setAdding(false)} onSaved={() => { setAdding(false); refresh(); }} />}
+      {adding && (
+        <DiscountForm
+          restaurantId={restaurantId}
+          onCancel={() => setAdding(false)}
+          onSaved={() => {
+            setAdding(false);
+            refresh();
+          }}
+        />
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         {discounts.map((d) => (
           <div key={d.id} className="rounded-2xl bg-card p-4 shadow-soft animate-slide-up">
             <div className="flex items-start justify-between">
               <div>
-                <p className="font-mono text-lg font-extrabold tracking-tight text-gradient">{d.code}</p>
+                <p className="font-mono text-lg font-extrabold tracking-tight text-gradient">
+                  {d.code}
+                </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {d.type === "percent" ? `${d.value}% off` : `${naira(d.value)} off`}
                   {Number(d.minOrder) > 0 && ` · min ${naira(d.minOrder)}`}
                 </p>
               </div>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                d.active === "1" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
-              }`}>{d.active === "1" ? "Active" : "Paused"}</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  d.active === "1" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {d.active === "1" ? "Active" : "Paused"}
+              </span>
             </div>
             <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
               <span>Used {d.uses}×</span>
               <span>Expires {d.expiresAt}</span>
             </div>
             <div className="mt-3 flex gap-2">
-              <button onClick={() => toggle(d.id, d.active)}
-                className="flex-1 rounded-full border border-border bg-card py-1.5 text-xs font-semibold hover:bg-muted transition">
+              <button
+                onClick={() => toggle(d.id, d.active)}
+                className="flex-1 rounded-full border border-border bg-card py-1.5 text-xs font-semibold hover:bg-muted transition"
+              >
                 {d.active === "1" ? "Pause" : "Activate"}
               </button>
-              <button onClick={() => remove(d.id)}
-                className="grid h-8 w-8 place-items-center rounded-full border border-border bg-card text-destructive hover:bg-destructive/10 transition">
+              <button
+                onClick={() => remove(d.id)}
+                className="grid h-8 w-8 place-items-center rounded-full border border-border bg-card text-destructive hover:bg-destructive/10 transition"
+              >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -1210,7 +1553,9 @@ function DiscountsTab({ restaurantId, discounts, refresh }: { restaurantId: stri
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center md:col-span-2">
             <div className="text-3xl">🏷️</div>
             <p className="mt-2 text-sm font-semibold">No discount codes yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">Create your first code to drive more orders.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Create your first code to drive more orders.
+            </p>
           </div>
         )}
       </div>
@@ -1218,13 +1563,27 @@ function DiscountsTab({ restaurantId, discounts, refresh }: { restaurantId: stri
   );
 }
 
-function DiscountForm({ restaurantId, onCancel, onSaved }: { restaurantId: string; onCancel: () => void; onSaved: () => void }) {
+function DiscountForm({
+  restaurantId,
+  onCancel,
+  onSaved,
+}: {
+  restaurantId: string;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
   const [form, setForm] = useState({
-    code: "", type: "percent", value: "10", minOrder: "0",
+    code: "",
+    type: "percent",
+    value: "10",
+    minOrder: "0",
     expiresAt: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
   });
   const save = () => {
-    if (!form.code) { toast.error("Code required"); return; }
+    if (!form.code) {
+      toast.error("Code required");
+      return;
+    }
     void backend.addDiscount({
       id: "d" + Date.now(),
       restaurantId,
@@ -1244,40 +1603,76 @@ function DiscountForm({ restaurantId, onCancel, onSaved }: { restaurantId: strin
     <div className="rounded-2xl border-2 border-primary/30 bg-card p-4 shadow-card md:col-span-2 animate-slide-up">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold">New discount</p>
-        <button onClick={onCancel} className="grid h-7 w-7 place-items-center rounded-full bg-muted"><X className="h-3.5 w-3.5" /></button>
+        <button
+          onClick={onCancel}
+          className="grid h-7 w-7 place-items-center rounded-full bg-muted"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <label className="block">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Code</span>
-          <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="LAUNCH20"
-            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono uppercase outline-none focus:border-primary" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Code
+          </span>
+          <input
+            value={form.code}
+            onChange={(e) => setForm({ ...form, code: e.target.value })}
+            placeholder="LAUNCH20"
+            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono uppercase outline-none focus:border-primary"
+          />
         </label>
         <label className="block">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Type</span>
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
-            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Type
+          </span>
+          <select
+            value={form.type}
+            onChange={(e) => setForm({ ...form, type: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          >
             <option value="percent">% off</option>
             <option value="fixed">Fixed ₦ off</option>
           </select>
         </label>
         <label className="block">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Value</span>
-          <input type="number" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })}
-            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Value
+          </span>
+          <input
+            type="number"
+            value={form.value}
+            onChange={(e) => setForm({ ...form, value: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          />
         </label>
         <label className="block">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Min order (₦)</span>
-          <input type="number" value={form.minOrder} onChange={(e) => setForm({ ...form, minOrder: e.target.value })}
-            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Min order (₦)
+          </span>
+          <input
+            type="number"
+            value={form.minOrder}
+            onChange={(e) => setForm({ ...form, minOrder: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          />
         </label>
         <label className="block md:col-span-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Expires</span>
-          <input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
-            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Expires
+          </span>
+          <input
+            type="date"
+            value={form.expiresAt}
+            onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          />
         </label>
       </div>
-      <button onClick={save}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-glow">
+      <button
+        onClick={save}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-glow"
+      >
         <Check className="h-3.5 w-3.5" /> Create discount
       </button>
     </div>
@@ -1335,9 +1730,15 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
 
   const F = (k: keyof Restaurant, label: string, type = "text") => (
     <label className="block">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-      <input type={type} value={(form[k] ?? "") as string} onChange={(e) => setForm({ ...form, [k]: e.target.value })}
-        className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <input
+        type={type}
+        value={(form[k] ?? "") as string}
+        onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+        className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+      />
     </label>
   );
 
@@ -1349,10 +1750,12 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
             <p className="text-lg font-bold">{form.name}</p>
             <p className="text-xs text-muted-foreground">{form.cuisine}</p>
           </div>
-          <button onClick={toggleOpen}
+          <button
+            onClick={toggleOpen}
             className={`rounded-full px-4 py-1.5 text-xs font-bold shadow-glow transition ${
               form.isOpen === "1" ? "bg-success text-white" : "bg-destructive text-white"
-            }`}>
+            }`}
+          >
             {form.isOpen === "1" ? "OPEN" : "CLOSED"}
           </button>
         </div>
@@ -1362,13 +1765,21 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
         <p className="text-sm font-bold">Restaurant details</p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <div className="md:col-span-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Restaurant photo</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Restaurant photo
+            </span>
             <div className="mt-1 grid gap-3 sm:grid-cols-[180px_1fr] sm:items-center">
               <div className="aspect-[4/3] overflow-hidden rounded-xl border border-border bg-muted">
                 {form.image ? (
-                  <img src={form.image} alt={form.name || "Restaurant preview"} className="h-full w-full object-cover" />
+                  <img
+                    src={form.image}
+                    alt={form.name || "Restaurant preview"}
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
-                  <div className="grid h-full place-items-center text-xs font-semibold text-muted-foreground">No photo</div>
+                  <div className="grid h-full place-items-center text-xs font-semibold text-muted-foreground">
+                    No photo
+                  </div>
                 )}
               </div>
               <div className="space-y-2">
@@ -1392,7 +1803,9 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
                     Remove
                   </button>
                 )}
-                <p className="text-[11px] leading-4 text-muted-foreground">JPG/PNG only, max 1 MB. Save profile after changing it.</p>
+                <p className="text-[11px] leading-4 text-muted-foreground">
+                  JPG/PNG only, max 1 MB. Save profile after changing it.
+                </p>
               </div>
             </div>
           </div>
@@ -1404,12 +1817,15 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
           <div className="md:col-span-2 rounded-xl border border-border bg-background p-3">
             <p className="text-xs font-bold">Payment setup</p>
             <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-              Use the Paystack subaccount code assigned to this store. Live checkout is blocked until this is set.
+              Use the Paystack subaccount code assigned to this store. Live checkout is blocked
+              until this is set.
             </p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {F("paystackSubaccount", "Paystack subaccount code")}
               <label className="block">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment status</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Payment status
+                </span>
                 <select
                   value={form.paymentSetupStatus ?? "not_started"}
                   onChange={(e) => setForm({ ...form, paymentSetupStatus: e.target.value })}
@@ -1423,10 +1839,14 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
             </div>
           </div>
           <div className="md:col-span-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Location</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Location
+            </span>
             <div className="mt-1 space-y-3">
               <LocationPreview
-                coords={Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng) ? coords : null}
+                coords={
+                  Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng) ? coords : null
+                }
                 address={form.address}
                 emptyText="Pin your restaurant location."
               />
@@ -1436,7 +1856,11 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
                 disabled={locating}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background py-2.5 text-sm font-semibold transition hover:bg-muted disabled:opacity-60 sm:w-auto sm:px-4"
               >
-                {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                {locating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MapPin className="h-4 w-4" />
+                )}
                 {locating ? "Getting location..." : "Use current location"}
               </button>
               <textarea
@@ -1450,13 +1874,21 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
           {F("lat", "Latitude")}
           {F("lng", "Longitude")}
           <label className="block md:col-span-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Description</span>
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" rows={3} />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Description
+            </span>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              rows={3}
+            />
           </label>
         </div>
-        <button onClick={save}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-glow">
+        <button
+          onClick={save}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-glow"
+        >
           <Check className="h-3.5 w-3.5" /> Save profile
         </button>
       </div>
@@ -1472,16 +1904,40 @@ function compactNaira(value: number) {
   return `N${Math.round(value)}`;
 }
 
-function Kpi({ icon: Icon, label, value, accent }: { icon: typeof TrendingUp; label: string; value: string; accent?: boolean }) {
+function Kpi({
+  icon: Icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: typeof TrendingUp;
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
   return (
-    <div className={`rounded-2xl p-3.5 shadow-soft ${accent ? "bg-gradient-primary text-primary-foreground" : "bg-card"}`}>
+    <div
+      className={`rounded-2xl p-3.5 shadow-soft ${accent ? "bg-gradient-primary text-primary-foreground" : "bg-card"}`}
+    >
       <Icon className={`h-4 w-4 ${accent ? "opacity-90" : "text-muted-foreground"}`} />
-      <p className={`mt-2 text-[10px] uppercase tracking-wider ${accent ? "opacity-85" : "text-muted-foreground"}`}>{label}</p>
+      <p
+        className={`mt-2 text-[10px] uppercase tracking-wider ${accent ? "opacity-85" : "text-muted-foreground"}`}
+      >
+        {label}
+      </p>
       <p className="text-base font-bold leading-tight">{value}</p>
     </div>
   );
 }
-function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Card({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl bg-card p-4 shadow-soft">
       <div className="mb-3">
@@ -1492,9 +1948,3 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
     </div>
   );
 }
-
-
-
-
-
-

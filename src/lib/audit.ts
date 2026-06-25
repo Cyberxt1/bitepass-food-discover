@@ -40,10 +40,14 @@ function safeWrite(events: AuditEvent[]) {
 }
 
 export function readAuditEvents() {
-  return safeRead().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return safeRead().sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 }
 
-export function trackAuditEvent(event: Omit<AuditEvent, "id" | "createdAt"> & { createdAt?: string }) {
+export function trackAuditEvent(
+  event: Omit<AuditEvent, "id" | "createdAt"> & { createdAt?: string },
+) {
   if (typeof window === "undefined") return;
   const createdAt = event.createdAt ?? new Date().toISOString();
   const id = `audit:${event.type}:${event.targetId ?? "general"}:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`;

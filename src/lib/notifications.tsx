@@ -136,11 +136,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user, authReady } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [preferences, setPreferences] = useState<NotificationPreferences>(preferencesStore);
+  const notificationScope = user?.id ?? "guest";
 
   useEffect(() => {
     if (!authReady) return;
-    setNotificationScope(user ? user.id : "guest");
-  }, [authReady, user?.id]);
+    setNotificationScope(notificationScope);
+  }, [authReady, notificationScope]);
 
   useEffect(() => {
     loadNotifications(activeScope);
@@ -166,7 +167,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         emitNotifications();
       },
       markAllRead: () => {
-        notificationsStore = notificationsStore.map((notification) => ({ ...notification, read: true }));
+        notificationsStore = notificationsStore.map((notification) => ({
+          ...notification,
+          read: true,
+        }));
         saveNotifications();
         emitNotifications();
       },

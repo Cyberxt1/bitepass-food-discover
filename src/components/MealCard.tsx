@@ -19,7 +19,11 @@ export function MealCard({
       {!hideImage && (
         <div className="mb-3 aspect-[4/3] overflow-hidden rounded-xl bg-muted">
           {meal.image ? (
-            <img src={meal.image} alt={meal.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+            <img
+              src={meal.image}
+              alt={meal.name}
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            />
           ) : (
             <div className="grid h-full place-items-center bg-[linear-gradient(135deg,oklch(0.93_0.04_75),oklch(0.86_0.12_42))] px-4 text-center">
               <span className="text-sm font-black leading-tight text-foreground">{meal.name}</span>
@@ -38,23 +42,36 @@ export function MealCard({
             )}
           </div>
           {restaurantName && <p className="text-xs text-muted-foreground">{restaurantName}</p>}
-          <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{meal.description}</p>
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+            {meal.description}
+          </p>
         </div>
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-0.5"><Star className="h-3 w-3 fill-warning text-warning" />{meal.rating}</span>
-            <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" />{meal.prepTime}m</span>
+            <span className="flex items-center gap-0.5">
+              <Star className="h-3 w-3 fill-warning text-warning" />
+              {meal.rating}
+            </span>
+            <span className="flex items-center gap-0.5">
+              <Clock className="h-3 w-3" />
+              {meal.prepTime}m
+            </span>
           </div>
           <span className="text-sm font-bold text-primary">
             {naira(meal.price)}
-            {meal.servingUnit && <span className="text-[10px] font-semibold text-muted-foreground">/{meal.servingUnit}</span>}
+            {meal.servingUnit && (
+              <span className="text-[10px] font-semibold text-muted-foreground">
+                /{meal.servingUnit}
+              </span>
+            )}
           </span>
         </div>
       </div>
     </>
   );
 
-  const className = "group block w-full rounded-2xl bg-card p-3 text-left shadow-soft transition hover:-translate-y-0.5 hover:shadow-card";
+  const className =
+    "group block w-full rounded-2xl bg-card p-3 text-left shadow-soft transition hover:-translate-y-0.5 hover:shadow-card";
 
   if (onQuickView) {
     return (

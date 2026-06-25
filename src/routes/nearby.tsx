@@ -72,7 +72,9 @@ function NearbyPage() {
       }
       notify("success", "Nearby restaurants refreshed", { id: "nearby-location-refreshed" });
     } catch (error) {
-      notify("error", error instanceof Error ? error.message : "Location could not be read", { id: "nearby-location-error" });
+      notify("error", error instanceof Error ? error.message : "Location could not be read", {
+        id: "nearby-location-error",
+      });
     } finally {
       setLocating(false);
     }
@@ -83,7 +85,10 @@ function NearbyPage() {
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <Link to="/discover" className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-border bg-card shadow-soft transition active:scale-95 hover:bg-muted">
+            <Link
+              to="/discover"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-border bg-card shadow-soft transition active:scale-95 hover:bg-muted"
+            >
               <ArrowLeft className="h-4 w-4" />
             </Link>
             <div className="min-w-0">
@@ -108,22 +113,33 @@ function NearbyPage() {
           <section className="grid place-items-center rounded-2xl border border-dashed border-border bg-card px-5 py-12 text-center shadow-soft">
             <Navigation className="h-8 w-8 text-muted-foreground" />
             <p className="mt-3 text-sm font-black">Set your location first</p>
-            <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">Tap refresh so BitePass can sort restaurants by closeness.</p>
+            <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
+              Tap refresh so BitePass can sort restaurants by closeness.
+            </p>
           </section>
         ) : loading ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, index) => <SkeletonCard key={index} />)}
+            {Array.from({ length: 8 }).map((_, index) => (
+              <SkeletonCard key={index} />
+            ))}
           </div>
         ) : sortedRestaurants.length === 0 ? (
           <section className="grid place-items-center rounded-2xl border border-dashed border-border bg-card px-5 py-12 text-center shadow-soft">
             <Navigation className="h-8 w-8 text-muted-foreground" />
             <p className="mt-3 text-sm font-black">No restaurants within 40 km yet</p>
-            <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">Try again after refreshing location or search manually.</p>
+            <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
+              Try again after refreshing location or search manually.
+            </p>
           </section>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {sortedRestaurants.map(({ restaurant, distance }) => (
-              <RestaurantCard key={restaurant.id} r={restaurant} distanceLabel={formatDistance(distance)} compact />
+              <RestaurantCard
+                key={restaurant.id}
+                r={restaurant}
+                distanceLabel={formatDistance(distance)}
+                compact
+              />
             ))}
           </div>
         )}

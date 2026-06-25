@@ -15,7 +15,8 @@ export function AppHeader({
 }) {
   const { user } = useAuth();
   const { unreadCount } = useNotifications();
-  const label = locationLabel ?? (user?.address ? shortLocationLabel(user.address) : "Location off");
+  const label =
+    locationLabel ?? (user?.address ? shortLocationLabel(user.address) : "Location off");
 
   return (
     <header className="sticky top-0 z-40 glass border-b border-border/40">
@@ -26,11 +27,14 @@ export function AppHeader({
             <span className="truncate">{label}</span>
           </div>
           <div className="truncate text-sm font-semibold lg:text-base">
-            {user ? `Hey, ${user.name.split(" ")[0]}` : subtitle ?? "Welcome to BitePass"}
+            {user ? `Hey, ${user.name.split(" ")[0]}` : (subtitle ?? "Welcome to BitePass")}
           </div>
         </div>
         {showNotifications && (
-          <Link to="/notifications" className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-card transition hover:scale-105">
+          <Link
+            to="/notifications"
+            className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-card transition hover:scale-105"
+          >
             <Bell className="h-4 w-4" />
             {unreadCount > 0 && (
               <span className="absolute right-1 top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">

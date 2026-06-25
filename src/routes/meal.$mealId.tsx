@@ -32,13 +32,17 @@ function MealPage() {
   };
 
   useEffect(() => {
-    Promise.all([backend.meals(), backend.restaurants(), backend.reviews()]).then(([allMeals, restaurants, allReviews]) => {
-      const nextMeal = allMeals.find((entry) => entry.id === mealId);
-      setMeal(nextMeal);
-      setRestaurant(nextMeal ? restaurants.find((entry) => entry.id === nextMeal.restaurantId) : undefined);
-      setReviews(allReviews.filter((review) => review.mealId === mealId));
-      setLoading(false);
-    });
+    Promise.all([backend.meals(), backend.restaurants(), backend.reviews()]).then(
+      ([allMeals, restaurants, allReviews]) => {
+        const nextMeal = allMeals.find((entry) => entry.id === mealId);
+        setMeal(nextMeal);
+        setRestaurant(
+          nextMeal ? restaurants.find((entry) => entry.id === nextMeal.restaurantId) : undefined,
+        );
+        setReviews(allReviews.filter((review) => review.mealId === mealId));
+        setLoading(false);
+      },
+    );
   }, [mealId]);
 
   if (loading || !meal) return <RouteLoadingOverlay visible />;
@@ -97,7 +101,9 @@ function MealPage() {
       notes,
       options: selectedOptions,
     });
-    notify("success", `${qty} x ${meal.name} added to cart`, { id: `cart-add:${meal.id}:${optionsSignature}:${noteSignature}` });
+    notify("success", `${qty} x ${meal.name} added to cart`, {
+      id: `cart-add:${meal.id}:${optionsSignature}:${noteSignature}`,
+    });
     setAddedToCart(true);
     window.setTimeout(() => {
       setAddingToCart(false);
@@ -120,147 +126,177 @@ function MealPage() {
           </div>
         )}
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent" />
-        <Link to="/discover" className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft lg:left-8">
+        <Link
+          to="/discover"
+          className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-soft lg:left-8"
+        >
           <ArrowLeft className="h-4 w-4 text-foreground" />
         </Link>
       </div>
 
       <div className="-mt-8 mx-auto max-w-3xl bg-background px-4 pt-2 sm:px-6 lg:px-8">
         <main className="min-w-0">
-        <h1 className="text-2xl font-bold">{meal.name}</h1>
-        {restaurant && (
-          <Link to="/restaurant/$restaurantId" params={{ restaurantId: restaurant.id }} className="mt-1 inline-block text-sm text-primary">
-            {restaurant.name} -
-          </Link>
-        )}
-        {restaurant?.isOpen === "0" && (
-          <p className="mt-2 inline-flex rounded-full bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">
-            Restaurant is closed
-          </p>
-        )}
-        <div className="mt-3 flex items-center gap-4 text-sm">
-          <span className="flex items-center gap-1 font-semibold">
-            <Star className="h-4 w-4 fill-warning text-warning" />
-            {avgRating}
-          </span>
-          <span className="text-muted-foreground">({reviews.length} reviews)</span>
-          <span className="flex items-center gap-1 text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            {meal.prepTime} min
-          </span>
-        </div>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{meal.description}</p>
-        <div className="mt-4 rounded-2xl bg-card p-3 shadow-soft">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Base serving</p>
-          <p className="mt-1 text-sm font-bold text-primary">
-            {naira(meal.price)} per {meal.servingUnit ?? "serving"}
-          </p>
-        </div>
+          <h1 className="text-2xl font-bold">{meal.name}</h1>
+          {restaurant && (
+            <Link
+              to="/restaurant/$restaurantId"
+              params={{ restaurantId: restaurant.id }}
+              className="mt-1 inline-block text-sm text-primary"
+            >
+              {restaurant.name} -
+            </Link>
+          )}
+          {restaurant?.isOpen === "0" && (
+            <p className="mt-2 inline-flex rounded-full bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">
+              Restaurant is closed
+            </p>
+          )}
+          <div className="mt-3 flex items-center gap-4 text-sm">
+            <span className="flex items-center gap-1 font-semibold">
+              <Star className="h-4 w-4 fill-warning text-warning" />
+              {avgRating}
+            </span>
+            <span className="text-muted-foreground">({reviews.length} reviews)</span>
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              {meal.prepTime} min
+            </span>
+          </div>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{meal.description}</p>
+          <div className="mt-4 rounded-2xl bg-card p-3 shadow-soft">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Base serving
+            </p>
+            <p className="mt-1 text-sm font-bold text-primary">
+              {naira(meal.price)} per {meal.servingUnit ?? "serving"}
+            </p>
+          </div>
 
-        {options.length > 0 && (
-          <section className="mt-5">
-            <h3 className="text-sm font-bold">Servings and extras</h3>
-            <div className="mt-2 space-y-2">
-              {options.map((option) => {
-                const selected = selectedOptions.find((item) => item.id === option.id);
-                return (
-                  <div
-                    key={option.id}
-                    className={`min-w-0 rounded-2xl border p-3 transition ${selected ? "border-primary bg-primary/5" : "border-border bg-card"}`}
-                  >
-                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <button type="button" onClick={() => toggleOption(option)} className="min-w-0 flex-1 text-left">
-                        <span className="block break-words text-sm font-semibold leading-5">{option.name}</span>
-                        <span className="mt-1 block text-sm font-bold text-primary">+ {naira(option.price)} each</span>
-                      </button>
-                      <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+          {options.length > 0 && (
+            <section className="mt-5">
+              <h3 className="text-sm font-bold">Servings and extras</h3>
+              <div className="mt-2 space-y-2">
+                {options.map((option) => {
+                  const selected = selectedOptions.find((item) => item.id === option.id);
+                  return (
+                    <div
+                      key={option.id}
+                      className={`min-w-0 rounded-2xl border p-3 transition ${selected ? "border-primary bg-primary/5" : "border-border bg-card"}`}
+                    >
+                      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <button
                           type="button"
-                          onClick={() => setOptionQty(option, (selected?.qty ?? 0) - 1)}
-                          className="grid h-8 w-8 place-items-center rounded-full border border-border"
+                          onClick={() => toggleOption(option)}
+                          className="min-w-0 flex-1 text-left"
                         >
-                          <Minus className="h-3.5 w-3.5" />
+                          <span className="block break-words text-sm font-semibold leading-5">
+                            {option.name}
+                          </span>
+                          <span className="mt-1 block text-sm font-bold text-primary">
+                            + {naira(option.price)} each
+                          </span>
                         </button>
-                        <span className="w-5 text-center text-sm font-bold">{selected?.qty ?? 0}</span>
-                        <button
-                          type="button"
-                          onClick={() => setOptionQty(option, (selected?.qty ?? 0) + 1)}
-                          className="grid h-8 w-8 place-items-center rounded-full bg-gradient-primary text-primary-foreground"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => setOptionQty(option, (selected?.qty ?? 0) - 1)}
+                            className="grid h-8 w-8 place-items-center rounded-full border border-border"
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="w-5 text-center text-sm font-bold">
+                            {selected?.qty ?? 0}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setOptionQty(option, (selected?.qty ?? 0) + 1)}
+                            className="grid h-8 w-8 place-items-center rounded-full bg-gradient-primary text-primary-foreground"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        <div className="mt-5 space-y-3">
-          <div className="flex items-center justify-between rounded-2xl bg-card p-3 shadow-soft">
-            <span className="text-sm font-semibold">Quantity</span>
-            <div className="flex items-center gap-3">
-              <button onClick={() => updateQty(qty - 1)} className="grid h-8 w-8 place-items-center rounded-full border border-border">
-                <Minus className="h-3.5 w-3.5" />
-              </button>
-              <input
-                type="number"
-                min={1}
-                max={99}
-                inputMode="numeric"
-                value={qty}
-                onChange={(event) => updateQty(Number(event.target.value))}
-                className="h-9 w-16 rounded-xl border border-border bg-background text-center text-sm font-black outline-none focus:border-primary"
-                aria-label="Quantity"
-              />
-              <button onClick={() => updateQty(qty + 1)} className="grid h-8 w-8 place-items-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow">
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-          <textarea
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Add special instructions (e.g. extra spicy, no onions)..."
-            className="w-full resize-none rounded-2xl border border-border bg-card p-3 text-sm outline-none focus:border-primary"
-            rows={2}
-          />
-        </div>
-
-        <section className="mt-7">
-          <h3 className="text-base font-bold">What people say about this dish</h3>
-          <p className="text-xs text-muted-foreground">Reviews are tied to the meal, not just the restaurant.</p>
-
-          {reviews.length === 0 ? (
-            <p className="mt-4 text-sm text-muted-foreground">No reviews yet for this dish.</p>
-          ) : (
-            <div className="mt-4 space-y-3">
-              {reviews.map((review) => (
-                <div key={review.id} className="rounded-2xl border border-border bg-card p-4 shadow-soft">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-semibold">{review.userName}</p>
-                      <p className="text-[11px] text-muted-foreground">{review.createdAt}</p>
-                    </div>
-                    <span className="flex items-center gap-0.5 rounded-md bg-success/10 px-1.5 py-0.5 text-xs font-bold text-success">
-                      <Star className="h-3 w-3 fill-current" />
-                      {review.rating}.0
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm">{review.comment}</p>
-                  <div className="mt-3 grid grid-cols-2 gap-1.5 text-[11px]">
-                    <Tag label="Taste" value={review.taste} />
-                    <Tag label="Portion" value={review.portion} />
-                    <Tag label="Spice" value={review.spice} />
-                    <Tag label="Wait" value={review.waitTime} />
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            </section>
           )}
-        </section>
+
+          <div className="mt-5 space-y-3">
+            <div className="flex items-center justify-between rounded-2xl bg-card p-3 shadow-soft">
+              <span className="text-sm font-semibold">Quantity</span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => updateQty(qty - 1)}
+                  className="grid h-8 w-8 place-items-center rounded-full border border-border"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={99}
+                  inputMode="numeric"
+                  value={qty}
+                  onChange={(event) => updateQty(Number(event.target.value))}
+                  className="h-9 w-16 rounded-xl border border-border bg-background text-center text-sm font-black outline-none focus:border-primary"
+                  aria-label="Quantity"
+                />
+                <button
+                  onClick={() => updateQty(qty + 1)}
+                  className="grid h-8 w-8 place-items-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Add special instructions (e.g. extra spicy, no onions)..."
+              className="w-full resize-none rounded-2xl border border-border bg-card p-3 text-sm outline-none focus:border-primary"
+              rows={2}
+            />
+          </div>
+
+          <section className="mt-7">
+            <h3 className="text-base font-bold">What people say about this dish</h3>
+            <p className="text-xs text-muted-foreground">
+              Reviews are tied to the meal, not just the restaurant.
+            </p>
+
+            {reviews.length === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">No reviews yet for this dish.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {reviews.map((review) => (
+                  <div
+                    key={review.id}
+                    className="rounded-2xl border border-border bg-card p-4 shadow-soft"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">{review.userName}</p>
+                        <p className="text-[11px] text-muted-foreground">{review.createdAt}</p>
+                      </div>
+                      <span className="flex items-center gap-0.5 rounded-md bg-success/10 px-1.5 py-0.5 text-xs font-bold text-success">
+                        <Star className="h-3 w-3 fill-current" />
+                        {review.rating}.0
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm">{review.comment}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-1.5 text-[11px]">
+                      <Tag label="Taste" value={review.taste} />
+                      <Tag label="Portion" value={review.portion} />
+                      <Tag label="Spice" value={review.spice} />
+                      <Tag label="Wait" value={review.waitTime} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </main>
       </div>
 

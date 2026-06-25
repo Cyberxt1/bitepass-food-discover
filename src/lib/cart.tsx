@@ -51,14 +51,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prev) => {
       const existing = prev.find((entry) => entry.id === item.id);
       if (existing) {
-        return prev.map((entry) => (entry.id === item.id ? { ...entry, qty: entry.qty + item.qty } : entry));
+        return prev.map((entry) =>
+          entry.id === item.id ? { ...entry, qty: entry.qty + item.qty } : entry,
+        );
       }
       return [...prev, item];
     });
 
   const remove = (itemId: string) => setItems((prev) => prev.filter((item) => item.id !== itemId));
   const setQty = (itemId: string, qty: number) =>
-    setItems((prev) => (qty <= 0 ? prev.filter((item) => item.id !== itemId) : prev.map((item) => (item.id === itemId ? { ...item, qty } : item))));
+    setItems((prev) =>
+      qty <= 0
+        ? prev.filter((item) => item.id !== itemId)
+        : prev.map((item) => (item.id === itemId ? { ...item, qty } : item)),
+    );
   const setNotes = (itemId: string, notes: string) =>
     setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, notes } : item)));
   const setOptionQty = (itemId: string, optionId: string, qty: number) =>
@@ -66,13 +72,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       prev.map((item) => {
         if (item.id !== itemId || !item.options) return item;
 
-        const nextOptions = qty <= 0
-          ? item.options.filter((option) => option.id !== optionId)
-          : item.options.some((option) => option.id === optionId)
-            ? item.options.map((option) => (option.id === optionId ? { ...option, qty } : option))
-            : item.options;
+        const nextOptions =
+          qty <= 0
+            ? item.options.filter((option) => option.id !== optionId)
+            : item.options.some((option) => option.id === optionId)
+              ? item.options.map((option) => (option.id === optionId ? { ...option, qty } : option))
+              : item.options;
 
-        const optionsTotal = nextOptions.reduce((sum, option) => sum + option.price * (option.qty ?? 1), 0);
+        const optionsTotal = nextOptions.reduce(
+          (sum, option) => sum + option.price * (option.qty ?? 1),
+          0,
+        );
         return {
           ...item,
           options: nextOptions,
@@ -85,7 +95,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const total = items.reduce((sum, item) => sum + item.price * item.qty, 0);
   const count = items.reduce((sum, item) => sum + item.qty, 0);
 
-  return <Ctx.Provider value={{ items, add, remove, setQty, setNotes, setOptionQty, clear, total, count }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider
+      value={{ items, add, remove, setQty, setNotes, setOptionQty, clear, total, count }}
+    >
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useCart() {

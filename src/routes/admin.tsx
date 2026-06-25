@@ -61,7 +61,12 @@ type ActivityItem = {
   type: "order" | "account" | "review" | "store";
 };
 
-const statusColors = ["oklch(0.78 0.15 75)", "oklch(0.68 0.19 35)", "oklch(0.65 0.16 150)", "oklch(0.5 0.02 50)"];
+const statusColors = [
+  "oklch(0.78 0.15 75)",
+  "oklch(0.68 0.19 35)",
+  "oklch(0.65 0.16 150)",
+  "oklch(0.5 0.02 50)",
+];
 
 function AdminAccess({ login }: { login: (email: string, password: string) => Promise<User> }) {
   const nav = useNavigate();
@@ -82,7 +87,9 @@ function AdminAccess({ login }: { login: (email: string, password: string) => Pr
       notify("success", "Admin access granted", { id: "admin-login-success" });
       nav({ to: "/admin", replace: true });
     } catch (error) {
-      notify("error", error instanceof Error ? error.message : "Admin login failed", { id: "admin-login-error" });
+      notify("error", error instanceof Error ? error.message : "Admin login failed", {
+        id: "admin-login-error",
+      });
     } finally {
       setLoading(false);
     }
@@ -96,7 +103,9 @@ function AdminAccess({ login }: { login: (email: string, password: string) => Pr
             <ShieldCheck className="h-6 w-6" />
           </div>
           <h1 className="mt-4 text-2xl font-black">Admin access</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Use an admin account to open operations.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Use an admin account to open operations.
+          </p>
         </div>
 
         <form onSubmit={submit} className="mt-7 space-y-3">
@@ -164,7 +173,15 @@ function AdminDashboard() {
     let cancelled = false;
 
     async function loadAdminData() {
-      const [nextOrders, nextMeals, nextRestaurants, nextUsers, nextReviews, nextFeedback, nextStats] = await Promise.all([
+      const [
+        nextOrders,
+        nextMeals,
+        nextRestaurants,
+        nextUsers,
+        nextReviews,
+        nextFeedback,
+        nextStats,
+      ] = await Promise.all([
         backend.orders(),
         backend.meals(),
         backend.restaurants(),
@@ -180,7 +197,8 @@ function AdminDashboard() {
       setUsers(nextUsers);
       setReviews(nextReviews);
       setFeedback(nextFeedback);
-      const latestStats = nextStats[0] ?? derivePlatformStats(nextUsers, nextRestaurants, nextOrders);
+      const latestStats =
+        nextStats[0] ?? derivePlatformStats(nextUsers, nextRestaurants, nextOrders);
       setStatsForm({
         foodies: latestStats.foodies,
         kitchens: latestStats.kitchens,
@@ -197,9 +215,18 @@ function AdminDashboard() {
     };
   }, [tick, user]);
 
-  const metrics = useMemo(() => buildMetrics({ orders, users, restaurants, reviews, auditEvents }), [orders, users, restaurants, reviews, auditEvents]);
-  const activity = useMemo(() => buildActivity({ orders, users, restaurants, reviews, auditEvents }), [orders, users, restaurants, reviews, auditEvents]);
-  const helpItems = useMemo(() => buildHelpItems({ orders, users, restaurants, reviews, feedback }), [orders, users, restaurants, reviews, feedback]);
+  const metrics = useMemo(
+    () => buildMetrics({ orders, users, restaurants, reviews, auditEvents }),
+    [orders, users, restaurants, reviews, auditEvents],
+  );
+  const activity = useMemo(
+    () => buildActivity({ orders, users, restaurants, reviews, auditEvents }),
+    [orders, users, restaurants, reviews, auditEvents],
+  );
+  const helpItems = useMemo(
+    () => buildHelpItems({ orders, users, restaurants, reviews, feedback }),
+    [orders, users, restaurants, reviews, feedback],
+  );
   const records = useMemo(
     () => buildSearchRecords({ orders, users, restaurants, auditEvents, query, filter }),
     [orders, users, restaurants, auditEvents, query, filter],
@@ -213,7 +240,9 @@ function AdminDashboard() {
         <div className="max-w-sm rounded-2xl bg-card p-6 shadow-soft">
           <ShieldCheck className="mx-auto h-10 w-10 text-muted-foreground" />
           <p className="mt-4 text-base font-black">Admin access only</p>
-          <p className="mt-2 text-sm text-muted-foreground">Sign out and use an admin account to open this page.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sign out and use an admin account to open this page.
+          </p>
           <button
             type="button"
             onClick={() => {
@@ -249,7 +278,9 @@ function AdminDashboard() {
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-black leading-tight">Admin operations</p>
-              <p className="text-[11px] text-muted-foreground">Traffic, accounts, stores, orders, and support</p>
+              <p className="text-[11px] text-muted-foreground">
+                Traffic, accounts, stores, orders, and support
+              </p>
             </div>
           </div>
           <button
@@ -271,7 +302,9 @@ function AdminDashboard() {
               type="button"
               onClick={() => setTab(item.id)}
               className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-full px-4 text-xs font-black transition ${
-                tab === item.id ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                tab === item.id
+                  ? "bg-foreground text-background"
+                  : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <item.icon className="h-3.5 w-3.5" />
@@ -283,36 +316,104 @@ function AdminDashboard() {
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-          <Kpi icon={CircleDollarSign} label="Completed value" value={naira(metrics.completedRevenue)} accent />
+          <Kpi
+            icon={CircleDollarSign}
+            label="Completed value"
+            value={naira(metrics.completedRevenue)}
+            accent
+          />
           <Kpi icon={ShoppingBag} label="Transactions" value={`${metrics.completedOrders}`} />
           <Kpi icon={Store} label="Stores" value={`${restaurants.length}`} />
           <Kpi icon={Users} label="Users" value={`${users.length}`} />
           <Kpi icon={Activity} label="Traffic" value={`${metrics.pageViews}`} />
-          <Kpi icon={MessageSquare} label="Feedback" value={`${feedback.length + reviews.length}`} />
+          <Kpi
+            icon={MessageSquare}
+            label="Feedback"
+            value={`${feedback.length + reviews.length}`}
+          />
         </section>
 
         {tab === "overview" && (
           <>
             <section className="grid gap-3 md:grid-cols-4">
-              <ActionCard icon={Users} title="Customers" value={`${users.filter((entry) => entry.role === "customer").length}`} />
+              <ActionCard
+                icon={Users}
+                title="Customers"
+                value={`${users.filter((entry) => entry.role === "customer").length}`}
+              />
               <ActionCard icon={Store} title="Restaurants" value={`${restaurants.length}`} />
               <ActionCard icon={Utensils} title="Menu items" value={`${meals.length}`} />
-              <ActionCard icon={MessageSquare} title="Open feedback" value={`${feedback.filter((item) => item.status !== "closed").length}`} />
+              <ActionCard
+                icon={MessageSquare}
+                title="Open feedback"
+                value={`${feedback.filter((item) => item.status !== "closed").length}`}
+              />
             </section>
 
             <section className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
-              <Panel title="Growth dashboard" subtitle="Completed transactions, account growth, and traffic events">
+              <Panel
+                title="Growth dashboard"
+                subtitle="Completed transactions, account growth, and traffic events"
+              >
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={metrics.growth}>
-                      <CartesianGrid vertical={false} stroke="oklch(0.9 0.01 80)" strokeDasharray="4 4" />
-                      <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={11} stroke="oklch(0.5 0.02 50)" />
-                      <YAxis yAxisId="left" tickLine={false} axisLine={false} fontSize={11} stroke="oklch(0.5 0.02 50)" />
-                      <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} fontSize={11} stroke="oklch(0.5 0.02 50)" />
-                      <Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [name === "revenue" ? naira(value) : value, labelMetric(name)]} />
-                      <Bar yAxisId="left" dataKey="revenue" fill="oklch(0.68 0.19 35)" radius={[8, 8, 2, 2]} />
-                      <Line yAxisId="right" type="monotone" dataKey="transactions" stroke="oklch(0.58 0.14 150)" strokeWidth={3} dot={{ r: 4, strokeWidth: 0 }} />
-                      <Line yAxisId="right" type="monotone" dataKey="traffic" stroke="oklch(0.62 0.18 260)" strokeWidth={2.5} dot={false} />
+                      <CartesianGrid
+                        vertical={false}
+                        stroke="oklch(0.9 0.01 80)"
+                        strokeDasharray="4 4"
+                      />
+                      <XAxis
+                        dataKey="day"
+                        tickLine={false}
+                        axisLine={false}
+                        fontSize={11}
+                        stroke="oklch(0.5 0.02 50)"
+                      />
+                      <YAxis
+                        yAxisId="left"
+                        tickLine={false}
+                        axisLine={false}
+                        fontSize={11}
+                        stroke="oklch(0.5 0.02 50)"
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        tickLine={false}
+                        axisLine={false}
+                        fontSize={11}
+                        stroke="oklch(0.5 0.02 50)"
+                      />
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        formatter={(value: number, name: string) => [
+                          name === "revenue" ? naira(value) : value,
+                          labelMetric(name),
+                        ]}
+                      />
+                      <Bar
+                        yAxisId="left"
+                        dataKey="revenue"
+                        fill="oklch(0.68 0.19 35)"
+                        radius={[8, 8, 2, 2]}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="transactions"
+                        stroke="oklch(0.58 0.14 150)"
+                        strokeWidth={3}
+                        dot={{ r: 4, strokeWidth: 0 }}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="traffic"
+                        stroke="oklch(0.62 0.18 260)"
+                        strokeWidth={2.5}
+                        dot={false}
+                      />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
@@ -324,20 +425,36 @@ function AdminDashboard() {
                     <div className="h-44 w-44 shrink-0">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={metrics.trafficMix} dataKey="value" innerRadius={45} outerRadius={75} paddingAngle={2}>
-                            {metrics.trafficMix.map((_, index) => <Cell key={index} fill={statusColors[index % statusColors.length]} />)}
+                          <Pie
+                            data={metrics.trafficMix}
+                            dataKey="value"
+                            innerRadius={45}
+                            outerRadius={75}
+                            paddingAngle={2}
+                          >
+                            {metrics.trafficMix.map((_, index) => (
+                              <Cell key={index} fill={statusColors[index % statusColors.length]} />
+                            ))}
                           </Pie>
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
                     <div className="min-w-0 flex-1 space-y-2">
                       {metrics.trafficMix.map((item, index) => (
-                        <MetricRow key={item.name} label={item.name} value={`${item.value}`} color={statusColors[index % statusColors.length]} />
+                        <MetricRow
+                          key={item.name}
+                          label={item.name}
+                          value={`${item.value}`}
+                          color={statusColors[index % statusColors.length]}
+                        />
                       ))}
                     </div>
                   </div>
                 ) : (
-                  <EmptyState title="No traffic captured yet" detail="Open a few pages or sign in again to populate this chart." />
+                  <EmptyState
+                    title="No traffic captured yet"
+                    detail="Open a few pages or sign in again to populate this chart."
+                  />
                 )}
               </Panel>
             </section>
@@ -353,13 +470,23 @@ function AdminDashboard() {
                       className="flex w-full items-center gap-3 rounded-2xl bg-muted/55 p-3 text-left transition hover:bg-muted"
                     >
                       <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-card">
-                        {restaurant.image ? <img src={restaurant.image} alt={restaurant.name} className="h-full w-full object-cover" /> : null}
+                        {restaurant.image ? (
+                          <img
+                            src={restaurant.image}
+                            alt={restaurant.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : null}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-black">{restaurant.name}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">{restaurant.address}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">
+                          {restaurant.address}
+                        </p>
                       </div>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${restaurant.isOpen === "1" ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive"}`}>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-black ${restaurant.isOpen === "1" ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive"}`}
+                      >
                         {restaurant.isOpen === "1" ? "Open" : "Closed"}
                       </span>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -368,7 +495,10 @@ function AdminDashboard() {
                 </div>
               </Panel>
 
-              <Panel title="Recent activity" subtitle="Logins, accounts, orders, reviews, and store actions">
+              <Panel
+                title="Recent activity"
+                subtitle="Logins, accounts, orders, reviews, and store actions"
+              >
                 <ActivityFeed items={activity.slice(0, 14)} />
               </Panel>
             </section>
@@ -379,7 +509,12 @@ function AdminDashboard() {
           <section className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
             <Panel title="Feedback inbox" subtitle={`${feedback.length} customer messages`}>
               <div className="max-h-[680px] space-y-3 overflow-y-auto pr-1">
-                {feedback.length === 0 && <EmptyState title="No feedback yet" detail="Customer feedback hub messages will appear here." />}
+                {feedback.length === 0 && (
+                  <EmptyState
+                    title="No feedback yet"
+                    detail="Customer feedback hub messages will appear here."
+                  />
+                )}
                 {feedback
                   .slice()
                   .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -388,13 +523,19 @@ function AdminDashboard() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-black">{item.userName}</p>
-                          <p className="text-[11px] text-muted-foreground">{item.email} - {formatDateTime(item.createdAt)}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {item.email} - {formatDateTime(item.createdAt)}
+                          </p>
                         </div>
-                        <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${item.status === "closed" ? "bg-success/10 text-success" : "bg-warning/15 text-warning"}`}>
+                        <span
+                          className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${item.status === "closed" ? "bg-success/10 text-success" : "bg-warning/15 text-warning"}`}
+                        >
                           {item.status}
                         </span>
                       </div>
-                      <p className="mt-2 text-[11px] font-black uppercase tracking-[0.14em] text-primary">{item.category}</p>
+                      <p className="mt-2 text-[11px] font-black uppercase tracking-[0.14em] text-primary">
+                        {item.category}
+                      </p>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.message}</p>
                       <div className="mt-3 flex gap-2">
                         {(["open", "reviewing", "closed"] as const).map((status) => (
@@ -402,11 +543,17 @@ function AdminDashboard() {
                             key={status}
                             type="button"
                             onClick={() => {
-                              void backend.updateFeedback(item.id, { status }).then(() => setTick((value) => value + 1));
-                              notify("success", `Feedback marked ${status}`, { id: `feedback-status:${item.id}:${status}` });
+                              void backend
+                                .updateFeedback(item.id, { status })
+                                .then(() => setTick((value) => value + 1));
+                              notify("success", `Feedback marked ${status}`, {
+                                id: `feedback-status:${item.id}:${status}`,
+                              });
                             }}
                             className={`rounded-xl px-3 py-2 text-[11px] font-black capitalize transition ${
-                              item.status === status ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-accent"
+                              item.status === status
+                                ? "bg-foreground text-background"
+                                : "bg-muted text-muted-foreground hover:bg-accent"
                             }`}
                           >
                             {status}
@@ -419,7 +566,12 @@ function AdminDashboard() {
             </Panel>
             <Panel title="Reviews" subtitle={`${reviews.length} restaurant and meal reviews`}>
               <div className="max-h-[680px] space-y-3 overflow-y-auto pr-1">
-                {reviews.length === 0 && <EmptyState title="No reviews yet" detail="Reviews will appear after customers rate orders or restaurants." />}
+                {reviews.length === 0 && (
+                  <EmptyState
+                    title="No reviews yet"
+                    detail="Reviews will appear after customers rate orders or restaurants."
+                  />
+                )}
                 {reviews.slice(0, 18).map((review) => (
                   <div key={review.id} className="rounded-2xl bg-muted/50 p-3">
                     <div className="flex items-center justify-between gap-3">
@@ -429,7 +581,9 @@ function AdminDashboard() {
                         {review.rating}
                       </span>
                     </div>
-                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{review.comment}</p>
+                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                      {review.comment}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -439,22 +593,41 @@ function AdminDashboard() {
 
         {tab === "landing" && (
           <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-            <Panel title="Landing stats" subtitle="These numbers publish directly to the public landing page">
+            <Panel
+              title="Landing stats"
+              subtitle="These numbers publish directly to the public landing page"
+            >
               <div className="grid gap-3">
-                <AdminStatField label="Foodies" value={statsForm.foodies} onChange={(value) => setStatsForm((current) => ({ ...current, foodies: value }))} />
-                <AdminStatField label="Kitchens" value={statsForm.kitchens} onChange={(value) => setStatsForm((current) => ({ ...current, kitchens: value }))} />
-                <AdminStatField label="Average minutes saved" value={statsForm.avgMinutesSaved} onChange={(value) => setStatsForm((current) => ({ ...current, avgMinutesSaved: value }))} />
+                <AdminStatField
+                  label="Foodies"
+                  value={statsForm.foodies}
+                  onChange={(value) => setStatsForm((current) => ({ ...current, foodies: value }))}
+                />
+                <AdminStatField
+                  label="Kitchens"
+                  value={statsForm.kitchens}
+                  onChange={(value) => setStatsForm((current) => ({ ...current, kitchens: value }))}
+                />
+                <AdminStatField
+                  label="Average minutes saved"
+                  value={statsForm.avgMinutesSaved}
+                  onChange={(value) =>
+                    setStatsForm((current) => ({ ...current, avgMinutesSaved: value }))
+                  }
+                />
                 <button
                   type="button"
                   onClick={() => {
-                    void backend.updatePlatformStats({
-                      id: "public",
-                      ...statsForm,
-                      updatedAt: new Date().toISOString(),
-                    }).then(() => {
-                      setTick((value) => value + 1);
-                      notify("success", "Landing stats updated", { id: "landing-stats-updated" });
-                    });
+                    void backend
+                      .updatePlatformStats({
+                        id: "public",
+                        ...statsForm,
+                        updatedAt: new Date().toISOString(),
+                      })
+                      .then(() => {
+                        setTick((value) => value + 1);
+                        notify("success", "Landing stats updated", { id: "landing-stats-updated" });
+                      });
                   }}
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-glow"
                 >
@@ -466,9 +639,17 @@ function AdminDashboard() {
             <Panel title="Live platform snapshot" subtitle="Real data currently in the platform">
               <div className="grid gap-3 md:grid-cols-2">
                 <ActionCard icon={Users} title="Total users" value={`${users.length}`} />
-                <ActionCard icon={Store} title="Total restaurants" value={`${restaurants.length}`} />
+                <ActionCard
+                  icon={Store}
+                  title="Total restaurants"
+                  value={`${restaurants.length}`}
+                />
                 <ActionCard icon={ShoppingBag} title="Orders" value={`${orders.length}`} />
-                <ActionCard icon={MessageSquare} title="Feedback + reviews" value={`${feedback.length + reviews.length}`} />
+                <ActionCard
+                  icon={MessageSquare}
+                  title="Feedback + reviews"
+                  value={`${feedback.length + reviews.length}`}
+                />
               </div>
             </Panel>
           </section>
@@ -478,13 +659,20 @@ function AdminDashboard() {
           <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
             <Panel title="Review activity" subtitle="Newest customer feedback">
               <div className="max-h-[620px] space-y-3 overflow-y-auto pr-1">
-                {reviews.length === 0 && <EmptyState title="No reviews yet" detail="Reviews will appear here when customers leave feedback." />}
+                {reviews.length === 0 && (
+                  <EmptyState
+                    title="No reviews yet"
+                    detail="Reviews will appear here when customers leave feedback."
+                  />
+                )}
                 {reviews.slice(0, 10).map((review) => (
                   <div key={review.id} className="rounded-2xl border border-border bg-card p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-black">{review.userName}</p>
-                        <p className="text-[11px] text-muted-foreground">{formatDateTime(review.createdAt)}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {formatDateTime(review.createdAt)}
+                        </p>
                       </div>
                       <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-1 text-xs font-black text-success">
                         <Star className="h-3 w-3 fill-current" />
@@ -521,7 +709,10 @@ function AdminDashboard() {
             <Panel title="Delegate admins" subtitle="Promote trusted users or remove admin access">
               <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
                 {users.map((entry) => (
-                  <div key={entry.id} className="flex items-center gap-3 rounded-2xl bg-muted/55 p-3">
+                  <div
+                    key={entry.id}
+                    className="flex items-center gap-3 rounded-2xl bg-muted/55 p-3"
+                  >
                     <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-card text-sm font-black">
                       {entry.avatar || entry.name.charAt(0)}
                     </div>
@@ -536,8 +727,17 @@ function AdminDashboard() {
                       <button
                         type="button"
                         onClick={() => {
-                          void backend.updateUser(entry.id, { role: entry.role === "admin" ? "customer" : "admin" }).then(() => setTick((value) => value + 1));
-                          notify("success", entry.role === "admin" ? "Admin access removed" : "Admin access granted");
+                          void backend
+                            .updateUser(entry.id, {
+                              role: entry.role === "admin" ? "customer" : "admin",
+                            })
+                            .then(() => setTick((value) => value + 1));
+                          notify(
+                            "success",
+                            entry.role === "admin"
+                              ? "Admin access removed"
+                              : "Admin access granted",
+                          );
                         }}
                         className="rounded-xl bg-foreground px-3 py-2 text-[11px] font-black text-background"
                       >
@@ -570,7 +770,9 @@ function AdminDashboard() {
                     type="button"
                     onClick={() => setFilter(item)}
                     className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-black capitalize ${
-                      filter === item ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                      filter === item
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     <Filter className="h-3.5 w-3.5" />
@@ -599,7 +801,9 @@ function AdminDashboard() {
                         <td className="px-3 py-3">{record.name}</td>
                         <td className="px-3 py-3 text-muted-foreground">{record.detail}</td>
                         <td className="px-3 py-3">
-                          <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-black capitalize">{record.status}</span>
+                          <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-black capitalize">
+                            {record.status}
+                          </span>
                         </td>
                         <td className="px-3 py-3 text-right font-black">{record.value}</td>
                       </tr>
@@ -615,15 +819,24 @@ function AdminDashboard() {
           <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
             <Panel title="Account help center" subtitle={`${helpItems.length} items need review`}>
               <div className="space-y-2">
-                {helpItems.length === 0 && <EmptyState title="Help queue is clear" detail="Account and store issues will show up here." />}
+                {helpItems.length === 0 && (
+                  <EmptyState
+                    title="Help queue is clear"
+                    detail="Account and store issues will show up here."
+                  />
+                )}
                 {helpItems.map((item) => (
                   <div key={item.id} className="rounded-2xl bg-muted/55 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-black">{item.title}</p>
-                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          {item.detail}
+                        </p>
                       </div>
-                      <span className={`rounded-full px-2 py-1 text-[10px] font-black ${item.level === "urgent" ? "bg-destructive/10 text-destructive" : "bg-warning/20 text-warning"}`}>
+                      <span
+                        className={`rounded-full px-2 py-1 text-[10px] font-black ${item.level === "urgent" ? "bg-destructive/10 text-destructive" : "bg-warning/20 text-warning"}`}
+                      >
                         {item.level}
                       </span>
                     </div>
@@ -633,10 +846,26 @@ function AdminDashboard() {
             </Panel>
             <Panel title="Admin actions" subtitle="Fast checks for operations">
               <div className="grid gap-3 sm:grid-cols-2">
-                <ActionCard icon={Building2} title="Store verification" value={`${restaurants.filter((store) => store.phone && store.address).length}/${restaurants.length}`} />
-                <ActionCard icon={Users} title="Restaurant accounts" value={`${users.filter((entry) => entry.role === "restaurant").length}`} />
-                <ActionCard icon={CheckCircle2} title="Paid orders" value={`${orders.filter((order) => order.paymentStatus === "paid").length}`} />
-                <ActionCard icon={MessageSquare} title="Reviews received" value={`${reviews.length}`} />
+                <ActionCard
+                  icon={Building2}
+                  title="Store verification"
+                  value={`${restaurants.filter((store) => store.phone && store.address).length}/${restaurants.length}`}
+                />
+                <ActionCard
+                  icon={Users}
+                  title="Restaurant accounts"
+                  value={`${users.filter((entry) => entry.role === "restaurant").length}`}
+                />
+                <ActionCard
+                  icon={CheckCircle2}
+                  title="Paid orders"
+                  value={`${orders.filter((order) => order.paymentStatus === "paid").length}`}
+                />
+                <ActionCard
+                  icon={MessageSquare}
+                  title="Reviews received"
+                  value={`${reviews.length}`}
+                />
               </div>
             </Panel>
           </section>
@@ -679,7 +908,12 @@ function buildMetrics({
     { name: "Page views", value: Math.max(pageViews, 0) },
     { name: "Logins", value: auditEvents.filter((event) => event.type === "login").length },
     { name: "Signups", value: auditEvents.filter((event) => event.type === "signup").length },
-    { name: "Order actions", value: auditEvents.filter((event) => event.type === "order_created" || event.type === "order_updated").length },
+    {
+      name: "Order actions",
+      value: auditEvents.filter(
+        (event) => event.type === "order_created" || event.type === "order_updated",
+      ).length,
+    },
   ];
 
   const growth = Array.from({ length: 7 }).map((_, index) => {
@@ -687,11 +921,17 @@ function buildMetrics({
     date.setDate(date.getDate() - (6 - index));
     const key = date.toDateString();
     const dayOrders = orders.filter((order) => new Date(order.createdAt).toDateString() === key);
-    const dayReviews = reviews.filter((review) => new Date(review.createdAt).toDateString() === key);
-    const dayAudit = auditEvents.filter((event) => new Date(event.createdAt).toDateString() === key);
+    const dayReviews = reviews.filter(
+      (review) => new Date(review.createdAt).toDateString() === key,
+    );
+    const dayAudit = auditEvents.filter(
+      (event) => new Date(event.createdAt).toDateString() === key,
+    );
     return {
       day: date.toLocaleDateString("en", { weekday: "short" }),
-      revenue: dayOrders.filter((order) => order.status === "completed").reduce((sum, order) => sum + Number(order.total), 0),
+      revenue: dayOrders
+        .filter((order) => order.status === "completed")
+        .reduce((sum, order) => sum + Number(order.total), 0),
       transactions: dayOrders.length,
       traffic: dayAudit.filter((event) => event.type === "page_view").length + dayReviews.length,
     };
@@ -700,7 +940,11 @@ function buildMetrics({
   return { completedOrders, completedRevenue, pageViews, trafficMix, growth };
 }
 
-function derivePlatformStats(users: User[], restaurants: Restaurant[], orders: Order[]): PlatformStats {
+function derivePlatformStats(
+  users: User[],
+  restaurants: Restaurant[],
+  orders: Order[],
+): PlatformStats {
   return {
     id: "public",
     foodies: String(users.filter((entry) => entry.role === "customer").length),
@@ -810,7 +1054,9 @@ function buildHelpItems({
       level: "normal" as const,
     }));
   const inactiveUsers = users
-    .filter((entry) => entry.role === "customer" && !orders.some((order) => order.userId === entry.id))
+    .filter(
+      (entry) => entry.role === "customer" && !orders.some((order) => order.userId === entry.id),
+    )
     .map((entry) => ({
       id: `user-help:${entry.id}`,
       title: `${entry.name} has no orders yet`,
@@ -823,9 +1069,18 @@ function buildHelpItems({
       id: `feedback-help:${item.id}`,
       title: `${item.userName} needs help`,
       detail: item.message,
-      level: item.category === "payment" || item.category === "order" ? "urgent" as const : "normal" as const,
+      level:
+        item.category === "payment" || item.category === "order"
+          ? ("urgent" as const)
+          : ("normal" as const),
     }));
-  return [...openFeedback, ...missingStoreInfo, ...failedPayments, ...lowReviews, ...inactiveUsers].slice(0, 12);
+  return [
+    ...openFeedback,
+    ...missingStoreInfo,
+    ...failedPayments,
+    ...lowReviews,
+    ...inactiveUsers,
+  ].slice(0, 12);
 }
 
 function buildSearchRecords({
@@ -867,7 +1122,8 @@ function buildSearchRecords({
       id: `order:${order.id}`,
       type: "order",
       name: `Order #${order.id.slice(-5)}`,
-      detail: restaurants.find((store) => store.id === order.restaurantId)?.name ?? order.restaurantId,
+      detail:
+        restaurants.find((store) => store.id === order.restaurantId)?.name ?? order.restaurantId,
       status: order.status,
       value: naira(order.total),
       haystack: `${order.id} ${order.status} ${order.paymentStatus ?? ""} ${order.total}`,
@@ -911,17 +1167,41 @@ function formatDateTime(value: string | Date) {
   return date.toLocaleString();
 }
 
-function Kpi({ icon: Icon, label, value, accent }: { icon: LucideIcon; label: string; value: string; accent?: boolean }) {
+function Kpi({
+  icon: Icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
   return (
-    <div className={`rounded-2xl p-3.5 shadow-soft ${accent ? "bg-gradient-primary text-primary-foreground" : "bg-card"}`}>
+    <div
+      className={`rounded-2xl p-3.5 shadow-soft ${accent ? "bg-gradient-primary text-primary-foreground" : "bg-card"}`}
+    >
       <Icon className={`h-4 w-4 ${accent ? "opacity-90" : "text-muted-foreground"}`} />
-      <p className={`mt-3 text-[10px] font-black uppercase tracking-wider ${accent ? "opacity-85" : "text-muted-foreground"}`}>{label}</p>
+      <p
+        className={`mt-3 text-[10px] font-black uppercase tracking-wider ${accent ? "opacity-85" : "text-muted-foreground"}`}
+      >
+        {label}
+      </p>
       <p className="mt-1 truncate text-lg font-black leading-tight">{value}</p>
     </div>
   );
 }
 
-function Panel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-2xl bg-card p-4 shadow-soft">
       <div className="mb-4">
@@ -948,7 +1228,9 @@ function MetricRow({ label, value, color }: { label: string; value: string; colo
 function ActivityFeed({ items }: { items: ActivityItem[] }) {
   return (
     <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
-      {items.length === 0 && <EmptyState title="No activity yet" detail="Platform actions will show here." />}
+      {items.length === 0 && (
+        <EmptyState title="No activity yet" detail="Platform actions will show here." />
+      )}
       {items.map((item) => (
         <div key={item.id} className="grid grid-cols-[34px_1fr] gap-3 rounded-2xl bg-muted/55 p-3">
           <div className="grid h-8 w-8 place-items-center rounded-xl bg-card text-primary">
@@ -960,9 +1242,13 @@ function ActivityFeed({ items }: { items: ActivityItem[] }) {
           <div className="min-w-0">
             <div className="flex items-start justify-between gap-3">
               <p className="line-clamp-1 text-sm font-black">{item.title}</p>
-              <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">{formatDateTime(item.time)}</span>
+              <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
+                {formatDateTime(item.time)}
+              </span>
             </div>
-            <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+              {item.detail}
+            </p>
           </div>
         </div>
       ))}
@@ -973,13 +1259,23 @@ function ActivityFeed({ items }: { items: ActivityItem[] }) {
 function DetailPill({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-card px-3 py-2">
-      <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-0.5 truncate font-black capitalize">{value}</p>
     </div>
   );
 }
 
-function ActionCard({ icon: Icon, title, value }: { icon: LucideIcon; title: string; value: string }) {
+function ActionCard({
+  icon: Icon,
+  title,
+  value,
+}: {
+  icon: LucideIcon;
+  title: string;
+  value: string;
+}) {
   return (
     <div className="rounded-2xl bg-muted/55 p-4">
       <Icon className="h-5 w-5 text-primary" />
@@ -989,10 +1285,20 @@ function ActionCard({ icon: Icon, title, value }: { icon: LucideIcon; title: str
   );
 }
 
-function AdminStatField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function AdminStatField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
   return (
     <label className="block">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value.replace(/[^\d]/g, ""))}
@@ -1018,16 +1324,28 @@ function StoreDetail({
   reviews: Review[];
   onClose: () => void;
 }) {
-  const revenue = orders.filter((order) => order.status === "completed").reduce((sum, order) => sum + Number(order.total), 0);
+  const revenue = orders
+    .filter((order) => order.status === "completed")
+    .reduce((sum, order) => sum + Number(order.total), 0);
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/45 backdrop-blur-sm" onClick={onClose}>
-      <aside className="h-full w-full max-w-xl overflow-y-auto bg-background shadow-card animate-slide-up" onClick={(event) => event.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/45 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <aside
+        className="h-full w-full max-w-xl overflow-y-auto bg-background shadow-card animate-slide-up"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/90 px-4 py-3 backdrop-blur">
           <div>
             <p className="text-sm font-black">{store.name}</p>
             <p className="text-[11px] text-muted-foreground">Store details</p>
           </div>
-          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl bg-muted">
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-xl bg-muted"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -1035,7 +1353,9 @@ function StoreDetail({
         <div className="space-y-4 p-4">
           <div className="overflow-hidden rounded-2xl bg-card shadow-soft">
             <div className="aspect-[5/2.4] bg-muted">
-              {store.image ? <img src={store.image} alt={store.name} className="h-full w-full object-cover" /> : null}
+              {store.image ? (
+                <img src={store.image} alt={store.name} className="h-full w-full object-cover" />
+              ) : null}
             </div>
             <div className="p-4">
               <h3 className="text-xl font-black">{store.name}</h3>
@@ -1066,7 +1386,10 @@ function StoreDetail({
           <Panel title="Menu items" subtitle={`${meals.length} published dishes`}>
             <div className="space-y-2">
               {meals.map((meal) => (
-                <div key={meal.id} className="flex items-center justify-between gap-3 rounded-xl bg-muted/55 p-2.5 text-sm">
+                <div
+                  key={meal.id}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-muted/55 p-2.5 text-sm"
+                >
                   <span className="min-w-0 truncate font-semibold">{meal.name}</span>
                   <span className="shrink-0 font-black text-primary">{naira(meal.price)}</span>
                 </div>
@@ -1076,7 +1399,9 @@ function StoreDetail({
 
           <Panel title="Recent orders">
             <div className="space-y-2">
-              {orders.length === 0 && <EmptyState title="No orders" detail="This store has no order records yet." />}
+              {orders.length === 0 && (
+                <EmptyState title="No orders" detail="This store has no order records yet." />
+              )}
               {orders.slice(0, 6).map((order) => (
                 <div key={order.id} className="rounded-xl bg-muted/55 p-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
@@ -1084,7 +1409,9 @@ function StoreDetail({
                     <span className="font-black text-primary">{naira(order.total)}</span>
                   </div>
                   <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                    {parseOrderItems(order).map((item) => `${item.qty}x ${item.name}`).join(", ")}
+                    {parseOrderItems(order)
+                      .map((item) => `${item.qty}x ${item.name}`)
+                      .join(", ")}
                   </p>
                 </div>
               ))}
