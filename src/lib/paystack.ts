@@ -8,6 +8,9 @@ declare global {
         currency: string;
         ref: string;
         label?: string;
+        subaccount?: string;
+        transaction_charge?: number;
+        bearer?: "account" | "subaccount";
         metadata?: {
           custom_fields?: Array<{
             display_name: string;
@@ -68,6 +71,10 @@ type StartPaystackPaymentInput = {
   name: string;
   reference: string;
   address?: string;
+  restaurantId: string;
+  restaurantName: string;
+  subaccountCode?: string;
+  platformFeeNaira?: number;
 };
 
 export async function startPaystackPayment({
@@ -76,6 +83,10 @@ export async function startPaystackPayment({
   name,
   reference,
   address,
+  restaurantId,
+  restaurantName,
+  subaccountCode,
+  platformFeeNaira,
 }: StartPaystackPaymentInput) {
   const key = getPaystackPublicKey();
   if (!key) {
@@ -93,17 +104,32 @@ export async function startPaystackPayment({
       currency: "NGN",
       ref: reference,
       label: name,
-      metadata: address
-        ? {
-            custom_fields: [
-              {
-                display_name: "Pickup address",
-                variable_name: "pickup_address",
-                value: address,
-              },
-            ],
-          }
-        : undefined,
+      subaccount: subaccountCode,
+      transaction_charge: platformFeeNaira ? Math.round(platformFeeNaira * 100) : undefined,
+      bearer: subaccountCode ? "subaccount" : undefined,
+      metadata: {
+        custom_fields: [
+          {
+            display_name: "Restaurant",
+            variable_name: "restaurant_name",
+            value: restaurantName,
+          },
+          {
+            display_name: "Restaurant ID",
+            variable_name: "restaurant_id",
+            value: restaurantId,
+          },
+          ...(address
+            ? [
+                {
+                  display_name: "Pickup address",
+                  variable_name: "pickup_address",
+                  value: address,
+                },
+              ]
+            : []),
+        ],
+      },
       callback: (response) => {
         resolve(response.reference || reference);
       },

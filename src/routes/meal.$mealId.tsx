@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Star, Clock, Plus, Minus, ShoppingBag } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft, Star, Clock, Plus, Minus, ShoppingBag, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { backend } from "@/lib/backend";
 import type { Meal, Restaurant, Review } from "@/lib/seed";
@@ -15,7 +15,6 @@ export const Route = createFileRoute("/meal/$mealId")({ component: MealPage });
 
 function MealPage() {
   const { mealId } = Route.useParams();
-  const nav = useNavigate();
   const { add, items } = useCart();
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState("");
@@ -25,6 +24,7 @@ function MealPage() {
   const [selectedOptions, setSelectedOptions] = useState<SelectedMealOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
 
   useEffect(() => {
     Promise.all([backend.meals(), backend.restaurants(), backend.reviews()]).then(([allMeals, restaurants, allReviews]) => {
@@ -93,8 +93,11 @@ function MealPage() {
       options: selectedOptions,
     });
     notify("success", `${qty} x ${meal.name} added to cart`, { id: `cart-add:${meal.id}:${optionsSignature}:${noteSignature}` });
-    nav({ to: "/cart" });
-    window.setTimeout(() => setAddingToCart(false), 300);
+    setAddedToCart(true);
+    window.setTimeout(() => {
+      setAddingToCart(false);
+      setAddedToCart(false);
+    }, 1200);
   };
 
   const avgRating = reviews.length
@@ -251,14 +254,24 @@ function MealPage() {
         <button
           onClick={addToCart}
           disabled={restaurant?.isOpen === "0" || addingToCart}
-          className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-70"
+          className={`flex w-full items-center justify-between rounded-2xl px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-70 ${
+            addedToCart ? "bg-success" : "bg-gradient-primary"
+          }`}
         >
           <span className="flex items-center gap-2">
-            <ShoppingBag className="h-4 w-4" />
-            {addingToCart ? "Adding..." : "Add to cart"}
+            {addedToCart ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+            {addedToCart ? "Added to cart" : addingToCart ? "Adding..." : "Add to cart"}
           </span>
           <span>{naira(unitPrice * qty)}</span>
         </button>
+        {items.length > 0 && (
+          <Link
+            to="/cart"
+            className="mt-2 flex w-full items-center justify-center rounded-2xl border border-border bg-background py-2.5 text-xs font-black shadow-soft transition hover:bg-muted"
+          >
+            View cart
+          </Link>
+        )}
       </div>
     </div>
   );

@@ -74,6 +74,10 @@ function CartPage() {
       notify("error", "You can't place an order because this restaurant is closed", { id: "cart-restaurant-closed" });
       return;
     }
+    if (isPaystackConfigured() && (!restaurant.paystackSubaccount?.trim() || restaurant.paymentSetupStatus !== "ready")) {
+      notify("error", "This store has not finished payment setup yet", { id: `cart-payment-setup:${restaurant.id}` });
+      return;
+    }
 
     if (pickupMode === "scheduled") {
       if (!pickupAt) {
@@ -103,6 +107,10 @@ function CartPage() {
         name: user.name,
         reference: `bitepass-${orderId}`,
         address: user.address,
+        restaurantId: restaurant.id,
+        restaurantName: restaurant.name,
+        subaccountCode: restaurant.paystackSubaccount?.trim(),
+        platformFeeNaira: fee,
       });
       setCheckoutStage("Sending order to kitchen...");
       const pickupTime = pickupMode === "scheduled" && pickupAt ? new Date(pickupAt).toISOString() : new Date().toISOString();
@@ -129,6 +137,7 @@ function CartPage() {
         discountCode: "",
         paymentStatus: "paid",
         paymentReference,
+        paymentRecipient: restaurant.paystackSubaccount?.trim() || "platform",
       });
       setCheckoutStage("Order received...");
       selectedItems.forEach((item) => remove(item.id));

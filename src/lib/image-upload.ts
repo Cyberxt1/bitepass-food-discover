@@ -1,10 +1,21 @@
 const MAX_IMAGE_SIZE = 720;
 const JPEG_QUALITY = 0.72;
+const MAX_UPLOAD_BYTES = 1024 * 1024;
+const TARGET_IMAGE_BYTES = 700 * 1024;
+
+function dataUrlBytes(dataUrl: string) {
+  const base64 = dataUrl.split(",")[1] ?? "";
+  return Math.ceil((base64.length * 3) / 4);
+}
 
 export function compressImageFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
       reject(new Error("Choose an image file"));
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      reject(new Error("Image must be 1 MB or smaller"));
       return;
     }
 
@@ -26,7 +37,13 @@ export function compressImageFile(file: File): Promise<string> {
           return;
         }
         context.drawImage(image, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", JPEG_QUALITY));
+        let quality = JPEG_QUALITY;
+        let result = canvas.toDataURL("image/jpeg", quality);
+        while (dataUrlBytes(result) > TARGET_IMAGE_BYTES && quality > 0.45) {
+          quality -= 0.08;
+          result = canvas.toDataURL("image/jpeg", quality);
+        }
+        resolve(result);
       };
       image.src = String(reader.result);
     };

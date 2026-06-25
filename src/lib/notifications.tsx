@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 
 type NotificationLevel = "success" | "error" | "info";
 
@@ -32,8 +33,8 @@ type NotificationsContextValue = {
   clearAll: () => void;
 };
 
-const STORAGE_KEY = "bitepass:notifications";
-const PREFS_KEY = "bitepass:notification-preferences";
+const STORAGE_KEY_PREFIX = "bitepass:notifications";
+const PREFS_KEY_PREFIX = "bitepass:notification-preferences";
 const DEDUPE_WINDOW_MS = 1800;
 const MAX_NOTIFICATIONS = 40;
 
@@ -41,21 +42,33 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(nul
 
 let notificationsStore: AppNotification[] = [];
 let preferencesStore: NotificationPreferences = { enabled: true, orderUpdates: true, promos: true };
-let hasLoadedStore = false;
+let activeScope = "guest";
+let loadedScope = "";
 const listeners = new Set<() => void>();
 const recentEvents = new Map<string, number>();
+
+function storageKey(scope = activeScope) {
+  return `${STORAGE_KEY_PREFIX}:${scope}`;
+}
+
+function preferencesKey(scope = activeScope) {
+  return `${PREFS_KEY_PREFIX}:${scope}`;
+}
 
 function emitNotifications() {
   listeners.forEach((listener) => listener());
 }
 
-function loadNotifications() {
-  if (hasLoadedStore || typeof window === "undefined") return;
-  hasLoadedStore = true;
+function loadNotifications(scope = activeScope) {
+  if (typeof window === "undefined") return;
+  if (loadedScope === scope) return;
+  loadedScope = scope;
+  notificationsStore = [];
+  preferencesStore = { enabled: true, orderUpdates: true, promos: true };
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey(scope));
     notificationsStore = raw ? (JSON.parse(raw) as AppNotification[]) : [];
-    const rawPrefs = window.localStorage.getItem(PREFS_KEY);
+    const rawPrefs = window.localStorage.getItem(preferencesKey(scope));
     preferencesStore = rawPrefs
       ? { ...preferencesStore, ...(JSON.parse(rawPrefs) as Partial<NotificationPreferences>) }
       : preferencesStore;
@@ -66,12 +79,21 @@ function loadNotifications() {
 
 function saveNotifications() {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notificationsStore));
+  window.localStorage.setItem(storageKey(), JSON.stringify(notificationsStore));
 }
 
 function savePreferences() {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(PREFS_KEY, JSON.stringify(preferencesStore));
+  window.localStorage.setItem(preferencesKey(), JSON.stringify(preferencesStore));
+}
+
+function setNotificationScope(scope: string) {
+  if (activeScope === scope && loadedScope === scope) return;
+  activeScope = scope;
+  loadedScope = "";
+  recentEvents.clear();
+  loadNotifications(scope);
+  emitNotifications();
 }
 
 function pushNotification(notification: AppNotification) {
@@ -91,7 +113,7 @@ function shouldSuppress(eventKey: string) {
 export function notify(level: NotificationLevel, title: string, options: NotifyOptions = {}) {
   loadNotifications();
   if (!preferencesStore.enabled) return;
-  const eventKey = options.id ?? `${level}:${title}`;
+  const eventKey = `${activeScope}:${options.id ?? `${level}:${title}`}`;
   if (shouldSuppress(eventKey)) return;
 
   const toastId = `toast:${eventKey}`;
@@ -111,11 +133,17 @@ export function notify(level: NotificationLevel, title: string, options: NotifyO
 }
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
+  const { user, authReady } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [preferences, setPreferences] = useState<NotificationPreferences>(preferencesStore);
 
   useEffect(() => {
-    loadNotifications();
+    if (!authReady) return;
+    setNotificationScope(user ? user.id : "guest");
+  }, [authReady, user?.id]);
+
+  useEffect(() => {
+    loadNotifications(activeScope);
     const sync = () => {
       setNotifications([...notificationsStore]);
       setPreferences({ ...preferencesStore });

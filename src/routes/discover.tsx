@@ -348,7 +348,7 @@ function Discover() {
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
                   {loading
                     ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-                    : displayRestaurants.map((r) => <RestaurantCard key={r.id} r={r} distanceLabel={distanceFor(r)} />)}
+                    : displayRestaurants.map((r) => <RestaurantCard key={r.id} r={r} distanceLabel={distanceFor(r)} compact />)}
                 </div>
               )}
             </section>

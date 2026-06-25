@@ -93,12 +93,12 @@ function RootComponent() {
 
 function AppShell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const isLoading = useRouterState({ select: (s) => s.status === "pending" });
   const nav = useNavigate();
   const { authReady, updateProfile, user } = useAuth();
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [swipeDirection, setSwipeDirection] = useState<"next" | "previous" | null>(null);
   const fullWidth = path === "/" || path === "/login" || path === "/signup" || path.startsWith("/business") || path.startsWith("/admin");
-  const showOverlay = isLoading || !authReady;
+  const showOverlay = !authReady;
   const isAuthPage = path === "/login" || path === "/signup";
   const isAdminPage = path.startsWith("/admin");
   const isPublicPage = path === "/" || isAuthPage || isAdminPage;
@@ -116,7 +116,10 @@ function AppShell() {
 
     const nextIndex = deltaX < 0 ? activeSwipeIndex + 1 : activeSwipeIndex - 1;
     const nextRoute = swipeRoutes[nextIndex];
-    if (nextRoute) nav({ to: nextRoute });
+    if (nextRoute) {
+      setSwipeDirection(deltaX < 0 ? "next" : "previous");
+      nav({ to: nextRoute });
+    }
   };
 
   useEffect(() => {
@@ -162,7 +165,10 @@ function AppShell() {
       <div className={`min-h-screen bg-background transition duration-200 ${showOverlay ? "blur-sm opacity-60" : ""}`}>
         <DesktopUserNav />
         <div
+          key={path}
           className="mx-auto min-h-screen w-full max-w-md pb-32 lg:max-w-none lg:pb-0 lg:pl-24 xl:pl-28"
+          data-swipe-direction={swipeDirection ?? undefined}
+          onAnimationEnd={() => setSwipeDirection(null)}
           onTouchStart={(event) => {
             const touch = event.touches[0];
             touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;

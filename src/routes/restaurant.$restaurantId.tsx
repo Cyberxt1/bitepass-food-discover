@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Clock, Loader2, MapPin, MessageSquare, Send, Star, X } from "lucide-react";
+import { ArrowLeft, Check, Clock, Loader2, MapPin, MessageSquare, Send, ShoppingBag, Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { backend } from "@/lib/backend";
@@ -8,6 +8,7 @@ import { notify } from "@/lib/notifications";
 import type { Meal, Restaurant, Review } from "@/lib/seed";
 import { naira } from "@/lib/format";
 import { shortLocationLabel } from "@/lib/location";
+import { useCart } from "@/lib/cart";
 
 export const Route = createFileRoute("/restaurant/$restaurantId")({ component: RestaurantPage });
 
@@ -168,7 +169,7 @@ function RestaurantPage() {
         </div>
 
         {tab === "menu" ? (
-          <MenuSection meals={meals} closed={closed} />
+          <MenuSection meals={meals} restaurant={restaurant} closed={closed} />
         ) : (
           <ReviewsSection
             reviews={reviews}
@@ -196,7 +197,7 @@ function RestaurantLoading() {
   );
 }
 
-function MenuSection({ meals, closed }: { meals: Meal[]; closed: boolean }) {
+function MenuSection({ meals, restaurant, closed }: { meals: Meal[]; restaurant: Restaurant; closed: boolean }) {
   const categories = Array.from(new Set(meals.map((meal) => meal.category || "Meals")));
   const [category, setCategory] = useState(categories[0] ?? "Meals");
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
@@ -258,12 +259,46 @@ function MenuSection({ meals, closed }: { meals: Meal[]; closed: boolean }) {
           </div>
         </>
       )}
-      {selectedMeal && <MealDetailModal meal={selectedMeal} closed={closed} onClose={() => setSelectedMeal(null)} />}
+      {selectedMeal && <MealDetailModal meal={selectedMeal} restaurant={restaurant} closed={closed} onClose={() => setSelectedMeal(null)} />}
     </section>
   );
 }
 
-function MealDetailModal({ meal, closed, onClose }: { meal: Meal; closed: boolean; onClose: () => void }) {
+function MealDetailModal({ meal, restaurant, closed, onClose }: { meal: Meal; restaurant: Restaurant; closed: boolean; onClose: () => void }) {
+  const { add, items } = useCart();
+  const [added, setAdded] = useState(false);
+
+  const addMeal = () => {
+    if (closed) {
+      notify("error", "This restaurant is closed right now", { id: "restaurant-menu-closed" });
+      return;
+    }
+    if (items.length > 0 && items.some((item) => item.restaurantId !== meal.restaurantId)) {
+      notify("error", "Finish or clear your current cart before ordering from another restaurant", {
+        id: "restaurant-menu-mixed-cart",
+      });
+      return;
+    }
+
+    add({
+      id: `${meal.id}::::`,
+      mealId: meal.id,
+      name: meal.name,
+      price: Number(meal.price),
+      basePrice: Number(meal.price),
+      servingUnit: meal.servingUnit,
+      image: meal.image,
+      restaurantId: meal.restaurantId,
+      restaurantName: restaurant.name,
+      qty: 1,
+      notes: "",
+      options: [],
+    });
+    setAdded(true);
+    notify("success", `${meal.name} added to cart`, { id: `restaurant-menu-add:${meal.id}:${Date.now()}` });
+    window.setTimeout(() => setAdded(false), 1300);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center" onClick={onClose}>
       <div className="w-full max-w-md rounded-[1.5rem] bg-card p-4 shadow-card animate-slide-up" onClick={(event) => event.stopPropagation()}>
@@ -288,15 +323,26 @@ function MealDetailModal({ meal, closed, onClose }: { meal: Meal; closed: boolea
           <span className="rounded-full bg-muted px-2.5 py-1">{meal.prepTime} min</span>
           <span className="rounded-full bg-muted px-2.5 py-1">{meal.rating} rating</span>
         </div>
-        <Link
-          to="/meal/$mealId"
-          params={{ mealId: meal.id }}
-          className={`mt-5 block rounded-2xl px-5 py-3 text-center text-sm font-black shadow-glow ${
-            closed ? "bg-muted text-muted-foreground" : "bg-gradient-primary text-primary-foreground"
-          }`}
-        >
-          {closed ? "Restaurant closed" : "Choose meal"}
-        </Link>
+        <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+          <button
+            type="button"
+            onClick={addMeal}
+            disabled={closed}
+            className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-black shadow-glow transition active:scale-95 disabled:opacity-60 ${
+              added ? "bg-success text-white" : "bg-gradient-primary text-primary-foreground"
+            }`}
+          >
+            {added ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+            {closed ? "Closed" : added ? "Added" : "Add to cart"}
+          </button>
+          <Link
+            to="/meal/$mealId"
+            params={{ mealId: meal.id }}
+            className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-border bg-background px-4 text-sm font-black transition hover:bg-muted"
+          >
+            Customize
+          </Link>
+        </div>
       </div>
     </div>
   );

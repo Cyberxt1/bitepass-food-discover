@@ -6,6 +6,7 @@ export type Restaurant = {
   id: string; ownerId: string; name: string; cuisine: string; rating: string; reviews: string;
   prepTime: string; distance: string; image: string; tags: string; isOpen: string;
   description: string; address: string; phone: string; lat: string; lng: string;
+  paystackSubaccount?: string; paymentSetupStatus?: string;
 };
 export type Meal = {
   id: string; restaurantId: string; name: string; description: string;
@@ -21,7 +22,7 @@ export type Review = {
 export type Order = {
   id: string; userId: string; restaurantId: string; items: string;
   total: string; status: string; pickupTime: string; notes: string; createdAt: string;
-  discountCode: string; paymentStatus?: string; paymentReference?: string;
+  discountCode: string; paymentStatus?: string; paymentReference?: string; paymentRecipient?: string;
 };
 export type User = {
   id: string; name: string; email: string; password: string; role: string; avatar: string;

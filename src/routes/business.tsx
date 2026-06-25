@@ -284,7 +284,9 @@ function RestaurantOnboarding({
     address: "",
     lat: "",
     lng: "",
+    image: "",
   });
+  const [imageBusy, setImageBusy] = useState(false);
 
   const coords = form.lat && form.lng ? { lat: Number(form.lat), lng: Number(form.lng) } : null;
   const canContinue =
@@ -316,6 +318,19 @@ function RestaurantOnboarding({
     }
   };
 
+  const uploadRestaurantImage = async (file?: File) => {
+    if (!file) return;
+    setImageBusy(true);
+    try {
+      update("image", await compressImageFile(file));
+      toast.success("Restaurant photo added");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Photo could not be added");
+    } finally {
+      setImageBusy(false);
+    }
+  };
+
   const save = async () => {
     if (!canContinue) return;
     setSaving(true);
@@ -329,7 +344,7 @@ function RestaurantOnboarding({
         reviews: "0",
         prepTime: "15",
         distance: "0",
-        image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=70",
+        image: form.image,
         tags: `${form.intro.trim()}|${form.cuisine.trim() || "Food"}|New`,
         isOpen: "1",
         description: form.intro.trim(),
@@ -337,6 +352,7 @@ function RestaurantOnboarding({
         phone: form.phone.trim(),
         lat: form.lat,
         lng: form.lng,
+        paymentSetupStatus: "not_started",
       };
       await backend.setRestaurant(restaurant);
       toast.success("Restaurant profile created");
@@ -417,6 +433,41 @@ function RestaurantOnboarding({
 
             {step === 1 && (
               <div className="mt-3 space-y-3">
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Restaurant photo</span>
+                  <div className="mt-1 grid gap-3 sm:grid-cols-[128px_1fr] sm:items-center">
+                    <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-card">
+                      {form.image ? (
+                        <img src={form.image} alt={form.restaurant || "Restaurant preview"} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="grid h-full place-items-center text-xs font-semibold text-muted-foreground">No photo</div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-bold shadow-soft transition hover:bg-muted">
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        {imageBusy ? "Processing..." : "Upload photo"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          disabled={imageBusy}
+                          onChange={(event) => void uploadRestaurantImage(event.target.files?.[0])}
+                        />
+                      </label>
+                      {form.image && (
+                        <button
+                          type="button"
+                          onClick={() => update("image", "")}
+                          className="ml-2 rounded-full px-3 py-2 text-xs font-bold text-destructive transition hover:bg-destructive/10"
+                        >
+                          Remove
+                        </button>
+                      )}
+                      <p className="text-[11px] leading-4 text-muted-foreground">JPG/PNG only, max 1 MB.</p>
+                    </div>
+                  </div>
+                </div>
                 <OnboardingField icon={Mail}>
                   <input
                     value={form.intro}
@@ -1237,6 +1288,7 @@ function DiscountForm({ restaurantId, onCancel, onSaved }: { restaurantId: strin
 function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: () => void }) {
   const [form, setForm] = useState(restaurant);
   const [locating, setLocating] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
   const coords = form.lat && form.lng ? { lat: Number(form.lat), lng: Number(form.lng) } : null;
 
   const save = () => {
@@ -1267,11 +1319,24 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
     backend.updateRestaurant(restaurant.id, { isOpen: next }).then(refresh);
     toast.success(next === "1" ? "Restaurant is now open" : "Restaurant set to closed");
   };
+  const uploadRestaurantImage = async (file?: File) => {
+    if (!file) return;
+    setImageBusy(true);
+    try {
+      const image = await compressImageFile(file);
+      setForm((current) => ({ ...current, image }));
+      toast.success("Restaurant photo updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Photo could not be added");
+    } finally {
+      setImageBusy(false);
+    }
+  };
 
   const F = (k: keyof Restaurant, label: string, type = "text") => (
     <label className="block">
       <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-      <input type={type} value={form[k] as string} onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+      <input type={type} value={(form[k] ?? "") as string} onChange={(e) => setForm({ ...form, [k]: e.target.value })}
         className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
     </label>
   );
@@ -1296,11 +1361,67 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
       <div className="rounded-2xl bg-card p-4 shadow-soft">
         <p className="text-sm font-bold">Restaurant details</p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Restaurant photo</span>
+            <div className="mt-1 grid gap-3 sm:grid-cols-[180px_1fr] sm:items-center">
+              <div className="aspect-[4/3] overflow-hidden rounded-xl border border-border bg-muted">
+                {form.image ? (
+                  <img src={form.image} alt={form.name || "Restaurant preview"} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="grid h-full place-items-center text-xs font-semibold text-muted-foreground">No photo</div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-bold transition hover:bg-muted">
+                  <ImagePlus className="h-3.5 w-3.5" />
+                  {imageBusy ? "Processing..." : "Upload photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={imageBusy}
+                    onChange={(event) => void uploadRestaurantImage(event.target.files?.[0])}
+                  />
+                </label>
+                {form.image && (
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, image: "" })}
+                    className="ml-2 rounded-full px-3 py-2 text-xs font-bold text-destructive transition hover:bg-destructive/10"
+                  >
+                    Remove
+                  </button>
+                )}
+                <p className="text-[11px] leading-4 text-muted-foreground">JPG/PNG only, max 1 MB. Save profile after changing it.</p>
+              </div>
+            </div>
+          </div>
           {F("name", "Name")}
           {F("cuisine", "Cuisine")}
           {F("tags", "Tags (pipe-separated)")}
           {F("prepTime", "Avg prep time (min)", "number")}
           {F("phone", "Phone")}
+          <div className="md:col-span-2 rounded-xl border border-border bg-background p-3">
+            <p className="text-xs font-bold">Payment setup</p>
+            <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+              Use the Paystack subaccount code assigned to this store. Live checkout is blocked until this is set.
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {F("paystackSubaccount", "Paystack subaccount code")}
+              <label className="block">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment status</span>
+                <select
+                  value={form.paymentSetupStatus ?? "not_started"}
+                  onChange={(e) => setForm({ ...form, paymentSetupStatus: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                >
+                  <option value="not_started">Not started</option>
+                  <option value="pending_review">Pending review</option>
+                  <option value="ready">Ready</option>
+                </select>
+              </label>
+            </div>
+          </div>
           <div className="md:col-span-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Location</span>
             <div className="mt-1 space-y-3">

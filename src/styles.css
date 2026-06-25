@@ -163,6 +163,8 @@
   }
   .animate-fire-pop { animation: firePop 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
   .animate-card-pop { animation: cardPop 0.36s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  [data-swipe-direction="next"] { animation: tabEnterNext 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  [data-swipe-direction="previous"] { animation: tabEnterPrevious 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
 }
 
 @keyframes float {
@@ -185,6 +187,14 @@
 @keyframes cardPop {
   0% { transform: scale(0.94) translateY(8px); opacity: 0.65; }
   100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes tabEnterNext {
+  0% { transform: translateX(22px); opacity: 0.78; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+@keyframes tabEnterPrevious {
+  0% { transform: translateX(-22px); opacity: 0.78; }
+  100% { transform: translateX(0); opacity: 1; }
 }
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(20px); }
