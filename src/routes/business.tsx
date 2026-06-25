@@ -145,6 +145,7 @@ function BusinessDashboard() {
         userId={user.id}
         ownerName={user.name}
         refresh={refresh}
+        onCreated={setRestaurant}
         logout={logout}
       />
     );
@@ -331,11 +332,13 @@ function RestaurantOnboarding({
   userId,
   ownerName,
   refresh,
+  onCreated,
   logout,
 }: {
   userId: string;
   ownerName: string;
   refresh: () => void;
+  onCreated: (restaurant: Restaurant) => void;
   logout: () => void;
 }) {
   const nav = useNavigate();
@@ -430,10 +433,14 @@ function RestaurantOnboarding({
         paymentSetupStatus: "not_started",
       };
       await backend.setRestaurant(restaurant);
-      toast.success("Restaurant profile created. Sign in to open your dashboard.");
+      const savedRestaurant = (await backend.restaurants()).find((entry) => entry.id === restaurant.id);
+      if (!savedRestaurant) {
+        throw new Error("Restaurant was saved but could not be read back. Check database policies.");
+      }
+      toast.success("Restaurant profile created");
+      onCreated(savedRestaurant);
       refresh();
-      logout();
-      nav({ to: "/login", replace: true });
+      nav({ to: "/business", replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Restaurant setup failed");
     } finally {
