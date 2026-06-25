@@ -267,20 +267,16 @@ function Discover() {
   };
 
   const trending = useMemo(() => {
-    const publicRestaurantIds = new Set(restaurants.map((restaurant) => restaurant.id));
-    const byRestaurant = new Map<string, Meal>();
-    meals
-      .filter((meal) => publicRestaurantIds.has(meal.restaurantId))
+    const nearbyRestaurantIds = new Set(nearbyRestaurants.map((restaurant) => restaurant.id));
+    return meals
+      .filter((meal) => nearbyRestaurantIds.has(meal.restaurantId))
       .sort((a, b) => {
         const popular = Number(b.popular === "1") - Number(a.popular === "1");
         if (popular !== 0) return popular;
         return Number(b.rating || 0) - Number(a.rating || 0);
       })
-      .forEach((meal) => {
-        if (!byRestaurant.has(meal.restaurantId)) byRestaurant.set(meal.restaurantId, meal);
-      });
-    return Array.from(byRestaurant.values()).slice(0, 3);
-  }, [meals, restaurants]);
+      .slice(0, 6);
+  }, [meals, nearbyRestaurants]);
   const deckTransform = deckSwipe
     ? `translate(${deckSwipe.x}px, ${deckSwipe.y}px) rotate(${Math.max(-24, Math.min(24, deckSwipe.x / 12))}deg)`
     : `translate(${deckDrag.x}px, ${deckDrag.y}px) rotate(${Math.max(-10, Math.min(10, deckDrag.x / 18))}deg)`;
@@ -451,7 +447,7 @@ function Discover() {
                   <TrendingUp className="h-4 w-4 text-primary" />
                   Trending now
                 </h2>
-                <Link to="/search" className="flex items-center text-xs font-bold text-primary">
+                <Link to="/nearby" className="flex items-center text-xs font-bold text-primary">
                   See all <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
@@ -465,12 +461,22 @@ function Discover() {
                         <SkeletonCard />
                       </div>
                     ))
-                  : trending.length === 0
+                  : !coords
                     ? (
                       <div className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:col-span-2 sm:w-auto sm:max-w-none sm:shrink lg:col-span-3">
                         <EmptyPanel
-                          title="No foods yet"
-                          detail="Real dishes from approved restaurants will show here."
+                          title="Set your location to see nearby foods"
+                          detail="Trending now only shows dishes from restaurants near you."
+                          compact
+                        />
+                      </div>
+                    )
+                    : trending.length === 0
+                    ? (
+                      <div className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:col-span-2 sm:w-auto sm:max-w-none sm:shrink lg:col-span-3">
+                        <EmptyPanel
+                          title="No nearby foods yet"
+                          detail="Approved dishes from restaurants within 40 km will show here."
                           compact
                         />
                       </div>
@@ -632,11 +638,11 @@ function MealQuickView({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center sm:pb-10"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-24 pt-10 backdrop-blur-sm sm:items-center sm:pb-10"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-[1.75rem] bg-card p-4 shadow-card animate-slide-up"
+        className="max-h-[calc(100dvh-8rem)] w-full max-w-md overflow-y-auto rounded-[1.75rem] bg-card p-4 shadow-card animate-slide-up sm:max-h-[calc(100dvh-5rem)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="space-y-4 p-4">
