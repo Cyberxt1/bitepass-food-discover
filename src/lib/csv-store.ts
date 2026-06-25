@@ -85,6 +85,8 @@ export const FILES = {
   restaurants: "restaurants.csv",
   meals: "meals.csv",
   reviews: "reviews.csv",
+  feedback: "feedback.csv",
+  platformStats: "platform-stats.csv",
   orders: "orders.csv",
   discounts: "discounts.csv",
   session: "session.txt",

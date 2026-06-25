@@ -3,12 +3,15 @@ import {
   Beef,
   Bell,
   ChevronRight,
+  CheckCircle2,
   CupSoda,
   Flame,
+  Headphones,
   LocateFixed,
   Navigation,
   Sandwich,
   Search,
+  Send,
   Soup,
   TrendingUp,
   Utensils,
@@ -66,10 +69,15 @@ function Discover() {
   const [likedRestaurantIds, setLikedRestaurantIds] = useState<Set<string>>(new Set());
   const [mutedRestaurantIds, setMutedRestaurantIds] = useState<Set<string>>(new Set());
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackCategory, setFeedbackCategory] = useState("general");
+  const [sendingFeedback, setSendingFeedback] = useState(false);
+  const [cravingIndex, setCravingIndex] = useState(0);
   const [deckDrag, setDeckDrag] = useState({ x: 0, y: 0 });
   const [deckSwipe, setDeckSwipe] = useState<{ x: number; y: number; action: "like" | "mute" | "next" | "previous" } | null>(null);
   const seenNearbyIdsRef = useRef<Set<string> | null>(null);
   const deckTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const cravingsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -165,17 +173,42 @@ function Discover() {
     seenNearbyIdsRef.current = nextIds;
     if (newRestaurants.length === 0) return;
 
-    notify("success", `${newRestaurants.length} new nearby restaurant${newRestaurants.length === 1 ? "" : "s"} found`, {
-      id: `discover-nearby:${newRestaurants.map((restaurant) => restaurant.id).join(":")}`,
-      persist: false,
-    });
     const lastPopup = Number(window.localStorage.getItem(NEARBY_POPUP_KEY) ?? 0);
     if (!Number.isFinite(lastPopup) || Date.now() - lastPopup > NEARBY_POPUP_COOLDOWN_MS) {
       window.localStorage.setItem(NEARBY_POPUP_KEY, String(Date.now()));
-      setDeckIndex(0);
-      setNearbyDeckOpen(true);
     }
   }, [coords, nearbyRestaurants]);
+
+  const submitFeedback = async () => {
+    if (!user) {
+      notify("info", "Please sign in to send feedback", { id: "feedback-signin-required" });
+      return;
+    }
+    if (!feedbackMessage.trim()) {
+      notify("error", "Write a short message first", { id: "feedback-empty" });
+      return;
+    }
+    setSendingFeedback(true);
+    try {
+      await backend.addFeedback({
+        id: "fb" + Date.now(),
+        userId: user.id,
+        userName: user.name,
+        email: user.email,
+        category: feedbackCategory,
+        message: feedbackMessage.trim(),
+        status: "open",
+        createdAt: new Date().toISOString(),
+      });
+      setFeedbackMessage("");
+      setFeedbackCategory("general");
+      notify("success", "Feedback sent", { id: "feedback-sent" });
+    } catch {
+      notify("error", "Feedback could not be sent", { id: "feedback-error" });
+    } finally {
+      setSendingFeedback(false);
+    }
+  };
 
   const distanceFor = (restaurant: Restaurant) => {
     if (!coords) return undefined;
@@ -280,7 +313,15 @@ function Discover() {
                 </Link>
               </div>
               <div className="rounded-[1.5rem] border border-border bg-card p-2 shadow-soft">
-                <div className="no-scrollbar flex gap-2 overflow-x-auto">
+                <div
+                  ref={cravingsRef}
+                  className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth"
+                  onScroll={(event) => {
+                    const el = event.currentTarget;
+                    const cardWidth = 144;
+                    setCravingIndex(Math.round(el.scrollLeft / cardWidth));
+                  }}
+                >
                   {categories.map((category) => {
                     const Icon = category.icon;
                     return (
@@ -288,7 +329,7 @@ function Discover() {
                         key={category.name}
                         to="/search"
                         search={{ q: category.name }}
-                        className="group flex min-h-16 w-36 shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 transition hover:bg-muted"
+                        className="group flex min-h-16 w-36 shrink-0 snap-start items-center gap-3 rounded-2xl px-3 py-2.5 transition hover:bg-muted"
                       >
                         <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl transition group-hover:scale-105 ${category.accent}`}>
                           <Icon className="h-4.5 w-4.5" />
@@ -302,9 +343,57 @@ function Discover() {
                   })}
                 </div>
                 <div className="mt-1.5 flex justify-center gap-1 sm:hidden">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/35" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/35" />
+                  {[0, 1, 2].map((dot) => (
+                    <button
+                      key={dot}
+                      type="button"
+                      aria-label={`Show cravings group ${dot + 1}`}
+                      onClick={() => cravingsRef.current?.scrollTo({ left: dot * 144 * 2, behavior: "smooth" })}
+                      className={`h-1.5 rounded-full transition-all ${Math.min(2, Math.floor(cravingIndex / 2)) === dot ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/35"}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <div className="rounded-[1.5rem] border border-border bg-card p-4 shadow-soft">
+                <div className="flex items-start gap-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+                    <Headphones className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base font-black">Feedback hub</h2>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Send product feedback, order issues, or contact help directly to BitePass support.</p>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-[180px_1fr_auto]">
+                  <select
+                    value={feedbackCategory}
+                    onChange={(event) => setFeedbackCategory(event.target.value)}
+                    className="rounded-2xl border border-border bg-background px-3 py-2.5 text-sm font-semibold outline-none focus:border-primary"
+                  >
+                    <option value="general">General</option>
+                    <option value="order">Order help</option>
+                    <option value="restaurant">Restaurant issue</option>
+                    <option value="payment">Payment</option>
+                  </select>
+                  <textarea
+                    value={feedbackMessage}
+                    onChange={(event) => setFeedbackMessage(event.target.value)}
+                    placeholder="Tell us what happened..."
+                    rows={2}
+                    className="min-h-11 resize-none rounded-2xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={submitFeedback}
+                    disabled={sendingFeedback}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-4 text-sm font-black text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-60"
+                  >
+                    {sendingFeedback ? <CheckCircle2 className="h-4 w-4 animate-pulse" /> : <Send className="h-4 w-4" />}
+                    Send
+                  </button>
                 </div>
               </div>
             </section>

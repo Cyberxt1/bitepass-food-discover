@@ -1,9 +1,9 @@
 import { FILES, appendRow, deleteRow, readTable, updateRow } from "./csv-store";
 import { isSupabaseConfigured, supabase } from "./supabase";
-import type { Discount, Meal, Order, Restaurant, Review, User } from "./seed";
+import type { Discount, Feedback, Meal, Order, PlatformStats, Restaurant, Review, User } from "./seed";
 import { trackAuditEvent } from "./audit";
 
-type CollectionName = "users" | "restaurants" | "meals" | "orders" | "discounts" | "reviews";
+type CollectionName = "users" | "restaurants" | "meals" | "orders" | "discounts" | "reviews" | "feedback" | "platformStats";
 type Row = { id: string } & Record<string, unknown>;
 
 const useSupabase = import.meta.env.VITE_DATA_BACKEND === "supabase" && isSupabaseConfigured;
@@ -15,6 +15,8 @@ const fileFor: Record<CollectionName, string> = {
   orders: FILES.orders,
   discounts: FILES.discounts,
   reviews: FILES.reviews,
+  feedback: FILES.feedback,
+  platformStats: FILES.platformStats,
 };
 
 function upsertLocal<T extends { id: string }>(file: string, item: T) {
@@ -95,7 +97,9 @@ export const backend = {
   meals: () => readCollection<Meal>("meals"),
   orders: () => readCollection<Order>("orders"),
   reviews: () => readCollection<Review>("reviews"),
+  feedback: () => readCollection<Feedback>("feedback"),
   discounts: () => readCollection<Discount>("discounts"),
+  platformStats: () => readCollection<PlatformStats>("platformStats"),
 
   setUser: (user: User) => writeWithFallback(() => setCollectionDoc("users", user)),
   setRestaurant: (restaurant: Restaurant) => {
@@ -134,6 +138,18 @@ export const backend = {
     });
     return writeWithFallback(() => setCollectionDoc("reviews", review));
   },
+  addFeedback: (feedback: Feedback) => {
+    trackAuditEvent({
+      type: "review_created",
+      actorId: feedback.userId,
+      actorName: feedback.userName,
+      targetId: feedback.id,
+      targetType: "review",
+      title: `${feedback.userName} sent ${feedback.category} feedback`,
+      detail: feedback.message,
+    });
+    return writeWithFallback(() => setCollectionDoc("feedback", feedback));
+  },
 
   updateUser: (id: string, patch: Partial<User>) => writeWithFallback(() => patchCollectionDoc("users", id, patch)),
   updateRestaurant: (id: string, patch: Partial<Restaurant>) => {
@@ -157,6 +173,8 @@ export const backend = {
     return writeWithFallback(() => patchCollectionDoc("orders", id, patch));
   },
   updateMeal: (id: string, patch: Partial<Meal>) => writeWithFallback(() => patchCollectionDoc("meals", id, patch)),
+  updateFeedback: (id: string, patch: Partial<Feedback>) => writeWithFallback(() => patchCollectionDoc("feedback", id, patch)),
+  updatePlatformStats: (stats: PlatformStats) => writeWithFallback(() => setCollectionDoc("platformStats", stats)),
   updateDiscount: (id: string, patch: Partial<Discount>) =>
     writeWithFallback(() => patchCollectionDoc("discounts", id, patch)),
 

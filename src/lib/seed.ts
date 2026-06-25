@@ -19,6 +19,13 @@ export type Review = {
   taste: string; portion: string; spice: string; waitTime: string;
   comment: string; createdAt: string;
 };
+export type Feedback = {
+  id: string; userId: string; userName: string; email: string; category: string;
+  message: string; status: string; createdAt: string;
+};
+export type PlatformStats = {
+  id: string; foodies: string; kitchens: string; avgMinutesSaved: string; updatedAt: string;
+};
 export type Order = {
   id: string; userId: string; restaurantId: string; items: string;
   total: string; status: string; pickupTime: string; notes: string; createdAt: string;

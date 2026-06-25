@@ -26,6 +26,11 @@ function MealPage() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
 
+  const updateQty = (value: number) => {
+    if (!Number.isFinite(value)) return;
+    setQty(Math.max(1, Math.min(99, Math.floor(value))));
+  };
+
   useEffect(() => {
     Promise.all([backend.meals(), backend.restaurants(), backend.reviews()]).then(([allMeals, restaurants, allReviews]) => {
       const nextMeal = allMeals.find((entry) => entry.id === mealId);
@@ -197,11 +202,20 @@ function MealPage() {
           <div className="flex items-center justify-between rounded-2xl bg-card p-3 shadow-soft">
             <span className="text-sm font-semibold">Quantity</span>
             <div className="flex items-center gap-3">
-              <button onClick={() => setQty(Math.max(1, qty - 1))} className="grid h-8 w-8 place-items-center rounded-full border border-border">
+              <button onClick={() => updateQty(qty - 1)} className="grid h-8 w-8 place-items-center rounded-full border border-border">
                 <Minus className="h-3.5 w-3.5" />
               </button>
-              <span className="w-6 text-center text-base font-bold">{qty}</span>
-              <button onClick={() => setQty(qty + 1)} className="grid h-8 w-8 place-items-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow">
+              <input
+                type="number"
+                min={1}
+                max={99}
+                inputMode="numeric"
+                value={qty}
+                onChange={(event) => updateQty(Number(event.target.value))}
+                className="h-9 w-16 rounded-xl border border-border bg-background text-center text-sm font-black outline-none focus:border-primary"
+                aria-label="Quantity"
+              />
+              <button onClick={() => updateQty(qty + 1)} className="grid h-8 w-8 place-items-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow">
                 <Plus className="h-3.5 w-3.5" />
               </button>
             </div>

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Check, Clock, Loader2, MapPin, MessageSquare, Send, ShoppingBag, Star, X } from "lucide-react";
+import { ArrowLeft, Check, Clock, Flame, Loader2, MapPin, MessageSquare, Send, ShoppingBag, Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { backend } from "@/lib/backend";
@@ -198,14 +198,41 @@ function RestaurantLoading() {
 }
 
 function MenuSection({ meals, restaurant, closed }: { meals: Meal[]; restaurant: Restaurant; closed: boolean }) {
+  const { user } = useAuth();
   const categories = Array.from(new Set(meals.map((meal) => meal.category || "Meals")));
   const [category, setCategory] = useState(categories[0] ?? "Meals");
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [likedMealIds, setLikedMealIds] = useState<Set<string>>(new Set());
   const visibleMeals = meals.filter((meal) => (meal.category || "Meals") === category);
 
   useEffect(() => {
     if (categories.length > 0 && !categories.includes(category)) setCategory(categories[0]);
   }, [categories, category]);
+
+  useEffect(() => {
+    const key = `bitepass:liked-meals:${user?.id ?? "guest"}`;
+    try {
+      setLikedMealIds(new Set(JSON.parse(window.localStorage.getItem(key) ?? "[]") as string[]));
+    } catch {
+      setLikedMealIds(new Set());
+    }
+  }, [user?.id]);
+
+  const toggleMealLike = (meal: Meal) => {
+    const key = `bitepass:liked-meals:${user?.id ?? "guest"}`;
+    setLikedMealIds((current) => {
+      const next = new Set(current);
+      const liked = next.has(meal.id);
+      if (liked) next.delete(meal.id);
+      else next.add(meal.id);
+      window.localStorage.setItem(key, JSON.stringify([...next]));
+      notify(liked ? "info" : "success", liked ? "Removed from cravings" : `${meal.name} saved to cravings`, {
+        id: `meal-like:${meal.id}:${liked ? "off" : "on"}`,
+        persist: false,
+      });
+      return next;
+    });
+  };
 
   return (
     <section className="mt-6">
@@ -233,28 +260,35 @@ function MenuSection({ meals, restaurant, closed }: { meals: Meal[]; restaurant:
           </div>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {visibleMeals.map((meal) => (
-              <button
+              <div
                 key={meal.id}
-                type="button"
-                onClick={() => setSelectedMeal(meal)}
                 className="flex min-w-0 items-center gap-3 rounded-2xl bg-card p-2 text-left shadow-soft transition hover:bg-muted"
               >
-                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
+                <button type="button" onClick={() => setSelectedMeal(meal)} className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted text-left">
                   {meal.image ? (
                     <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
                   ) : (
                     <div className="grid h-full place-items-center px-2 text-center text-[10px] font-black">{meal.name}</div>
                   )}
-                </div>
-                <div className="min-w-0 flex-1">
+                </button>
+                <button type="button" onClick={() => setSelectedMeal(meal)} className="min-w-0 flex-1 text-left">
                   <p className="line-clamp-1 text-sm font-black">{meal.name}</p>
                   <p className="line-clamp-1 text-xs text-muted-foreground">{meal.description}</p>
                   <p className="mt-1 text-sm font-black text-primary">{naira(meal.price)}</p>
-                </div>
-                <span className="shrink-0 rounded-full bg-success/10 px-2 py-1 text-[11px] font-black text-success">
-                  {meal.reviewCount || "0"}
-                </span>
-              </button>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleMealLike(meal)}
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-95 ${
+                    likedMealIds.has(meal.id)
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                  aria-label={likedMealIds.has(meal.id) ? "Remove from cravings" : "Save to cravings"}
+                >
+                  <Flame className={`h-4 w-4 ${likedMealIds.has(meal.id) ? "fill-current" : ""}`} />
+                </button>
+              </div>
             ))}
           </div>
         </>
@@ -300,7 +334,7 @@ function MealDetailModal({ meal, restaurant, closed, onClose }: { meal: Meal; re
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-5 pt-10 backdrop-blur-sm sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-24 pt-10 backdrop-blur-sm sm:items-center sm:pb-10" onClick={onClose}>
       <div className="w-full max-w-md rounded-[1.5rem] bg-card p-4 shadow-card animate-slide-up" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-start gap-3">
           <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-muted">

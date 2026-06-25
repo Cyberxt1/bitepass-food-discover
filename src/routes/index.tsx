@@ -11,6 +11,8 @@ import {
   Utensils,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { backend } from "@/lib/backend";
+import type { Order, PlatformStats, Restaurant, User } from "@/lib/seed";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -140,6 +142,28 @@ function FoodFan() {
 }
 
 function Landing() {
+  const [stats, setStats] = useState<PlatformStats>({ id: "public", foodies: "0", kitchens: "0", avgMinutesSaved: "0", updatedAt: "" });
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadStats() {
+      const [published, users, restaurants, orders] = await Promise.all([
+        backend.platformStats(),
+        backend.users(),
+        backend.restaurants(),
+        backend.orders(),
+      ]);
+      if (cancelled) return;
+      setStats(published[0] ?? deriveLandingStats(users, restaurants, orders));
+    }
+    void loadStats();
+    const timer = window.setInterval(() => void loadStats(), 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#fbfaf7] text-[#201b17]">
       <nav className="sticky top-0 z-50 border-b border-[#eadfd4] bg-[#fbfaf7]/90 backdrop-blur-xl">
@@ -184,7 +208,7 @@ function Landing() {
             <div className="max-w-xl">
               <span className="inline-flex items-center gap-2 rounded-full border border-[#f4c9b6] bg-[#fff2eb] px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#df521b]">
                 <span className="h-2 w-2 rounded-full bg-[#ff6b2d]" />
-                Lagos, Abuja and PH
+                Osun State
               </span>
 
               <h1 className="mt-5 text-5xl font-black leading-[1.02] tracking-[-0.03em] text-[#201b17] md:text-6xl">
@@ -192,7 +216,7 @@ function Landing() {
               </h1>
 
               <p className="mt-5 max-w-lg text-base leading-7 text-[#6f6259] md:text-lg">
-                Pick a meal, pay ahead and collect it when it is ready. No long queue. No guessing.
+                Currently Piloting in Universities
               </p>
 
               <div className="mt-7 flex flex-wrap gap-3">
@@ -212,9 +236,9 @@ function Landing() {
 
               <div className="mt-8 grid max-w-lg grid-cols-3 gap-px overflow-hidden rounded-2xl border border-[#e8ddd2] bg-[#e8ddd2]">
                 {[
-                  ["10k+", "foodies"],
-                  ["120+", "kitchens"],
-                  ["6 min", "saved"],
+                  [formatLandingCount(stats.foodies), "foodies"],
+                  [formatLandingCount(stats.kitchens), "kitchens"],
+                  [`${Number(stats.avgMinutesSaved || 0)} min`, "saved"],
                 ].map(([value, label]) => (
                   <div key={label} className="bg-white/75 px-4 py-3">
                     <p className="text-lg font-black">{value}</p>
@@ -373,7 +397,8 @@ function Landing() {
             <span className="h-5 w-5 rounded-full bg-[#ff6b2d]" />
             BitePass
           </div>
-          <div className="flex gap-5">
+          <p className="text-xs">Copyright {new Date().getFullYear()} BitePass. All rights reserved.</p>
+          <div className="flex flex-wrap justify-center gap-5">
             <a href="#how" className="hover:text-[#201b17]">
               How it works
             </a>
@@ -383,9 +408,28 @@ function Landing() {
             <Link to="/login" className="hover:text-[#201b17]">
               Sign in
             </Link>
+            <Link to="/privacy" className="hover:text-[#201b17]">
+              Privacy
+            </Link>
           </div>
         </div>
       </footer>
     </div>
   );
+}
+
+function deriveLandingStats(users: User[], restaurants: Restaurant[], orders: Order[]): PlatformStats {
+  return {
+    id: "public",
+    foodies: String(users.filter((entry) => entry.role === "customer").length),
+    kitchens: String(restaurants.length),
+    avgMinutesSaved: String(Math.max(0, orders.length ? 6 : 0)),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function formatLandingCount(value: string) {
+  const number = Number(value || 0);
+  if (number >= 1000) return `${Math.floor(number / 1000)}k+`;
+  return String(number);
 }

@@ -21,6 +21,7 @@ import {
   Star,
   Store,
   TrendingUp,
+  Utensils,
   Users,
   X,
   type LucideIcon,
@@ -43,13 +44,13 @@ import {
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
-import type { Meal, Order, Restaurant, Review, User } from "@/lib/seed";
+import type { Feedback, Meal, Order, PlatformStats, Restaurant, Review, User } from "@/lib/seed";
 import { readAuditEvents, type AuditEvent } from "@/lib/audit";
 import { notify } from "@/lib/notifications";
 
 export const Route = createFileRoute("/admin")({ component: AdminDashboard });
 
-type AdminTab = "overview" | "activity" | "records" | "admins" | "help";
+type AdminTab = "overview" | "feedback" | "landing" | "activity" | "records" | "admins" | "help";
 type SearchFilter = "all" | "stores" | "users" | "orders";
 type OrderItem = { mealId?: string; name: string; qty: number; price?: number };
 type ActivityItem = {
@@ -149,6 +150,8 @@ function AdminDashboard() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [feedback, setFeedback] = useState<Feedback[]>([]);
+  const [statsForm, setStatsForm] = useState({ foodies: "", kitchens: "", avgMinutesSaved: "" });
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [selectedStore, setSelectedStore] = useState<Restaurant | null>(null);
 
@@ -161,12 +164,14 @@ function AdminDashboard() {
     let cancelled = false;
 
     async function loadAdminData() {
-      const [nextOrders, nextMeals, nextRestaurants, nextUsers, nextReviews] = await Promise.all([
+      const [nextOrders, nextMeals, nextRestaurants, nextUsers, nextReviews, nextFeedback, nextStats] = await Promise.all([
         backend.orders(),
         backend.meals(),
         backend.restaurants(),
         backend.users(),
         backend.reviews(),
+        backend.feedback(),
+        backend.platformStats(),
       ]);
       if (cancelled) return;
       setOrders(nextOrders);
@@ -174,6 +179,13 @@ function AdminDashboard() {
       setRestaurants(nextRestaurants);
       setUsers(nextUsers);
       setReviews(nextReviews);
+      setFeedback(nextFeedback);
+      const latestStats = nextStats[0] ?? derivePlatformStats(nextUsers, nextRestaurants, nextOrders);
+      setStatsForm({
+        foodies: latestStats.foodies,
+        kitchens: latestStats.kitchens,
+        avgMinutesSaved: latestStats.avgMinutesSaved,
+      });
       setAuditEvents(readAuditEvents());
     }
 
@@ -187,7 +199,7 @@ function AdminDashboard() {
 
   const metrics = useMemo(() => buildMetrics({ orders, users, restaurants, reviews, auditEvents }), [orders, users, restaurants, reviews, auditEvents]);
   const activity = useMemo(() => buildActivity({ orders, users, restaurants, reviews, auditEvents }), [orders, users, restaurants, reviews, auditEvents]);
-  const helpItems = useMemo(() => buildHelpItems({ orders, users, restaurants, reviews }), [orders, users, restaurants, reviews]);
+  const helpItems = useMemo(() => buildHelpItems({ orders, users, restaurants, reviews, feedback }), [orders, users, restaurants, reviews, feedback]);
   const records = useMemo(
     () => buildSearchRecords({ orders, users, restaurants, auditEvents, query, filter }),
     [orders, users, restaurants, auditEvents, query, filter],
@@ -219,6 +231,8 @@ function AdminDashboard() {
 
   const tabs: { id: AdminTab; label: string; icon: LucideIcon }[] = [
     { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "feedback", label: "Feedback", icon: MessageSquare },
+    { id: "landing", label: "Landing", icon: TrendingUp },
     { id: "activity", label: "Activity", icon: Activity },
     { id: "records", label: "Records", icon: Search },
     { id: "admins", label: "Admins", icon: ShieldCheck },
@@ -274,11 +288,18 @@ function AdminDashboard() {
           <Kpi icon={Store} label="Stores" value={`${restaurants.length}`} />
           <Kpi icon={Users} label="Users" value={`${users.length}`} />
           <Kpi icon={Activity} label="Traffic" value={`${metrics.pageViews}`} />
-          <Kpi icon={Star} label="Reviews" value={`${reviews.length}`} />
+          <Kpi icon={MessageSquare} label="Feedback" value={`${feedback.length + reviews.length}`} />
         </section>
 
         {tab === "overview" && (
           <>
+            <section className="grid gap-3 md:grid-cols-4">
+              <ActionCard icon={Users} title="Customers" value={`${users.filter((entry) => entry.role === "customer").length}`} />
+              <ActionCard icon={Store} title="Restaurants" value={`${restaurants.length}`} />
+              <ActionCard icon={Utensils} title="Menu items" value={`${meals.length}`} />
+              <ActionCard icon={MessageSquare} title="Open feedback" value={`${feedback.filter((item) => item.status !== "closed").length}`} />
+            </section>
+
             <section className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
               <Panel title="Growth dashboard" subtitle="Completed transactions, account growth, and traffic events">
                 <div className="h-72">
@@ -352,6 +373,105 @@ function AdminDashboard() {
               </Panel>
             </section>
           </>
+        )}
+
+        {tab === "feedback" && (
+          <section className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
+            <Panel title="Feedback inbox" subtitle={`${feedback.length} customer messages`}>
+              <div className="max-h-[680px] space-y-3 overflow-y-auto pr-1">
+                {feedback.length === 0 && <EmptyState title="No feedback yet" detail="Customer feedback hub messages will appear here." />}
+                {feedback
+                  .slice()
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-border bg-card p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black">{item.userName}</p>
+                          <p className="text-[11px] text-muted-foreground">{item.email} - {formatDateTime(item.createdAt)}</p>
+                        </div>
+                        <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${item.status === "closed" ? "bg-success/10 text-success" : "bg-warning/15 text-warning"}`}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[11px] font-black uppercase tracking-[0.14em] text-primary">{item.category}</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.message}</p>
+                      <div className="mt-3 flex gap-2">
+                        {(["open", "reviewing", "closed"] as const).map((status) => (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() => {
+                              void backend.updateFeedback(item.id, { status }).then(() => setTick((value) => value + 1));
+                              notify("success", `Feedback marked ${status}`, { id: `feedback-status:${item.id}:${status}` });
+                            }}
+                            className={`rounded-xl px-3 py-2 text-[11px] font-black capitalize transition ${
+                              item.status === status ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-accent"
+                            }`}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </Panel>
+            <Panel title="Reviews" subtitle={`${reviews.length} restaurant and meal reviews`}>
+              <div className="max-h-[680px] space-y-3 overflow-y-auto pr-1">
+                {reviews.length === 0 && <EmptyState title="No reviews yet" detail="Reviews will appear after customers rate orders or restaurants." />}
+                {reviews.slice(0, 18).map((review) => (
+                  <div key={review.id} className="rounded-2xl bg-muted/50 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate text-sm font-black">{review.userName}</p>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-1 text-xs font-black text-success">
+                        <Star className="h-3 w-3 fill-current" />
+                        {review.rating}
+                      </span>
+                    </div>
+                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{review.comment}</p>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </section>
+        )}
+
+        {tab === "landing" && (
+          <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+            <Panel title="Landing stats" subtitle="These numbers publish directly to the public landing page">
+              <div className="grid gap-3">
+                <AdminStatField label="Foodies" value={statsForm.foodies} onChange={(value) => setStatsForm((current) => ({ ...current, foodies: value }))} />
+                <AdminStatField label="Kitchens" value={statsForm.kitchens} onChange={(value) => setStatsForm((current) => ({ ...current, kitchens: value }))} />
+                <AdminStatField label="Average minutes saved" value={statsForm.avgMinutesSaved} onChange={(value) => setStatsForm((current) => ({ ...current, avgMinutesSaved: value }))} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    void backend.updatePlatformStats({
+                      id: "public",
+                      ...statsForm,
+                      updatedAt: new Date().toISOString(),
+                    }).then(() => {
+                      setTick((value) => value + 1);
+                      notify("success", "Landing stats updated", { id: "landing-stats-updated" });
+                    });
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-glow"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Publish stats
+                </button>
+              </div>
+            </Panel>
+            <Panel title="Live platform snapshot" subtitle="Real data currently in the platform">
+              <div className="grid gap-3 md:grid-cols-2">
+                <ActionCard icon={Users} title="Total users" value={`${users.length}`} />
+                <ActionCard icon={Store} title="Total restaurants" value={`${restaurants.length}`} />
+                <ActionCard icon={ShoppingBag} title="Orders" value={`${orders.length}`} />
+                <ActionCard icon={MessageSquare} title="Feedback + reviews" value={`${feedback.length + reviews.length}`} />
+              </div>
+            </Panel>
+          </section>
         )}
 
         {tab === "activity" && (
@@ -580,6 +700,16 @@ function buildMetrics({
   return { completedOrders, completedRevenue, pageViews, trafficMix, growth };
 }
 
+function derivePlatformStats(users: User[], restaurants: Restaurant[], orders: Order[]): PlatformStats {
+  return {
+    id: "public",
+    foodies: String(users.filter((entry) => entry.role === "customer").length),
+    kitchens: String(restaurants.length),
+    avgMinutesSaved: String(Math.max(0, Math.round(orders.length ? 6 : 0))),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 function buildActivity({
   orders,
   users,
@@ -647,11 +777,13 @@ function buildHelpItems({
   users,
   restaurants,
   reviews,
+  feedback,
 }: {
   orders: Order[];
   users: User[];
   restaurants: Restaurant[];
   reviews: Review[];
+  feedback: Feedback[];
 }) {
   const missingStoreInfo = restaurants
     .filter((store) => !store.phone || !store.address || !store.lat || !store.lng)
@@ -685,7 +817,15 @@ function buildHelpItems({
       detail: "Customer account exists but has not completed a transaction.",
       level: "normal" as const,
     }));
-  return [...missingStoreInfo, ...failedPayments, ...lowReviews, ...inactiveUsers].slice(0, 12);
+  const openFeedback = feedback
+    .filter((item) => item.status !== "closed")
+    .map((item) => ({
+      id: `feedback-help:${item.id}`,
+      title: `${item.userName} needs help`,
+      detail: item.message,
+      level: item.category === "payment" || item.category === "order" ? "urgent" as const : "normal" as const,
+    }));
+  return [...openFeedback, ...missingStoreInfo, ...failedPayments, ...lowReviews, ...inactiveUsers].slice(0, 12);
 }
 
 function buildSearchRecords({
@@ -846,6 +986,20 @@ function ActionCard({ icon: Icon, title, value }: { icon: LucideIcon; title: str
       <p className="mt-4 text-xs font-black text-muted-foreground">{title}</p>
       <p className="mt-1 text-2xl font-black">{value}</p>
     </div>
+  );
+}
+
+function AdminStatField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value.replace(/[^\d]/g, ""))}
+        inputMode="numeric"
+        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold outline-none focus:border-primary"
+      />
+    </label>
   );
 }
 
