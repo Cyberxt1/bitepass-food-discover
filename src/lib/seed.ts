@@ -1,6 +1,7 @@
 import { FILES, readTable, writeFile, writeTable } from "./csv-store";
 
 const SEED_FLAG = "bitepass:seeded:v8:real-data-only";
+const DEMO_CLEANUP_FLAG = "bitepass:demo-cleaned:v2:known-demo-ids-only";
 
 export type Restaurant = {
   id: string;
@@ -178,7 +179,7 @@ function removeDemoRows<T extends { id: string }>(
 function purgeDemoContent() {
   removeDemoRows<User>(
     FILES.users,
-    (row) => demoUserIds.has(row.id) || row.email.endsWith("@bitepass.test"),
+    (row) => demoUserIds.has(row.id),
   );
   removeDemoRows<Restaurant>(
     FILES.restaurants,
@@ -789,8 +790,12 @@ function mergeSeedRows<T extends { id: string }>(file: string, seedRows: T[]) {
 export function seedIfNeeded() {
   if (typeof window === "undefined") return;
   const hasSeed = Boolean(window.localStorage.getItem(SEED_FLAG));
+  const hasCleanedDemo = Boolean(window.localStorage.getItem(DEMO_CLEANUP_FLAG));
 
-  purgeDemoContent();
+  if (!hasCleanedDemo) {
+    purgeDemoContent();
+    window.localStorage.setItem(DEMO_CLEANUP_FLAG, "1");
+  }
   if (!hasSeed && readTable(FILES.orders).length === 0 && orders.length > 0) writeTable(FILES.orders, orders);
   if (!hasSeed) writeFile(FILES.session, "");
   window.localStorage.setItem(SEED_FLAG, "1");
