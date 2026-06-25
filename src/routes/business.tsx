@@ -1692,14 +1692,20 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
   const [locating, setLocating] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const coords = form.lat && form.lng ? { lat: Number(form.lat), lng: Number(form.lng) } : null;
+  const paymentStatus = restaurant.paymentSetupStatus ?? "not_started";
 
   const save = () => {
-    const paymentSetupStatus =
-      form.paystackSubaccount?.trim() && form.paymentSetupStatus !== "ready"
-        ? "pending_review"
-        : form.paymentSetupStatus;
-    backend.updateRestaurant(restaurant.id, { ...form, paymentSetupStatus }).then(refresh);
+    const { paystackSubaccount, paymentSetupStatus, ...profile } = form;
+    void paystackSubaccount;
+    void paymentSetupStatus;
+    backend.updateRestaurant(restaurant.id, profile).then(refresh);
     toast.success("Profile updated");
+  };
+  const requestPaymentSetup = () => {
+    backend
+      .updateRestaurant(restaurant.id, { paymentSetupStatus: "pending_review" })
+      .then(refresh);
+    toast.success("Payment setup request sent to admin");
   };
   const useCurrentLocation = async () => {
     setLocating(true);
@@ -1826,30 +1832,42 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
           {F("prepTime", "Avg prep time (min)", "number")}
           {F("phone", "Phone")}
           <div className="md:col-span-2 rounded-xl border border-border bg-background p-3">
-            <p className="text-xs font-bold">Payment ID request</p>
-            <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-              Add the Paystack subaccount code after admin creates it for your store. Saving a code
-              sends it to admin for approval before checkout routes payments to you.
-            </p>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {F("paystackSubaccount", "Payment ID / Paystack subaccount")}
-              <label className="block">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Payment status
-                </span>
-                <select
-                  value={form.paymentSetupStatus ?? "not_started"}
-                  onChange={(e) => setForm({ ...form, paymentSetupStatus: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                >
-                  <option value="not_started">Not started</option>
-                  <option value="pending_review">Request sent</option>
-                  <option value="ready" disabled>
-                    Ready - admin only
-                  </option>
-                </select>
-              </label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold">Payment setup</p>
+                <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                  Request setup here. Admin creates the Paystack subaccount, assigns the payment ID,
+                  and marks this store ready for checkout.
+                </p>
+              </div>
+              <span
+                className={`w-fit rounded-full px-3 py-1 text-[11px] font-bold capitalize ${
+                  paymentStatus === "ready"
+                    ? "bg-success/15 text-success"
+                    : paymentStatus === "pending_review"
+                      ? "bg-warning/15 text-warning"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {paymentStatus === "ready"
+                  ? "Complete"
+                  : paymentStatus === "pending_review"
+                    ? "Request sent"
+                    : "Not requested"}
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={requestPaymentSetup}
+              disabled={paymentStatus === "pending_review" || paymentStatus === "ready"}
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-2.5 text-sm font-bold text-background transition active:scale-95 disabled:opacity-50 sm:w-auto"
+            >
+              {paymentStatus === "ready"
+                ? "Payment setup complete"
+                : paymentStatus === "pending_review"
+                  ? "Request already sent"
+                  : "Request payment setup"}
+            </button>
           </div>
           <div className="md:col-span-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

@@ -399,11 +399,11 @@ function AdminDashboard() {
               </Panel>
               <Panel title="Payment setup" subtitle="Stores that need Paystack subaccount review">
                 <div className="space-y-2">
-                  {restaurants.filter((store) => (store.paymentSetupStatus ?? "not_started") !== "ready").length === 0 && (
+                  {restaurants.filter((store) => store.paymentSetupStatus === "pending_review").length === 0 && (
                     <EmptyState title="Payments are clear" detail="Payment requests will show here." />
                   )}
                   {restaurants
-                    .filter((store) => (store.paymentSetupStatus ?? "not_started") !== "ready")
+                    .filter((store) => store.paymentSetupStatus === "pending_review")
                     .slice(0, 6)
                     .map((store) => (
                       <button
@@ -1143,6 +1143,11 @@ function AdminDashboard() {
           orders={orders.filter((order) => order.restaurantId === selectedStore.id)}
           reviews={reviews.filter((review) => review.restaurantId === selectedStore.id)}
           onClose={() => setSelectedStore(null)}
+          onStoreUpdated={(patch) =>
+            setSelectedStore((current) =>
+              current && current.id === selectedStore.id ? { ...current, ...patch } : current,
+            )
+          }
           onRefresh={() => setTick((value) => value + 1)}
         />
       )}
@@ -1697,6 +1702,7 @@ function StoreDetail({
   orders,
   reviews,
   onClose,
+  onStoreUpdated,
   onRefresh,
 }: {
   store: Restaurant;
@@ -1705,12 +1711,20 @@ function StoreDetail({
   orders: Order[];
   reviews: Review[];
   onClose: () => void;
+  onStoreUpdated: (patch: Partial<Restaurant>) => void;
   onRefresh: () => void;
 }) {
   const revenue = orders
     .filter((order) => order.status === "completed")
     .reduce((sum, order) => sum + Number(order.total), 0);
   const [paymentCode, setPaymentCode] = useState(store.paystackSubaccount ?? "");
+  useEffect(() => {
+    setPaymentCode(store.paystackSubaccount ?? "");
+  }, [store.id, store.paystackSubaccount]);
+  const updateStore = (patch: Partial<Restaurant>) => {
+    onStoreUpdated(patch);
+    return backend.updateRestaurant(store.id, patch).then(onRefresh);
+  };
   return (
     <div
       className="fixed inset-0 z-50 flex justify-end bg-black/45 backdrop-blur-sm"
@@ -1778,9 +1792,7 @@ function StoreDetail({
                   key={status}
                   type="button"
                   onClick={() => {
-                    void backend
-                      .updateRestaurant(store.id, { verificationStatus: status })
-                      .then(onRefresh);
+                    void updateStore({ verificationStatus: status });
                     notify("success", `Store marked ${status}`, {
                       id: `store-verify:${store.id}:${status}`,
                     });
@@ -1798,12 +1810,10 @@ function StoreDetail({
                 type="button"
                 onClick={() => {
                   const suspended = store.moderationStatus === "suspended";
-                  void backend
-                    .updateRestaurant(store.id, {
-                      moderationStatus: suspended ? "active" : "suspended",
-                      suspensionReason: suspended ? "" : "Admin moderation action",
-                    })
-                    .then(onRefresh);
+                  void updateStore({
+                    moderationStatus: suspended ? "active" : "suspended",
+                    suspensionReason: suspended ? "" : "Admin moderation action",
+                  });
                   notify("success", suspended ? "Store restored" : "Store suspended", {
                     id: `store-moderation:${store.id}`,
                   });
@@ -1815,13 +1825,21 @@ function StoreDetail({
               <button
                 type="button"
                 onClick={() => {
-                  void backend
-                    .updateRestaurant(store.id, {
-                      paystackSubaccount: paymentCode.trim(),
-                      paymentSetupStatus: paymentCode.trim() ? "ready" : "pending_review",
-                    })
-                    .then(onRefresh);
-                  notify("success", paymentCode.trim() ? "Payment setup marked ready" : "Payment request kept in review", {
+                  const code = paymentCode.trim();
+                  if (!code) {
+                    notify("error", "Paste the Paystack subaccount code first", {
+                      id: `store-payment-code-required:${store.id}`,
+                    });
+                    return;
+                  }
+                  void updateStore({
+                    paystackSubaccount: code,
+                    paymentSetupStatus: "ready",
+                    verificationStatus: "verified",
+                    moderationStatus: "active",
+                    suspensionReason: "",
+                  });
+                  notify("success", "Payment setup complete. Customers can order from this store.", {
                     id: `store-payment-ready:${store.id}`,
                   });
                 }}
