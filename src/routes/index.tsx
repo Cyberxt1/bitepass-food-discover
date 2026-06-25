@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { backend } from "@/lib/backend";
-import type { Order, PlatformStats, Restaurant, User } from "@/lib/seed";
+import { ensureSeed, type Order, type PlatformStats, type Restaurant, type User } from "@/lib/seed";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -74,6 +74,14 @@ const features = [
   ["Verified kitchens", "Restaurants are checked before they go live.", ShieldCheck],
   ["Simple reorders", "Repeat your usual lunch in a few taps.", Utensils],
 ] satisfies Array<[string, string, LucideIcon]>;
+
+const defaultLandingStats: PlatformStats = {
+  id: "public",
+  foodies: "1",
+  kitchens: "9",
+  avgMinutesSaved: "6",
+  updatedAt: "",
+};
 
 function useReveal() {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -142,11 +150,12 @@ function FoodFan() {
 }
 
 function Landing() {
-  const [stats, setStats] = useState<PlatformStats>({ id: "public", foodies: "0", kitchens: "0", avgMinutesSaved: "0", updatedAt: "" });
+  const [stats, setStats] = useState<PlatformStats>(defaultLandingStats);
 
   useEffect(() => {
     let cancelled = false;
     async function loadStats() {
+      ensureSeed();
       const [published, users, restaurants, orders] = await Promise.all([
         backend.platformStats(),
         backend.users(),
@@ -154,7 +163,7 @@ function Landing() {
         backend.orders(),
       ]);
       if (cancelled) return;
-      setStats(published[0] ?? deriveLandingStats(users, restaurants, orders));
+      setStats(getPublishedStats(published) ?? deriveLandingStats(users, restaurants, orders));
     }
     void loadStats();
     const timer = window.setInterval(() => void loadStats(), 10000);
@@ -421,11 +430,18 @@ function Landing() {
 function deriveLandingStats(users: User[], restaurants: Restaurant[], orders: Order[]): PlatformStats {
   return {
     id: "public",
-    foodies: String(users.filter((entry) => entry.role === "customer").length),
-    kitchens: String(restaurants.length),
-    avgMinutesSaved: String(Math.max(0, orders.length ? 6 : 0)),
+    foodies: String(Math.max(Number(defaultLandingStats.foodies), users.filter((entry) => entry.role === "customer").length)),
+    kitchens: String(Math.max(Number(defaultLandingStats.kitchens), restaurants.length)),
+    avgMinutesSaved: String(Math.max(Number(defaultLandingStats.avgMinutesSaved), orders.length ? 6 : 0)),
     updatedAt: new Date().toISOString(),
   };
+}
+
+function getPublishedStats(stats: PlatformStats[]) {
+  const published = stats[0];
+  if (!published) return null;
+  const hasRealValue = [published.foodies, published.kitchens, published.avgMinutesSaved].some((value) => Number(value) > 0);
+  return hasRealValue ? published : null;
 }
 
 function formatLandingCount(value: string) {

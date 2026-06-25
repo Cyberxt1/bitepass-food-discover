@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Bell, LocateFixed, LogOut, Moon, Receipt, Settings, Sun, User as UserIcon } from "lucide-react";
+import { CheckCircle2, Bell, Headphones, LocateFixed, LogOut, Moon, Receipt, Send, Settings, Sun, User as UserIcon } from "lucide-react";
 import { useState } from "react";
 import { getDashboardPath, useAuth } from "@/lib/auth";
 import { getCurrentLocationDetails, shortLocationLabel } from "@/lib/location";
 import { notify, useNotifications } from "@/lib/notifications";
 import { useTheme, type Theme } from "@/lib/theme";
+import { backend } from "@/lib/backend";
 
 export const Route = createFileRoute("/profile")({ component: ProfilePage });
 
@@ -14,6 +15,9 @@ function ProfilePage() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const nav = useNavigate();
   const [locating, setLocating] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackCategory, setFeedbackCategory] = useState("general");
+  const [sendingFeedback, setSendingFeedback] = useState(false);
 
   if (!user) {
     return (
@@ -57,6 +61,33 @@ function ProfilePage() {
       notify("error", error instanceof Error ? error.message : "Location update failed", { id: "settings-location-error" });
     } finally {
       setLocating(false);
+    }
+  };
+
+  const submitFeedback = async () => {
+    if (!feedbackMessage.trim()) {
+      notify("error", "Write a short message first", { id: "settings-feedback-empty" });
+      return;
+    }
+    setSendingFeedback(true);
+    try {
+      await backend.addFeedback({
+        id: "fb" + Date.now(),
+        userId: user.id,
+        userName: user.name,
+        email: user.email,
+        category: feedbackCategory,
+        message: feedbackMessage.trim(),
+        status: "open",
+        createdAt: new Date().toISOString(),
+      });
+      setFeedbackMessage("");
+      setFeedbackCategory("general");
+      notify("success", "Feedback sent", { id: "settings-feedback-sent" });
+    } catch {
+      notify("error", "Feedback could not be sent", { id: "settings-feedback-error" });
+    } finally {
+      setSendingFeedback(false);
     }
   };
 
@@ -140,6 +171,45 @@ function ProfilePage() {
               <PreferenceRow label="In-app notifications" checked={preferences.enabled} onChange={(checked) => updatePreferences({ enabled: checked })} />
               <PreferenceRow label="Order updates" checked={preferences.orderUpdates} onChange={(checked) => updatePreferences({ orderUpdates: checked })} />
               <PreferenceRow label="Promos and discounts" checked={preferences.promos} onChange={(checked) => updatePreferences({ promos: checked })} />
+            </div>
+          </SettingsCard>
+
+          <SettingsCard title="Feedback Hub" detail="Contact help, report order issues, or send product feedback.">
+            <div className="flex items-start gap-3 rounded-2xl bg-muted/50 p-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+                <Headphones className="h-5 w-5" />
+              </div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Messages go straight to the admin feedback inbox.
+              </p>
+            </div>
+            <div className="mt-3 grid gap-2">
+              <select
+                value={feedbackCategory}
+                onChange={(event) => setFeedbackCategory(event.target.value)}
+                className="rounded-2xl border border-border bg-background px-3 py-2.5 text-sm font-semibold outline-none focus:border-primary"
+              >
+                <option value="general">General</option>
+                <option value="order">Order help</option>
+                <option value="restaurant">Restaurant issue</option>
+                <option value="payment">Payment</option>
+              </select>
+              <textarea
+                value={feedbackMessage}
+                onChange={(event) => setFeedbackMessage(event.target.value)}
+                placeholder="Tell us what happened..."
+                rows={3}
+                className="resize-none rounded-2xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              />
+              <button
+                type="button"
+                onClick={submitFeedback}
+                disabled={sendingFeedback}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-4 text-sm font-black text-primary-foreground shadow-glow transition active:scale-95 disabled:opacity-60"
+              >
+                {sendingFeedback ? <CheckCircle2 className="h-4 w-4 animate-pulse" /> : <Send className="h-4 w-4" />}
+                Send feedback
+              </button>
             </div>
           </SettingsCard>
 
