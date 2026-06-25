@@ -174,6 +174,7 @@ function AdminDashboard() {
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [statsForm, setStatsForm] = useState({ foodies: "", kitchens: "", avgMinutesSaved: "" });
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [adminDataError, setAdminDataError] = useState("");
   const [selectedStore, setSelectedStore] = useState<Restaurant | null>(null);
   const [selectedPaymentStore, setSelectedPaymentStore] = useState<Restaurant | null>(null);
   const [paymentView, setPaymentView] = useState<PaymentSetupView>("requests");
@@ -187,6 +188,17 @@ function AdminDashboard() {
     let cancelled = false;
 
     async function loadAdminData() {
+      let loadError = "";
+      const readAdminCollection = async <T,>(label: string, load: () => Promise<T[]>) => {
+        try {
+          return await load();
+        } catch (error) {
+          console.warn(`Admin ${label} failed to load`, error);
+          loadError = `${label} could not load. Other admin data is still shown.`;
+          return [];
+        }
+      };
+
       const [
         nextOrders,
         nextMeals,
@@ -196,15 +208,21 @@ function AdminDashboard() {
         nextFeedback,
         nextStats,
       ] = await Promise.all([
-        backend.orders(),
-        backend.meals(),
-        backend.restaurants(),
-        backend.users(),
-        backend.reviews(),
-        backend.feedback(),
-        backend.platformStats(),
+        readAdminCollection("orders", backend.orders),
+        readAdminCollection("meals", backend.meals),
+        readAdminCollection("restaurants", backend.restaurants),
+        readAdminCollection("users", backend.users),
+        readAdminCollection("reviews", backend.reviews),
+        readAdminCollection("feedback", backend.feedback),
+        readAdminCollection("platform stats", backend.platformStats),
       ]);
       if (cancelled) return;
+      const visibleUsers = nextUsers.some((entry) => entry.id === user.id)
+        ? nextUsers
+        : [user, ...nextUsers];
+      if (!nextUsers.some((entry) => entry.id === user.id)) {
+        void backend.setUser(user);
+      }
       setOrders(nextOrders);
       setMeals(nextMeals);
       setRestaurants(nextRestaurants);
@@ -214,11 +232,11 @@ function AdminDashboard() {
       setSelectedPaymentStore((current) =>
         current ? nextRestaurants.find((store) => store.id === current.id) ?? null : null,
       );
-      setUsers(nextUsers);
+      setUsers(visibleUsers);
       setReviews(nextReviews);
       setFeedback(nextFeedback);
       const latestStats = mergePlatformStats(
-        derivePlatformStats(nextUsers, nextRestaurants, nextOrders),
+        derivePlatformStats(visibleUsers, nextRestaurants, nextOrders),
         nextStats[0],
       );
       setStatsForm({
@@ -227,6 +245,7 @@ function AdminDashboard() {
         avgMinutesSaved: latestStats.avgMinutesSaved,
       });
       setAuditEvents(readAuditEvents());
+      setAdminDataError(loadError);
     }
 
     void loadAdminData();
@@ -357,6 +376,12 @@ function AdminDashboard() {
             Refresh data
           </button>
         </div>
+
+        {adminDataError && (
+          <div className="rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm font-semibold text-warning">
+            {adminDataError}
+          </div>
+        )}
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-6">
           <Kpi
