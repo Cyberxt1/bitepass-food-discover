@@ -27,6 +27,7 @@ import {
   distanceKm,
   formatDistance,
   restaurantCoords,
+  shortLocationLabel,
   type Coordinates,
 } from "@/lib/location";
 import { notify, useNotifications } from "@/lib/notifications";
@@ -290,6 +291,9 @@ function Discover() {
                 <div
                   ref={cravingsRef}
                   className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth"
+                  onTouchStart={(event) => event.stopPropagation()}
+                  onTouchMove={(event) => event.stopPropagation()}
+                  onTouchEnd={(event) => event.stopPropagation()}
                   onScroll={(event) => {
                     const el = event.currentTarget;
                     const cardWidth = 144;
@@ -332,14 +336,13 @@ function Discover() {
 
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => coords && visibleNearbyRestaurants.length > 0 && setNearbyDeckOpen(true)}
+                <Link
+                  to="/nearby"
                   className="flex items-center gap-2 text-left text-base font-black sm:text-lg"
                 >
                   <Navigation className="h-4 w-4 text-primary" />
                   Near you
-                </button>
+                </Link>
                 {!coords && !loading && (
                   <button
                     type="button"
@@ -351,13 +354,12 @@ function Discover() {
                   </button>
                 )}
                 {coords && visibleNearbyRestaurants.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setNearbyDeckOpen(true)}
+                  <Link
+                    to="/nearby"
                     className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-primary transition hover:bg-muted"
                   >
-                    Swipe view
-                  </button>
+                    View all
+                  </Link>
                 )}
               </div>
 

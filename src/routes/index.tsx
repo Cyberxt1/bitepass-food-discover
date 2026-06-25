@@ -221,7 +221,7 @@ function Landing() {
               </span>
 
               <h1 className="mt-5 text-5xl font-black leading-[1.02] tracking-[-0.03em] text-[#201b17] md:text-6xl">
-                Order before you arrive.
+                I hate wasting time when I am hungry.
               </h1>
 
               <p className="mt-5 max-w-lg text-base leading-7 text-[#6f6259] md:text-lg">

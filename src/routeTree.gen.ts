@@ -14,6 +14,7 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as NearbyRouteImport } from './routes/nearby'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as CartRouteImport } from './routes/cart'
@@ -48,6 +49,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NearbyRoute = NearbyRouteImport.update({
+  id: '/nearby',
+  path: '/nearby',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/cart': typeof CartRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
+  '/nearby': typeof NearbyRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/cart': typeof CartRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
+  '/nearby': typeof NearbyRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/cart': typeof CartRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
+  '/nearby': typeof NearbyRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
@@ -162,6 +171,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/discover'
     | '/login'
+    | '/nearby'
     | '/notifications'
     | '/privacy'
     | '/profile'
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/discover'
     | '/login'
+    | '/nearby'
     | '/notifications'
     | '/privacy'
     | '/profile'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/discover'
     | '/login'
+    | '/nearby'
     | '/notifications'
     | '/privacy'
     | '/profile'
@@ -214,6 +226,7 @@ export interface RootRouteChildren {
   CartRoute: typeof CartRoute
   DiscoverRoute: typeof DiscoverRoute
   LoginRoute: typeof LoginRoute
+  NearbyRoute: typeof NearbyRoute
   NotificationsRoute: typeof NotificationsRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
@@ -260,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nearby': {
+      id: '/nearby'
+      path: '/nearby'
+      fullPath: '/nearby'
+      preLoaderRoute: typeof NearbyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -342,6 +362,7 @@ const rootRouteChildren: RootRouteChildren = {
   CartRoute: CartRoute,
   DiscoverRoute: DiscoverRoute,
   LoginRoute: LoginRoute,
+  NearbyRoute: NearbyRoute,
   NotificationsRoute: NotificationsRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
