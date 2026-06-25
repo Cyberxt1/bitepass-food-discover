@@ -21,6 +21,7 @@ import type { Meal, Restaurant, Review } from "@/lib/seed";
 import { naira } from "@/lib/format";
 import { shortLocationLabel } from "@/lib/location";
 import { useCart } from "@/lib/cart";
+import { isMealPublic, isRestaurantPublic } from "@/lib/platform";
 
 export const Route = createFileRoute("/restaurant/$restaurantId")({ component: RestaurantPage });
 
@@ -42,9 +43,14 @@ function RestaurantPage() {
     Promise.all([backend.restaurants(), backend.meals(), backend.reviews()])
       .then(([restaurants, allMeals, allReviews]) => {
         if (cancelled) return;
-        const restaurantMeals = allMeals.filter((m) => m.restaurantId === restaurantId);
+        const nextRestaurant = restaurants.find((r) => r.id === restaurantId);
+        const restaurantMeals = allMeals.filter(
+          (m) => m.restaurantId === restaurantId && isMealPublic(m),
+        );
         const mealIds = new Set(restaurantMeals.map((m) => m.id));
-        setRestaurant(restaurants.find((r) => r.id === restaurantId));
+        setRestaurant(
+          nextRestaurant && isRestaurantPublic(nextRestaurant) ? nextRestaurant : undefined,
+        );
         setMeals(restaurantMeals);
         setReviews(
           allReviews
@@ -269,11 +275,13 @@ function MenuSection({
   useEffect(() => {
     const key = `bitepass:liked-meals:${user?.id ?? "guest"}`;
     try {
-      setLikedMealIds(new Set(JSON.parse(window.localStorage.getItem(key) ?? "[]") as string[]));
+      const localIds = JSON.parse(window.localStorage.getItem(key) ?? "[]") as string[];
+      const accountIds = user?.likedMealIds ? (JSON.parse(user.likedMealIds) as string[]) : [];
+      setLikedMealIds(new Set([...localIds, ...accountIds]));
     } catch {
       setLikedMealIds(new Set());
     }
-  }, [user?.id]);
+  }, [user?.id, user?.likedMealIds]);
 
   const toggleMealLike = (meal: Meal) => {
     const key = `bitepass:liked-meals:${user?.id ?? "guest"}`;
@@ -283,6 +291,7 @@ function MenuSection({
       if (liked) next.delete(meal.id);
       else next.add(meal.id);
       window.localStorage.setItem(key, JSON.stringify([...next]));
+      if (user) void backend.updateUser(user.id, { likedMealIds: JSON.stringify([...next]) });
       notify(
         liked ? "info" : "success",
         liked ? "Removed from cravings" : `${meal.name} saved to cravings`,

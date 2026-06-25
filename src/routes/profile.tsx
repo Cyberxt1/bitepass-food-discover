@@ -5,9 +5,11 @@ import {
   Headphones,
   LocateFixed,
   LogOut,
+  MessageCircle,
   Moon,
   Receipt,
   Send,
+  Share2,
   Settings,
   Sun,
   User as UserIcon,
@@ -30,6 +32,12 @@ function ProfilePage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackCategory, setFeedbackCategory] = useState("general");
   const [sendingFeedback, setSendingFeedback] = useState(false);
+  const inviteUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/signup`
+      : "https://bitepass.app/signup";
+  const inviteMessage = `Join me on BitePass. Order food nearby and skip the waiting: ${inviteUrl}`;
+  const whatsappInviteUrl = `https://wa.me/?text=${encodeURIComponent(inviteMessage)}`;
 
   if (!user) {
     return (
@@ -99,6 +107,8 @@ function ProfilePage() {
         message: feedbackMessage.trim(),
         status: "open",
         createdAt: new Date().toISOString(),
+        priority:
+          feedbackCategory === "payment" || feedbackCategory === "order" ? "urgent" : "normal",
       });
       setFeedbackMessage("");
       setFeedbackCategory("general");
@@ -107,6 +117,15 @@ function ProfilePage() {
       notify("error", "Feedback could not be sent", { id: "settings-feedback-error" });
     } finally {
       setSendingFeedback(false);
+    }
+  };
+
+  const copyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      notify("success", "Invite link copied", { id: "invite-link-copied" });
+    } catch {
+      notify("error", "Could not copy invite link", { id: "invite-link-copy-error" });
     }
   };
 
@@ -166,6 +185,40 @@ function ProfilePage() {
               <p className="mt-1 text-sm text-muted-foreground">Review alerts and order updates.</p>
             </Link>
           </div>
+
+          <SettingsCard
+            title="Invite a Friend to BitePass!"
+            detail="Share BitePass with someone who hates waiting for food too."
+          >
+            <div className="flex flex-col gap-3 rounded-2xl bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-success/10 text-success">
+                  <Share2 className="h-5 w-5" />
+                </div>
+                <p className="min-w-0 text-sm font-semibold">
+                  Bring your friends in and make lunch faster together.
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <a
+                  href={whatsappInviteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl bg-[#25d366] px-4 text-sm font-black text-white transition active:scale-95"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </a>
+                <button
+                  type="button"
+                  onClick={copyInviteLink}
+                  className="inline-flex min-h-10 items-center justify-center rounded-2xl border border-border bg-background px-4 text-sm font-black transition active:scale-95"
+                >
+                  Copy link
+                </button>
+              </div>
+            </div>
+          </SettingsCard>
 
           <SettingsCard title="Appearance" detail={`Current theme: ${resolvedTheme}`}>
             <div className="grid grid-cols-3 gap-2">

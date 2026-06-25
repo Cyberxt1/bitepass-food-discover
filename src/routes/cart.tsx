@@ -7,6 +7,7 @@ import { naira } from "@/lib/format";
 import { backend } from "@/lib/backend";
 import { isPaystackConfigured, startPaystackPayment } from "@/lib/paystack";
 import { notify } from "@/lib/notifications";
+import { validateCheckout } from "@/lib/platform";
 import type { Restaurant } from "@/lib/seed";
 
 export const Route = createFileRoute("/cart")({ component: CartPage });
@@ -62,32 +63,23 @@ function CartPage() {
 
   const place = async () => {
     if (placing) return;
-    if (!user) {
-      notify("info", "Please sign in to checkout", { id: "cart-login-required" });
-      nav({ to: "/login" });
-      return;
-    }
-    if (selectedItems.length === 0) {
-      notify("info", "Select at least one cart item to checkout", { id: "cart-select-required" });
-      return;
-    }
-
-    const restaurant = (await backend.restaurants()).find((entry) => entry.id === restaurantId);
-    if (!restaurant || restaurant.isOpen === "0") {
-      notify("error", "You can't place an order because this restaurant is closed", {
-        id: "cart-restaurant-closed",
+    const [restaurants, meals] = await Promise.all([backend.restaurants(), backend.meals()]);
+    const restaurant = restaurants.find((entry) => entry.id === restaurantId);
+    const validationError = validateCheckout({
+      user,
+      restaurant,
+      items: selectedItems,
+      meals,
+      paystackConfigured: isPaystackConfigured(),
+    });
+    if (validationError) {
+      notify(user ? "error" : "info", validationError, {
+        id: `cart-validation:${validationError}`,
       });
+      if (!user) nav({ to: "/login" });
       return;
     }
-    if (
-      isPaystackConfigured() &&
-      (!restaurant.paystackSubaccount?.trim() || restaurant.paymentSetupStatus !== "ready")
-    ) {
-      notify("error", "This store has not finished payment setup yet", {
-        id: `cart-payment-setup:${restaurant.id}`,
-      });
-      return;
-    }
+    if (!restaurant) return;
 
     if (pickupMode === "scheduled") {
       if (!pickupAt) {
@@ -143,7 +135,7 @@ function CartPage() {
           })),
         ),
         total: String(grand),
-        status: "received",
+        status: "paid",
         pickupTime,
         notes: "",
         createdAt: new Date().toISOString(),
@@ -151,6 +143,8 @@ function CartPage() {
         paymentStatus: "paid",
         paymentReference,
         paymentRecipient: restaurant.paystackSubaccount?.trim() || "platform",
+        placedAt: new Date().toISOString(),
+        paidAt: new Date().toISOString(),
       });
       setCheckoutStage("Order received...");
       selectedItems.forEach((item) => remove(item.id));

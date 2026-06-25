@@ -9,9 +9,11 @@ import {
   MapPin,
   ShieldCheck,
   Utensils,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { backend } from "@/lib/backend";
+import { readAuditEvents } from "@/lib/audit";
 import { ensureSeed, type Order, type PlatformStats, type Restaurant, type User } from "@/lib/seed";
 
 export const Route = createFileRoute("/")({
@@ -158,6 +160,7 @@ function FoodFan() {
 
 function Landing() {
   const [stats, setStats] = useState<PlatformStats>(defaultLandingStats);
+  const [usersToday, setUsersToday] = useState(1);
   const [headlineIndex, setHeadlineIndex] = useState(0);
   const [typedHeadline, setTypedHeadline] = useState(heroHeadlines[0]);
   const currentHeadline = heroHeadlines[headlineIndex];
@@ -175,6 +178,7 @@ function Landing() {
         const published = await backend.platformStats().catch(() => []);
         if (cancelled) return;
         setStats(mergeLandingStats(deriveLandingStats(users, restaurants, orders), published[0]));
+        setUsersToday(countUsersToday(users));
       } catch (error) {
         console.error("Landing stats could not be loaded", error);
         if (!cancelled) setStats(defaultLandingStats);
@@ -434,6 +438,32 @@ function Landing() {
             </div>
           </Reveal>
         </section>
+
+        <section className="px-5 pb-12">
+          <Reveal>
+            <div className="mx-auto flex max-w-6xl flex-col gap-5 rounded-[1.5rem] border border-[#e8ddd2] bg-[#201b17] p-6 text-white md:flex-row md:items-center md:justify-between md:p-7">
+              <div className="flex items-start gap-4">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/10 text-[#ffb591]">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ffb591]">
+                    Live community
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black tracking-[-0.02em]">
+                    Join {formatLandingCount(String(usersToday))} people using BitePass today.
+                  </h2>
+                </div>
+              </div>
+              <Link
+                to="/signup"
+                className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-[#201b17]"
+              >
+                Join BitePass <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </Reveal>
+        </section>
       </main>
 
       <footer className="border-t border-[#eadfd4] px-5 py-8">
@@ -498,4 +528,15 @@ function formatLandingCount(value: string) {
   const number = Number(value || 0);
   if (number >= 1000) return `${Math.floor(number / 1000)}k+`;
   return String(number);
+}
+
+function countUsersToday(users: User[]) {
+  const today = new Date().toDateString();
+  const activeUserIds = new Set(
+    readAuditEvents()
+      .filter((event) => event.actorId && new Date(event.createdAt).toDateString() === today)
+      .map((event) => event.actorId as string),
+  );
+
+  return Math.max(activeUserIds.size, users.length, 1);
 }

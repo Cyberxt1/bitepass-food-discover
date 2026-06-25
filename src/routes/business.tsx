@@ -43,6 +43,7 @@ import type { Discount, Meal, Order, Restaurant } from "@/lib/seed";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
 import { parseMealOptions, stringifyMealOptions, type MealOption } from "@/lib/meal-options";
+import { nextOrderStatus, normalizeOrderStatus, orderTimestampPatch } from "@/lib/platform";
 import { compressImageFile } from "@/lib/image-upload";
 import { getCurrentLocationDetails } from "@/lib/location";
 import { LocationPreview } from "@/components/LocationPreview";
@@ -85,7 +86,6 @@ function BusinessDashboard() {
           : allRestaurants.find((r) => r.ownerId === activeUser.id);
       if (!ownedRestaurant || cancelled) {
         if (!cancelled) {
-          setRestaurant((current) => (current ? undefined : current));
           setDashboardLoaded(true);
         }
         return;
@@ -100,7 +100,7 @@ function BusinessDashboard() {
       const paidQueue = restaurantOrders.filter(
         (order) =>
           order.paymentStatus === "paid" &&
-          ["received", "preparing", "ready"].includes(order.status),
+          ["received", "paid", "accepted", "preparing", "ready"].includes(order.status),
       );
       const nextOrderIds = new Set(paidQueue.map((order) => order.id));
 
@@ -913,17 +913,22 @@ function Overview({
 /* ---------------- ORDERS ---------------- */
 function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }) {
   const [filter, setFilter] = useState<"all" | "active" | "completed">("active");
-  const flow = ["received", "preparing", "ready", "completed"];
+  const flow = ["paid", "accepted", "preparing", "ready", "picked_up", "completed"];
   const statusRank: Record<string, number> = {
     received: 0,
-    preparing: 1,
-    ready: 2,
-    completed: 3,
-    cancelled: 4,
+    paid: 0,
+    accepted: 1,
+    preparing: 2,
+    ready: 3,
+    picked_up: 4,
+    completed: 5,
+    cancelled: 6,
   };
   const actionLabel: Record<string, string> = {
+    accepted: "Accept order",
     preparing: "Accept & start",
     ready: "Mark ready",
+    picked_up: "Picked up",
     completed: "Complete pickup",
   };
 
@@ -932,7 +937,7 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
       filter === "all"
         ? true
         : filter === "active"
-          ? ["received", "preparing", "ready"].includes(o.status)
+          ? ["received", "paid", "accepted", "preparing", "ready", "picked_up"].includes(o.status)
           : o.status === "completed",
     )
     .sort((a, b) => {
@@ -942,11 +947,15 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
     });
 
   const advance = (id: string, next: string) => {
-    backend.updateOrder(id, { status: next }).then(refresh);
-    toast.success(next === "preparing" ? "Order accepted" : `Order set to ${next}`);
+    backend.updateOrder(id, { status: next, ...orderTimestampPatch(next) }).then(refresh);
+    toast.success(
+      next === "accepted" ? "Order accepted" : `Order set to ${next.replace("_", " ")}`,
+    );
   };
   const cancel = (id: string) => {
-    backend.updateOrder(id, { status: "cancelled" }).then(refresh);
+    backend
+      .updateOrder(id, { status: "cancelled", ...orderTimestampPatch("cancelled") })
+      .then(refresh);
     toast.info("Order cancelled");
   };
 
@@ -983,9 +992,9 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
               servingUnit?: string;
               options?: { name: string; price: number; qty?: number }[];
             }[];
-            const idx = flow.indexOf(o.status);
-            const next = idx >= 0 && idx < flow.length - 1 ? flow[idx + 1] : null;
-            const isNewPaid = o.paymentStatus === "paid" && o.status === "received";
+            const normalizedStatus = normalizeOrderStatus(o.status);
+            const next = nextOrderStatus(o.status);
+            const isNewPaid = o.paymentStatus === "paid" && ["received", "paid"].includes(o.status);
             return (
               <div
                 key={o.id}
@@ -1020,18 +1029,18 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                     )}
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${
-                        o.status === "completed"
+                        normalizedStatus === "completed"
                           ? "bg-muted text-muted-foreground"
-                          : o.status === "ready"
+                          : normalizedStatus === "ready"
                             ? "bg-success/15 text-success"
-                            : o.status === "preparing"
+                            : normalizedStatus === "preparing" || normalizedStatus === "accepted"
                               ? "bg-warning/15 text-warning"
-                              : o.status === "cancelled"
+                              : normalizedStatus === "cancelled"
                                 ? "bg-destructive/15 text-destructive"
                                 : "bg-primary/15 text-primary"
                       }`}
                     >
-                      {o.status}
+                      {normalizedStatus.replace("_", " ")}
                     </span>
                   </div>
                 </div>
@@ -1063,16 +1072,14 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
                   <span className="text-sm font-bold">Total: {naira(o.total)}</span>
                   <div className="flex gap-2">
-                    {o.status !== "received" &&
-                      o.status !== "completed" &&
-                      o.status !== "cancelled" && (
-                        <button
-                          onClick={() => cancel(o.id)}
-                          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive transition"
-                        >
-                          Cancel
-                        </button>
-                      )}
+                    {!["received", "paid", "completed", "cancelled"].includes(o.status) && (
+                      <button
+                        onClick={() => cancel(o.id)}
+                        className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive transition"
+                      >
+                        Cancel
+                      </button>
+                    )}
                     {next && (
                       <button
                         onClick={() => advance(o.id, next)}
@@ -1687,7 +1694,11 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
   const coords = form.lat && form.lng ? { lat: Number(form.lat), lng: Number(form.lng) } : null;
 
   const save = () => {
-    backend.updateRestaurant(restaurant.id, form).then(refresh);
+    const paymentSetupStatus =
+      form.paystackSubaccount?.trim() && form.paymentSetupStatus !== "ready"
+        ? "pending_review"
+        : form.paymentSetupStatus;
+    backend.updateRestaurant(restaurant.id, { ...form, paymentSetupStatus }).then(refresh);
     toast.success("Profile updated");
   };
   const useCurrentLocation = async () => {
@@ -1817,8 +1828,8 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
           <div className="md:col-span-2 rounded-xl border border-border bg-background p-3">
             <p className="text-xs font-bold">Payment setup</p>
             <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-              Use the Paystack subaccount code assigned to this store. Live checkout is blocked
-              until this is set.
+              Use only the Paystack subaccount code assigned to this store. Admin must approve it
+              before customers can pay this restaurant directly.
             </p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {F("paystackSubaccount", "Paystack subaccount code")}
@@ -1833,7 +1844,9 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
                 >
                   <option value="not_started">Not started</option>
                   <option value="pending_review">Pending review</option>
-                  <option value="ready">Ready</option>
+                  <option value="ready" disabled>
+                    Ready - admin only
+                  </option>
                 </select>
               </label>
             </div>

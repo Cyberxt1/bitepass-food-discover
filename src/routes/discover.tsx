@@ -32,6 +32,7 @@ import {
 } from "@/lib/location";
 import { notify, useNotifications } from "@/lib/notifications";
 import { naira } from "@/lib/format";
+import { isMealPublic, isRestaurantPublic } from "@/lib/platform";
 import { AppHeader } from "@/components/AppHeader";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { MealCard } from "@/components/MealCard";
@@ -92,8 +93,8 @@ function Discover() {
         backend.meals(),
       ]);
       if (cancelled) return;
-      setRestaurants(nextRestaurants);
-      setMeals(nextMeals);
+      setRestaurants(nextRestaurants.filter(isRestaurantPublic));
+      setMeals(nextMeals.filter(isMealPublic));
       setLoading(false);
     };
 

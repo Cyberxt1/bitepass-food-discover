@@ -15,6 +15,7 @@ import {
   MapPin,
   Mail,
   MessageSquare,
+  RefreshCw,
   Search,
   ShieldCheck,
   ShoppingBag,
@@ -317,6 +318,26 @@ function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col justify-between gap-3 rounded-3xl border border-border bg-card p-4 shadow-soft sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-black">Live platform data</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Admin metrics read directly from users, restaurants, orders, reviews, and feedback.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setTick((value) => value + 1);
+              notify("info", "Refreshing admin data", { id: "admin-refresh-data", persist: false });
+            }}
+            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-black text-background transition active:scale-95 sm:w-auto"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh data
+          </button>
+        </div>
+
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-6">
           <Kpi
             icon={CircleDollarSign}
@@ -536,7 +557,7 @@ function AdminDashboard() {
                         </span>
                       </div>
                       <p className="mt-2 text-[11px] font-black uppercase tracking-[0.14em] text-primary">
-                        {item.category}
+                        {item.category} - {item.priority ?? "normal"} priority
                       </p>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.message}</p>
                       <div className="mt-3 flex gap-2">
@@ -546,7 +567,15 @@ function AdminDashboard() {
                             type="button"
                             onClick={() => {
                               void backend
-                                .updateFeedback(item.id, { status })
+                                .updateFeedback(item.id, {
+                                  status,
+                                  assignedTo: user.id,
+                                  updatedAt: new Date().toISOString(),
+                                  resolution:
+                                    status === "closed"
+                                      ? `Closed by ${user.name}`
+                                      : item.resolution,
+                                })
                                 .then(() => setTick((value) => value + 1));
                               notify("success", `Feedback marked ${status}`, {
                                 id: `feedback-status:${item.id}:${status}`,
@@ -882,6 +911,7 @@ function AdminDashboard() {
           orders={orders.filter((order) => order.restaurantId === selectedStore.id)}
           reviews={reviews.filter((review) => review.restaurantId === selectedStore.id)}
           onClose={() => setSelectedStore(null)}
+          onRefresh={() => setTick((value) => value + 1)}
         />
       )}
     </div>
@@ -1331,6 +1361,7 @@ function StoreDetail({
   orders,
   reviews,
   onClose,
+  onRefresh,
 }: {
   store: Restaurant;
   owner?: User;
@@ -1338,6 +1369,7 @@ function StoreDetail({
   orders: Order[];
   reviews: Review[];
   onClose: () => void;
+  onRefresh: () => void;
 }) {
   const revenue = orders
     .filter((order) => order.status === "completed")
@@ -1395,6 +1427,67 @@ function StoreDetail({
               <DetailRow label="Email" value={owner?.email ?? "-"} />
               <DetailRow label="Phone" value={store.phone || "-"} />
               <DetailRow label="Status" value={store.isOpen === "1" ? "Open" : "Closed"} />
+              <DetailRow label="Verification" value={store.verificationStatus ?? "verified"} />
+              <DetailRow label="Moderation" value={store.moderationStatus ?? "active"} />
+              <DetailRow label="Payments" value={store.paymentSetupStatus ?? "not_started"} />
+            </div>
+          </Panel>
+
+          <Panel title="Admin moderation" subtitle="Control store visibility and payment readiness">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(["verified", "pending", "rejected"] as const).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => {
+                    void backend
+                      .updateRestaurant(store.id, { verificationStatus: status })
+                      .then(onRefresh);
+                    notify("success", `Store marked ${status}`, {
+                      id: `store-verify:${store.id}:${status}`,
+                    });
+                  }}
+                  className={`rounded-xl px-3 py-2 text-xs font-black capitalize ${
+                    (store.verificationStatus ?? "verified") === status
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const suspended = store.moderationStatus === "suspended";
+                  void backend
+                    .updateRestaurant(store.id, {
+                      moderationStatus: suspended ? "active" : "suspended",
+                      suspensionReason: suspended ? "" : "Admin moderation action",
+                    })
+                    .then(onRefresh);
+                  notify("success", suspended ? "Store restored" : "Store suspended", {
+                    id: `store-moderation:${store.id}`,
+                  });
+                }}
+                className="rounded-xl bg-destructive/10 px-3 py-2 text-xs font-black text-destructive"
+              >
+                {store.moderationStatus === "suspended" ? "Restore store" : "Suspend store"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void backend
+                    .updateRestaurant(store.id, { paymentSetupStatus: "ready" })
+                    .then(onRefresh);
+                  notify("success", "Payment setup marked ready", {
+                    id: `store-payment-ready:${store.id}`,
+                  });
+                }}
+                className="rounded-xl bg-success/10 px-3 py-2 text-xs font-black text-success"
+              >
+                Mark payments ready
+              </button>
             </div>
           </Panel>
 

@@ -14,6 +14,7 @@ import {
   type Coordinates,
 } from "@/lib/location";
 import { notify } from "@/lib/notifications";
+import { isRestaurantPublic } from "@/lib/platform";
 import type { Restaurant } from "@/lib/seed";
 
 export const Route = createFileRoute("/nearby")({ component: NearbyPage });
@@ -35,7 +36,7 @@ function NearbyPage() {
     async function load() {
       const nextRestaurants = await backend.restaurants();
       if (!cancelled) {
-        setRestaurants(nextRestaurants);
+        setRestaurants(nextRestaurants.filter(isRestaurantPublic));
         setLoading(false);
       }
     }

@@ -21,6 +21,9 @@ export type Restaurant = {
   lng: string;
   paystackSubaccount?: string;
   paymentSetupStatus?: string;
+  verificationStatus?: string;
+  moderationStatus?: string;
+  suspensionReason?: string;
 };
 export type Meal = {
   id: string;
@@ -39,6 +42,7 @@ export type Meal = {
   availableTo: string;
   servingUnit?: string;
   options?: string;
+  moderationStatus?: string;
 };
 export type Review = {
   id: string;
@@ -63,6 +67,10 @@ export type Feedback = {
   message: string;
   status: string;
   createdAt: string;
+  priority?: string;
+  assignedTo?: string;
+  resolution?: string;
+  updatedAt?: string;
 };
 export type PlatformStats = {
   id: string;
@@ -85,6 +93,14 @@ export type Order = {
   paymentStatus?: string;
   paymentReference?: string;
   paymentRecipient?: string;
+  placedAt?: string;
+  paidAt?: string;
+  acceptedAt?: string;
+  preparingAt?: string;
+  readyAt?: string;
+  pickedUpAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
 };
 export type User = {
   id: string;
@@ -96,6 +112,8 @@ export type User = {
   address?: string;
   lat?: string;
   lng?: string;
+  likedMealIds?: string;
+  status?: string;
 };
 export type Discount = {
   id: string;

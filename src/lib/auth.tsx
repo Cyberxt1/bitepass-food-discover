@@ -363,6 +363,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: options.restaurant.phone,
         lat: String(options.restaurant.lat ?? ""),
         lng: String(options.restaurant.lng ?? ""),
+        verificationStatus: "pending",
+        moderationStatus: "active",
+        paymentSetupStatus: "not_started",
       };
       await backend.setRestaurant(restaurant);
       trackAuditEvent({

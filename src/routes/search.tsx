@@ -16,6 +16,7 @@ import {
   type Coordinates,
 } from "@/lib/location";
 import { notify } from "@/lib/notifications";
+import { isMealPublic, isRestaurantPublic } from "@/lib/platform";
 
 const searchSchema = z.object({ q: z.string().optional() });
 const SEARCH_REFRESH_MS = 10000;
@@ -47,8 +48,8 @@ function SearchPage() {
         backend.meals(),
       ]);
       if (cancelled) return;
-      setRestaurants(nextRestaurants);
-      setMeals(nextMeals);
+      setRestaurants(nextRestaurants.filter(isRestaurantPublic));
+      setMeals(nextMeals.filter(isMealPublic));
       setLoading(false);
     };
 

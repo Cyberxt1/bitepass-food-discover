@@ -6,14 +6,18 @@ import { naira } from "@/lib/format";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import { notify } from "@/lib/notifications";
+import { canViewOrder, normalizeOrderStatus, orderFlow } from "@/lib/platform";
 
 export const Route = createFileRoute("/orders/$orderId")({ component: OrderDetail });
 
-const flow = ["received", "preparing", "ready", "completed"] as const;
+const flow = orderFlow;
 const stepMeta = {
-  received: { label: "Order received", icon: ShoppingBag },
+  placed: { label: "Placed", icon: ShoppingBag },
+  paid: { label: "Paid", icon: Check },
+  accepted: { label: "Accepted", icon: ChefHat },
   preparing: { label: "Preparing", icon: ChefHat },
   ready: { label: "Ready for pickup", icon: PackageCheck },
+  picked_up: { label: "Picked up", icon: PackageCheck },
   completed: { label: "Completed", icon: Check },
 };
 
@@ -31,14 +35,33 @@ function OrderDetail() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const found = (await backend.orders()).find((item) => item.id === orderId);
-      if (!cancelled) setOrder(found);
+      const [orders, restaurants] = await Promise.all([backend.orders(), backend.restaurants()]);
+      const found = orders.find((item) => item.id === orderId);
+      const restaurant = found
+        ? restaurants.find((entry) => entry.id === found.restaurantId)
+        : undefined;
+      const visible = found && canViewOrder(user, found, restaurant) ? found : undefined;
+      if (!cancelled) {
+        setOrder((current) => {
+          if (current && visible && current.status !== visible.status) {
+            notify(
+              "info",
+              `Order update: ${normalizeOrderStatus(visible.status).replace("_", " ")}`,
+              {
+                id: `order-status:${visible.id}:${visible.status}`,
+                persist: false,
+              },
+            );
+          }
+          return visible;
+        });
+      }
     }
     void load();
     return () => {
       cancelled = true;
     };
-  }, [orderId, tick]);
+  }, [orderId, tick, user]);
 
   useEffect(() => {
     const timer = setInterval(() => setTick((value) => value + 1), 1000);
@@ -73,7 +96,8 @@ function OrderDetail() {
     notes?: string;
     options?: { name: string; price: number; qty?: number }[];
   }[];
-  const currentIdx = flow.indexOf(order.status as (typeof flow)[number]);
+  const normalizedStatus = normalizeOrderStatus(order.status);
+  const currentIdx = flow.indexOf(normalizedStatus as (typeof flow)[number]);
   const submitReview = async () => {
     if (!user || reviewing) return;
     if (!reviewComment.trim()) {
@@ -123,10 +147,10 @@ function OrderDetail() {
       <main className="mx-auto grid max-w-5xl gap-4 px-4 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8 lg:pt-8">
         <div className="rounded-3xl bg-gradient-warm p-5 text-white shadow-glow animate-slide-up">
           <p className="text-xs uppercase tracking-wider opacity-85">
-            {order.status === "completed" ? "Order finished" : "Order sent to store"}
+            {normalizedStatus === "completed" ? "Order finished" : "Order sent to store"}
           </p>
           <p className="mt-1 font-mono text-4xl font-bold">
-            {order.status === "completed" ? "DONE" : "PAID"}
+            {normalizedStatus === "completed" ? "DONE" : normalizedStatus.toUpperCase()}
           </p>
           <p className="mt-1 text-xs opacity-85">Pickup at {restaurantName}</p>
           <p className="mt-1 text-xs opacity-85">
@@ -139,7 +163,7 @@ function OrderDetail() {
             {flow.map((step, index) => {
               const Meta = stepMeta[step];
               const done = index <= currentIdx;
-              const active = index === currentIdx && order.status !== "completed";
+              const active = index === currentIdx && normalizedStatus !== "completed";
               return (
                 <div key={step} className="flex items-center gap-3">
                   <div className="relative">
@@ -202,7 +226,7 @@ function OrderDetail() {
           </div>
         </div>
 
-        {order.status === "completed" && (
+        {normalizedStatus === "completed" && (
           <div className="rounded-2xl bg-card p-4 shadow-soft lg:col-span-2">
             <h3 className="text-sm font-bold">Review this order</h3>
             <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr_auto] md:items-start">
