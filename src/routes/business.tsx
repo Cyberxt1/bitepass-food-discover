@@ -1691,8 +1691,13 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
   const [form, setForm] = useState(restaurant);
   const [locating, setLocating] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(restaurant.paymentSetupStatus ?? "not_started");
   const coords = form.lat && form.lng ? { lat: Number(form.lat), lng: Number(form.lng) } : null;
-  const paymentStatus = restaurant.paymentSetupStatus ?? "not_started";
+
+  useEffect(() => {
+    setForm(restaurant);
+    setPaymentStatus(restaurant.paymentSetupStatus ?? "not_started");
+  }, [restaurant]);
 
   const save = () => {
     const { paystackSubaccount, paymentSetupStatus, ...profile } = form;
@@ -1702,9 +1707,13 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
     toast.success("Profile updated");
   };
   const requestPaymentSetup = () => {
+    setPaymentStatus("pending_review");
     backend
       .updateRestaurant(restaurant.id, { paymentSetupStatus: "pending_review" })
-      .then(refresh);
+      .then(() => {
+        refresh();
+        setPaymentStatus("pending_review");
+      });
     toast.success("Payment setup request sent to admin");
   };
   const useCurrentLocation = async () => {
@@ -1853,7 +1862,9 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
                   ? "Complete"
                   : paymentStatus === "pending_review"
                     ? "Request sent"
-                    : "Not requested"}
+                    : paymentStatus === "rejected"
+                      ? "Rejected"
+                      : "Not requested"}
               </span>
             </div>
             <button
@@ -1866,7 +1877,9 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
                 ? "Payment setup complete"
                 : paymentStatus === "pending_review"
                   ? "Request already sent"
-                  : "Request payment setup"}
+                  : paymentStatus === "rejected"
+                    ? "Request again"
+                    : "Request payment setup"}
             </button>
           </div>
           <div className="md:col-span-2">

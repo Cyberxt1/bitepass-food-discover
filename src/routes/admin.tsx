@@ -10,6 +10,7 @@ import {
   Clock,
   Filter,
   Headphones,
+  Loader2,
   Lock,
   LogOut,
   MapPin,
@@ -52,8 +53,17 @@ import { notify } from "@/lib/notifications";
 
 export const Route = createFileRoute("/admin")({ component: AdminDashboard });
 
-type AdminTab = "overview" | "feedback" | "landing" | "activity" | "records" | "admins" | "help";
+type AdminTab =
+  | "overview"
+  | "payments"
+  | "feedback"
+  | "landing"
+  | "activity"
+  | "records"
+  | "admins"
+  | "help";
 type SearchFilter = "all" | "stores" | "users" | "orders";
+type PaymentSetupView = "requests" | "approved" | "rejected";
 type OrderItem = { mealId?: string; name: string; qty: number; price?: number };
 type ActivityItem = {
   id: string;
@@ -165,6 +175,8 @@ function AdminDashboard() {
   const [statsForm, setStatsForm] = useState({ foodies: "", kitchens: "", avgMinutesSaved: "" });
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [selectedStore, setSelectedStore] = useState<Restaurant | null>(null);
+  const [selectedPaymentStore, setSelectedPaymentStore] = useState<Restaurant | null>(null);
+  const [paymentView, setPaymentView] = useState<PaymentSetupView>("requests");
 
   useEffect(() => {
     if (user && user.role !== "admin") nav({ to: "/" });
@@ -196,6 +208,12 @@ function AdminDashboard() {
       setOrders(nextOrders);
       setMeals(nextMeals);
       setRestaurants(nextRestaurants);
+      setSelectedStore((current) =>
+        current ? nextRestaurants.find((store) => store.id === current.id) ?? null : null,
+      );
+      setSelectedPaymentStore((current) =>
+        current ? nextRestaurants.find((store) => store.id === current.id) ?? null : null,
+      );
       setUsers(nextUsers);
       setReviews(nextReviews);
       setFeedback(nextFeedback);
@@ -264,6 +282,7 @@ function AdminDashboard() {
 
   const tabs: { id: AdminTab; label: string; icon: LucideIcon }[] = [
     { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "payments", label: "Payment Setups", icon: CircleDollarSign },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
     { id: "landing", label: "Landing", icon: TrendingUp },
     { id: "activity", label: "Activity", icon: Activity },
@@ -409,7 +428,7 @@ function AdminDashboard() {
                       <button
                         key={store.id}
                         type="button"
-                        onClick={() => setSelectedStore(store)}
+                        onClick={() => setSelectedPaymentStore(store)}
                         className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3 rounded-2xl bg-muted/55 p-3 text-left transition hover:bg-muted"
                       >
                         <span className="min-w-0">
@@ -578,6 +597,16 @@ function AdminDashboard() {
               </Panel>
             </section>
           </>
+        )}
+
+        {tab === "payments" && (
+          <PaymentSetupsPanel
+            restaurants={restaurants}
+            users={users}
+            view={paymentView}
+            onViewChange={setPaymentView}
+            onOpen={setSelectedPaymentStore}
+          />
         )}
 
         {tab === "feedback" && (
@@ -1151,6 +1180,20 @@ function AdminDashboard() {
           onRefresh={() => setTick((value) => value + 1)}
         />
       )}
+
+      {selectedPaymentStore && (
+        <PaymentSetupModal
+          store={selectedPaymentStore}
+          owner={users.find((entry) => entry.id === selectedPaymentStore.ownerId)}
+          onClose={() => setSelectedPaymentStore(null)}
+          onStoreUpdated={(patch) =>
+            setSelectedPaymentStore((current) =>
+              current && current.id === selectedPaymentStore.id ? { ...current, ...patch } : current,
+            )
+          }
+          onRefresh={() => setTick((value) => value + 1)}
+        />
+      )}
     </div>
   );
 }
@@ -1588,6 +1631,259 @@ function AdminStatField({
         className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold outline-none focus:border-primary"
       />
     </label>
+  );
+}
+
+function PaymentSetupsPanel({
+  restaurants,
+  users,
+  view,
+  onViewChange,
+  onOpen,
+}: {
+  restaurants: Restaurant[];
+  users: User[];
+  view: PaymentSetupView;
+  onViewChange: (view: PaymentSetupView) => void;
+  onOpen: (store: Restaurant) => void;
+}) {
+  const buckets: Record<PaymentSetupView, Restaurant[]> = {
+    requests: restaurants.filter((store) => store.paymentSetupStatus === "pending_review"),
+    approved: restaurants.filter((store) => store.paymentSetupStatus === "ready"),
+    rejected: restaurants.filter((store) => store.paymentSetupStatus === "rejected"),
+  };
+  const visibleStores = buckets[view];
+  const tabs: { id: PaymentSetupView; label: string }[] = [
+    { id: "requests", label: "Requests" },
+    { id: "approved", label: "Approved" },
+    { id: "rejected", label: "Rejected" },
+  ];
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-2xl bg-card p-3 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-black">Payment setups</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Review store requests, assign Paystack subaccount IDs, and edit approved setups.
+          </p>
+        </div>
+        <div className="flex gap-2 overflow-x-auto">
+          {tabs.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onViewChange(item.id)}
+              className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-black ${
+                view === item.id
+                  ? "bg-foreground text-background"
+                  : "bg-muted text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              {item.label}
+              <span className="rounded-full bg-background/20 px-1.5 py-0.5 text-[10px]">
+                {buckets[item.id].length}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <Panel
+        title={
+          view === "requests"
+            ? "Payment requests"
+            : view === "approved"
+              ? "Approved setups"
+              : "Rejected requests"
+        }
+        subtitle="Click a store to review, approve, reject, or edit the payment setup"
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          {visibleStores.length === 0 && (
+            <div className="md:col-span-2">
+              <EmptyState
+                title={
+                  view === "requests"
+                    ? "No payment requests"
+                    : view === "approved"
+                      ? "No approved setups"
+                      : "No rejected requests"
+                }
+                detail="Stores will appear here as payment setup moves through the workflow."
+              />
+            </div>
+          )}
+          {visibleStores.map((store) => {
+            const owner = users.find((entry) => entry.id === store.ownerId);
+            return (
+              <button
+                key={store.id}
+                type="button"
+                onClick={() => onOpen(store)}
+                className="flex min-w-0 flex-col gap-3 rounded-2xl bg-muted/55 p-4 text-left transition hover:bg-muted active:scale-[0.99]"
+              >
+                <span className="flex min-w-0 items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black">{store.name}</span>
+                    <span className="mt-1 block truncate text-xs text-muted-foreground">
+                      {owner?.email ?? store.phone ?? "No owner contact"}
+                    </span>
+                  </span>
+                  <StatusPill value={store.paymentSetupStatus ?? "not_started"} />
+                </span>
+                <span className="block rounded-xl bg-card px-3 py-2 text-xs text-muted-foreground">
+                  <span className="font-black text-foreground">Payment ID:</span>{" "}
+                  {store.paystackSubaccount?.trim() || "Not assigned yet"}
+                </span>
+                <span className="inline-flex w-fit rounded-xl bg-foreground px-3 py-2 text-[11px] font-black text-background">
+                  {view === "approved" ? "Edit setup" : "Open request"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Panel>
+    </section>
+  );
+}
+
+function PaymentSetupModal({
+  store,
+  owner,
+  onClose,
+  onStoreUpdated,
+  onRefresh,
+}: {
+  store: Restaurant;
+  owner?: User;
+  onClose: () => void;
+  onStoreUpdated: (patch: Partial<Restaurant>) => void;
+  onRefresh: () => void;
+}) {
+  const [code, setCode] = useState(store.paystackSubaccount ?? "");
+  const [busyAction, setBusyAction] = useState<"approve" | "reject" | null>(null);
+
+  useEffect(() => {
+    setCode(store.paystackSubaccount ?? "");
+  }, [store.id, store.paystackSubaccount]);
+
+  const updateStore = async (patch: Partial<Restaurant>) => {
+    onStoreUpdated(patch);
+    await backend.updateRestaurant(store.id, patch);
+    onRefresh();
+  };
+
+  const approve = async () => {
+    const trimmed = code.trim();
+    if (!trimmed) {
+      notify("error", "Enter the Paystack subaccount ID first", {
+        id: `payment-setup-code-required:${store.id}`,
+      });
+      return;
+    }
+    setBusyAction("approve");
+    try {
+      await updateStore({
+        paystackSubaccount: trimmed,
+        paymentSetupStatus: "ready",
+        verificationStatus: "verified",
+        moderationStatus: "active",
+        suspensionReason: "",
+      });
+      notify("success", "Payment setup approved. Customers can order from this store.", {
+        id: `payment-setup-approved:${store.id}`,
+      });
+      onClose();
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const reject = async () => {
+    setBusyAction("reject");
+    try {
+      await updateStore({
+        paymentSetupStatus: "rejected",
+        paystackSubaccount: "",
+      });
+      notify("success", "Payment setup request rejected", {
+        id: `payment-setup-rejected:${store.id}`,
+      });
+      onClose();
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-end bg-black/45 px-3 py-4 backdrop-blur-sm sm:place-items-center"
+      onClick={onClose}
+    >
+      <section
+        className="w-full max-w-lg rounded-2xl bg-background p-4 shadow-card animate-slide-up"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-lg font-black">Payment setup</p>
+            <p className="mt-1 truncate text-sm font-semibold text-muted-foreground">
+              {store.name}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={Boolean(busyAction)}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-muted disabled:opacity-50"
+            aria-label="Close payment setup"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-2 text-sm">
+          <DetailRow label="Owner" value={owner?.name ?? "Unknown"} />
+          <DetailRow label="Email" value={owner?.email ?? "-"} />
+          <DetailRow label="Status" value={store.paymentSetupStatus ?? "not_started"} />
+        </div>
+
+        <label className="mt-4 block">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Paystack subaccount ID
+          </span>
+          <input
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            placeholder="ACCT_xxxxxxxxxx"
+            disabled={Boolean(busyAction)}
+            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-bold outline-none focus:border-primary disabled:opacity-60"
+          />
+        </label>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+          <button
+            type="button"
+            onClick={() => void approve()}
+            disabled={Boolean(busyAction)}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-success px-4 text-sm font-black text-success-foreground transition active:scale-95 disabled:opacity-60"
+          >
+            {busyAction === "approve" && <Loader2 className="h-4 w-4 animate-spin" />}
+            {store.paymentSetupStatus === "ready" ? "Save changes" : "Approve setup"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void reject()}
+            disabled={Boolean(busyAction)}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-destructive/10 px-4 text-sm font-black text-destructive transition active:scale-95 disabled:opacity-60"
+          >
+            {busyAction === "reject" && <Loader2 className="h-4 w-4 animate-spin" />}
+            Reject
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
