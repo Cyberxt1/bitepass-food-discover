@@ -227,6 +227,11 @@ export const backend = {
   updateDiscount: (id: string, patch: Partial<Discount>) =>
     writeWithFallback(() => patchCollectionDoc("discounts", id, patch)),
 
+  deleteUser: (id: string) => writeWithFallback(() => deleteCollectionDoc("users", id)),
+  deleteRestaurant: (id: string) =>
+    writeWithFallback(() => deleteCollectionDoc("restaurants", id)),
   deleteMeal: (id: string) => writeWithFallback(() => deleteCollectionDoc("meals", id)),
+  deleteOrder: (id: string) => writeWithFallback(() => deleteCollectionDoc("orders", id)),
+  deleteReview: (id: string) => writeWithFallback(() => deleteCollectionDoc("reviews", id)),
   deleteDiscount: (id: string) => writeWithFallback(() => deleteCollectionDoc("discounts", id)),
 };

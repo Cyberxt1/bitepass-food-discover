@@ -1826,13 +1826,13 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
           {F("prepTime", "Avg prep time (min)", "number")}
           {F("phone", "Phone")}
           <div className="md:col-span-2 rounded-xl border border-border bg-background p-3">
-            <p className="text-xs font-bold">Payment setup</p>
+            <p className="text-xs font-bold">Payment ID request</p>
             <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-              Use only the Paystack subaccount code assigned to this store. Admin must approve it
-              before customers can pay this restaurant directly.
+              Add the Paystack subaccount code after admin creates it for your store. Saving a code
+              sends it to admin for approval before checkout routes payments to you.
             </p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {F("paystackSubaccount", "Paystack subaccount code")}
+              {F("paystackSubaccount", "Payment ID / Paystack subaccount")}
               <label className="block">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Payment status
@@ -1843,7 +1843,7 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 >
                   <option value="not_started">Not started</option>
-                  <option value="pending_review">Pending review</option>
+                  <option value="pending_review">Request sent</option>
                   <option value="ready" disabled>
                     Ready - admin only
                   </option>

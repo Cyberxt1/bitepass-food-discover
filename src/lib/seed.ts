@@ -1,6 +1,6 @@
 import { FILES, readTable, writeFile, writeTable } from "./csv-store";
 
-const SEED_FLAG = "bitepass:seeded:v7:ibadan-lagos-restaurants";
+const SEED_FLAG = "bitepass:seeded:v8:real-data-only";
 
 export type Restaurant = {
   id: string;
@@ -126,6 +126,85 @@ export type Discount = {
   minOrder: string;
   uses: string;
 };
+
+const demoUserIds = new Set([
+  "u-customer-demo",
+  "u-admin-demo",
+  "u-r1",
+  "u-r2",
+  "u-r3",
+  "u-r4",
+  "u-r5",
+  "u-r6",
+  "u-r7",
+  "u-r8",
+]);
+const demoRestaurantIds = new Set([
+  "r-jollof-studio",
+  "r-shawarma-lab",
+  "r-burger-district",
+  "r-amala-house",
+  "r-noodle-yard",
+  "r-suya-corner",
+  "r-green-bowl",
+  "r-rice-and-co",
+  "r-buka-express",
+]);
+const demoMealIds = new Set([
+  "m-jollof-smoky",
+  "m-jollof-fried",
+  "m-shawarma-beef",
+  "m-shawarma-fries",
+  "m-burger-classic",
+  "m-amala-abula",
+  "m-noodle-chicken",
+  "m-suya-pack",
+  "m-green-salad",
+  "m-rice-coconut",
+  "m-buka-beans",
+]);
+const demoDiscountIds = new Set(["d-launch", "d-wrap", "d-burger"]);
+const demoReviewIds = new Set(["rv-1", "rv-2", "rv-3"]);
+
+function removeDemoRows<T extends { id: string }>(
+  file: string,
+  isDemo: (row: T) => boolean,
+) {
+  const rows = readTable<T>(file);
+  const next = rows.filter((row) => !isDemo(row));
+  if (next.length !== rows.length) writeTable(file, next);
+}
+
+function purgeDemoContent() {
+  removeDemoRows<User>(
+    FILES.users,
+    (row) => demoUserIds.has(row.id) || row.email.endsWith("@bitepass.test"),
+  );
+  removeDemoRows<Restaurant>(
+    FILES.restaurants,
+    (row) => demoRestaurantIds.has(row.id) || demoUserIds.has(row.ownerId),
+  );
+  removeDemoRows<Meal>(
+    FILES.meals,
+    (row) => demoMealIds.has(row.id) || demoRestaurantIds.has(row.restaurantId),
+  );
+  removeDemoRows<Review>(
+    FILES.reviews,
+    (row) =>
+      demoReviewIds.has(row.id) ||
+      demoMealIds.has(row.mealId) ||
+      Boolean(row.restaurantId && demoRestaurantIds.has(row.restaurantId)) ||
+      demoUserIds.has(row.userId),
+  );
+  removeDemoRows<Discount>(
+    FILES.discounts,
+    (row) => demoDiscountIds.has(row.id) || demoRestaurantIds.has(row.restaurantId),
+  );
+  removeDemoRows<Order>(
+    FILES.orders,
+    (row) => demoRestaurantIds.has(row.restaurantId) || demoUserIds.has(row.userId),
+  );
+}
 
 const mealOptions = (items: { id: string; name: string; price: number }[]) => JSON.stringify(items);
 
@@ -711,12 +790,8 @@ export function seedIfNeeded() {
   if (typeof window === "undefined") return;
   const hasSeed = Boolean(window.localStorage.getItem(SEED_FLAG));
 
-  mergeSeedRows(FILES.users, users);
-  mergeSeedRows(FILES.restaurants, restaurants);
-  mergeSeedRows(FILES.meals, meals);
-  mergeSeedRows(FILES.reviews, reviews);
-  mergeSeedRows(FILES.discounts, discounts);
-  if (!hasSeed || readTable(FILES.orders).length === 0) writeTable(FILES.orders, orders);
+  purgeDemoContent();
+  if (!hasSeed && readTable(FILES.orders).length === 0 && orders.length > 0) writeTable(FILES.orders, orders);
   if (!hasSeed) writeFile(FILES.session, "");
   window.localStorage.setItem(SEED_FLAG, "1");
 }

@@ -266,7 +266,21 @@ function Discover() {
     }
   };
 
-  const trending = meals.filter((m) => m.popular === "1").slice(0, 6);
+  const trending = useMemo(() => {
+    const publicRestaurantIds = new Set(restaurants.map((restaurant) => restaurant.id));
+    const byRestaurant = new Map<string, Meal>();
+    meals
+      .filter((meal) => publicRestaurantIds.has(meal.restaurantId))
+      .sort((a, b) => {
+        const popular = Number(b.popular === "1") - Number(a.popular === "1");
+        if (popular !== 0) return popular;
+        return Number(b.rating || 0) - Number(a.rating || 0);
+      })
+      .forEach((meal) => {
+        if (!byRestaurant.has(meal.restaurantId)) byRestaurant.set(meal.restaurantId, meal);
+      });
+    return Array.from(byRestaurant.values()).slice(0, 3);
+  }, [meals, restaurants]);
   const deckTransform = deckSwipe
     ? `translate(${deckSwipe.x}px, ${deckSwipe.y}px) rotate(${Math.max(-24, Math.min(24, deckSwipe.x / 12))}deg)`
     : `translate(${deckDrag.x}px, ${deckDrag.y}px) rotate(${Math.max(-10, Math.min(10, deckDrag.x / 18))}deg)`;
@@ -451,7 +465,17 @@ function Discover() {
                         <SkeletonCard />
                       </div>
                     ))
-                  : trending.slice(0, 3).map((m) => {
+                  : trending.length === 0
+                    ? (
+                      <div className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:col-span-2 sm:w-auto sm:max-w-none sm:shrink lg:col-span-3">
+                        <EmptyPanel
+                          title="No foods yet"
+                          detail="Real dishes from approved restaurants will show here."
+                          compact
+                        />
+                      </div>
+                    )
+                    : trending.map((m) => {
                       const rest = restaurants.find((r) => r.id === m.restaurantId);
                       return (
                         <div

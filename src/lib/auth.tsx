@@ -56,13 +56,13 @@ function findLocalUserByCredentials(email: string, password: string) {
   );
 }
 
-async function ensureDemoAdminForLocalLogin(email: string, password: string) {
+async function ensureLocalAdminForLogin(email: string, password: string) {
   if (normalizeEmail(email) !== "admin@bitepass.test" || password.trim() !== "1234") return null;
 
   const users = await backend.users();
   const existing = users.find((entry) => normalizeEmail(entry.email) === "admin@bitepass.test");
   const admin: User = {
-    id: existing?.id ?? "u-admin-demo",
+    id: existing?.id ?? "u-admin-local",
     name: existing?.name || "BitePass Admin",
     email: "admin@bitepass.test",
     password: "1234",
@@ -215,22 +215,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: normalizedPassword,
       });
       if (error) {
-        const demoAdmin = await ensureDemoAdminForLocalLogin(normalizedEmail, normalizedPassword);
-        if (demoAdmin) {
-          writeSessionCookie(demoAdmin.id);
-          writeFile(FILES.session, demoAdmin.id);
-          setUser(demoAdmin);
+        const localAdmin = await ensureLocalAdminForLogin(normalizedEmail, normalizedPassword);
+        if (localAdmin) {
+          writeSessionCookie(localAdmin.id);
+          writeFile(FILES.session, localAdmin.id);
+          setUser(localAdmin);
           trackAuditEvent({
             type: "login",
-            actorId: demoAdmin.id,
-            actorName: demoAdmin.name,
-            targetId: demoAdmin.id,
+            actorId: localAdmin.id,
+            actorName: localAdmin.name,
+            targetId: localAdmin.id,
             targetType: "user",
-            title: `${demoAdmin.name} logged in`,
-            detail:
-              "Development admin fallback used because Supabase Auth has no demo admin account",
+            title: `${localAdmin.name} logged in`,
+            detail: "Local admin fallback used because Supabase Auth has no admin account",
           });
-          return demoAdmin;
+          return localAdmin;
         }
         throw error;
       }
@@ -256,7 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           (user.password ?? "").trim() === normalizedPassword,
       ) ??
       findLocalUserByCredentials(normalizedEmail, normalizedPassword) ??
-      (await ensureDemoAdminForLocalLogin(normalizedEmail, normalizedPassword));
+      (await ensureLocalAdminForLogin(normalizedEmail, normalizedPassword));
 
     if (!u) throw new Error("Invalid credentials");
     writeSessionCookie(u.id);
@@ -354,8 +353,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         reviews: "0",
         prepTime: "15",
         distance: "0",
-        image:
-          "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=70",
+        image: "",
         tags: `${options.restaurant.cuisine}|New`,
         isOpen: "1",
         description: `${options.restaurant.name} is now taking preorders on BitePass.`,

@@ -14,7 +14,15 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { backend } from "@/lib/backend";
 import { readAuditEvents } from "@/lib/audit";
-import { ensureSeed, type Order, type PlatformStats, type Restaurant, type User } from "@/lib/seed";
+import {
+  ensureSeed,
+  type Meal,
+  type Order,
+  type PlatformStats,
+  type Restaurant,
+  type User,
+} from "@/lib/seed";
+import { isMealPublic, isRestaurantPublic } from "@/lib/platform";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -30,39 +38,19 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-const foodCards = [
-  {
-    name: "Jollof Bowl",
-    place: "VI",
-    time: "12 min",
-    image:
-      "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?auto=format&fit=crop&w=720&q=85",
-    className: "left-2 top-16 rotate-[-13deg] z-10",
-  },
-  {
-    name: "Chicken Suya",
-    place: "Wuse",
-    time: "9 min",
-    image:
-      "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=720&q=85",
-    className: "left-24 top-6 rotate-[-4deg] z-20",
-  },
-  {
-    name: "Shawarma",
-    place: "Lekki",
-    time: "14 min",
-    image:
-      "https://images.unsplash.com/photo-1561651823-34feb02250e4?auto=format&fit=crop&w=720&q=85",
-    className: "right-16 top-12 rotate-[7deg] z-30",
-  },
-  {
-    name: "Burger Stack",
-    place: "GRA",
-    time: "11 min",
-    image:
-      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=720&q=85",
-    className: "right-0 top-28 rotate-[15deg] z-40",
-  },
+type LandingFoodCard = {
+  name: string;
+  place: string;
+  time: string;
+  image: string;
+  className: string;
+};
+
+const cardPositions = [
+  "left-2 top-16 rotate-[-13deg] z-10",
+  "left-24 top-6 rotate-[-4deg] z-20",
+  "right-16 top-12 rotate-[7deg] z-30",
+  "right-0 top-28 rotate-[15deg] z-40",
 ];
 
 const steps = [
@@ -79,9 +67,9 @@ const features = [
 
 const defaultLandingStats: PlatformStats = {
   id: "public",
-  foodies: "1",
-  kitchens: "9",
-  avgMinutesSaved: "6",
+  foodies: "0",
+  kitchens: "0",
+  avgMinutesSaved: "0",
   updatedAt: "",
 };
 
@@ -124,11 +112,20 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   );
 }
 
-function FoodFan() {
+function FoodFan({ cards }: { cards: LandingFoodCard[] }) {
+  const visibleCards = cards;
   return (
     <div className="relative mx-auto h-[380px] w-full max-w-[540px] sm:h-[430px]">
       <div className="absolute inset-x-8 bottom-2 h-24 rounded-full bg-primary/15 blur-3xl" />
-      {foodCards.map((card) => (
+      {visibleCards.length === 0 && (
+        <div className="absolute left-1/2 top-1/2 w-[min(82vw,360px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[#eadfd4] bg-white/80 p-6 text-center shadow-[0_22px_48px_-28px_oklch(0.18_0.02_50)]">
+          <p className="text-sm font-black">No foods yet</p>
+          <p className="mt-2 text-xs leading-5 text-[#70665d]">
+            Real dishes from approved restaurants will show here.
+          </p>
+        </div>
+      )}
+      {visibleCards.map((card) => (
         <div
           key={card.name}
           className={`absolute h-[250px] w-[178px] overflow-hidden rounded-2xl border border-white/80 bg-card shadow-[0_22px_48px_-28px_oklch(0.18_0.02_50)] transition duration-300 hover:z-50 hover:-translate-y-2 hover:rotate-0 sm:h-[300px] sm:w-[214px] ${card.className}`}
@@ -161,6 +158,7 @@ function FoodFan() {
 function Landing() {
   const [stats, setStats] = useState<PlatformStats>(defaultLandingStats);
   const [usersToday, setUsersToday] = useState(1);
+  const [topFoodCards, setTopFoodCards] = useState<LandingFoodCard[]>([]);
   const [headlineIndex, setHeadlineIndex] = useState(0);
   const [typedHeadline, setTypedHeadline] = useState(heroHeadlines[0]);
   const currentHeadline = heroHeadlines[headlineIndex];
@@ -170,15 +168,17 @@ function Landing() {
     async function loadStats() {
       try {
         ensureSeed();
-        const [users, restaurants, orders] = await Promise.all([
+        const [users, restaurants, orders, meals] = await Promise.all([
           backend.users(),
           backend.restaurants(),
           backend.orders(),
+          backend.meals(),
         ]);
         const published = await backend.platformStats().catch(() => []);
         if (cancelled) return;
         setStats(mergeLandingStats(deriveLandingStats(users, restaurants, orders), published[0]));
         setUsersToday(countUsersToday(users));
+        setTopFoodCards(buildTopFoodCards(restaurants, meals));
       } catch (error) {
         console.error("Landing stats could not be loaded", error);
         if (!cancelled) setStats(defaultLandingStats);
@@ -298,7 +298,7 @@ function Landing() {
             </div>
 
             <Reveal>
-              <FoodFan />
+              <FoodFan cards={topFoodCards} />
             </Reveal>
           </div>
         </section>
@@ -398,11 +398,14 @@ function Landing() {
 
             <Reveal delay={120}>
               <div className="overflow-hidden rounded-[1.5rem] border border-[#e8ddd2] bg-white/75">
-                {[
-                  ["#BP4821", "Smoky Jollof", "Preparing"],
-                  ["#BP4820", "Fried Rice", "Ready"],
-                  ["#BP4819", "Shawarma", "Received"],
-                ].map(([id, meal, status]) => (
+                {(topFoodCards.length > 0
+                  ? topFoodCards.slice(0, 3).map((card, index) => [
+                      `#${String(index + 1).padStart(2, "0")}`,
+                      card.name,
+                      card.place,
+                    ])
+                  : [["--", "No foods yet", "Awaiting restaurants"]]
+                ).map(([id, meal, status]) => (
                   <div
                     key={id}
                     className="grid grid-cols-[0.7fr_1fr_0.7fr] gap-3 border-b border-[#eadfd4] px-5 py-4 text-sm last:border-b-0"
@@ -503,7 +506,9 @@ function deriveLandingStats(
   return {
     id: "public",
     foodies: String(Math.max(Number(defaultLandingStats.foodies), users.length)),
-    kitchens: String(Math.max(Number(defaultLandingStats.kitchens), restaurants.length)),
+    kitchens: String(
+      Math.max(Number(defaultLandingStats.kitchens), restaurants.filter(isRestaurantPublic).length),
+    ),
     avgMinutesSaved: String(
       Math.max(Number(defaultLandingStats.avgMinutesSaved), orders.length ? 6 : 0),
     ),
@@ -539,4 +544,33 @@ function countUsersToday(users: User[]) {
   );
 
   return Math.max(activeUserIds.size, users.length, 1);
+}
+
+function buildTopFoodCards(restaurants: Restaurant[], meals: Meal[]): LandingFoodCard[] {
+  const publicRestaurants = restaurants.filter(isRestaurantPublic);
+  const restaurantById = new Map(publicRestaurants.map((restaurant) => [restaurant.id, restaurant]));
+  const byRestaurant = new Map<string, Meal>();
+  meals
+    .filter((meal) => isMealPublic(meal) && restaurantById.has(meal.restaurantId))
+    .sort((a, b) => {
+      const popular = Number(b.popular === "1") - Number(a.popular === "1");
+      if (popular !== 0) return popular;
+      return Number(b.rating || 0) - Number(a.rating || 0);
+    })
+    .forEach((meal) => {
+      if (!byRestaurant.has(meal.restaurantId)) byRestaurant.set(meal.restaurantId, meal);
+    });
+
+  return Array.from(byRestaurant.values())
+    .slice(0, 4)
+    .map((meal, index) => {
+      const restaurant = restaurantById.get(meal.restaurantId);
+      return {
+        name: meal.name,
+        place: restaurant?.name ?? "BitePass",
+        time: `${meal.prepTime || restaurant?.prepTime || "15"} min`,
+        image: meal.image || restaurant?.image || "",
+        className: cardPositions[index] ?? cardPositions[0],
+      };
+    });
 }

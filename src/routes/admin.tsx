@@ -21,6 +21,7 @@ import {
   ShoppingBag,
   Star,
   Store,
+  Trash2,
   TrendingUp,
   Utensils,
   Users,
@@ -266,13 +267,13 @@ function AdminDashboard() {
     { id: "feedback", label: "Feedback", icon: MessageSquare },
     { id: "landing", label: "Landing", icon: TrendingUp },
     { id: "activity", label: "Activity", icon: Activity },
-    { id: "records", label: "Records", icon: Search },
+    { id: "records", label: "Manage", icon: Search },
     { id: "admins", label: "Admins", icon: ShieldCheck },
     { id: "help", label: "Help center", icon: Headphones },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen overflow-x-hidden bg-background">
       <header className="sticky top-0 z-30 border-b border-border/50 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
@@ -317,7 +318,7 @@ function AdminDashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl space-y-5 overflow-x-hidden px-4 py-5 sm:px-6 lg:px-8">
         <div className="flex flex-col justify-between gap-3 rounded-3xl border border-border bg-card p-4 shadow-soft sm:flex-row sm:items-center">
           <div>
             <p className="text-sm font-black">Live platform data</p>
@@ -371,6 +372,57 @@ function AdminDashboard() {
                 title="Open feedback"
                 value={`${feedback.filter((item) => item.status !== "closed").length}`}
               />
+            </section>
+
+            <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <Panel
+                title="Store approvals"
+                subtitle="New restaurants stay hidden until you verify them"
+              >
+                <div className="space-y-2">
+                  {restaurants.filter((store) => (store.verificationStatus ?? "pending") !== "verified").length === 0 && (
+                    <EmptyState title="No stores waiting" detail="Pending store requests will show here." />
+                  )}
+                  {restaurants
+                    .filter((store) => (store.verificationStatus ?? "pending") !== "verified")
+                    .slice(0, 6)
+                    .map((store) => (
+                      <StoreModerationRow
+                        key={store.id}
+                        store={store}
+                        owner={users.find((entry) => entry.id === store.ownerId)}
+                        onOpen={() => setSelectedStore(store)}
+                        onRefresh={() => setTick((value) => value + 1)}
+                      />
+                    ))}
+                </div>
+              </Panel>
+              <Panel title="Payment setup" subtitle="Stores that need Paystack subaccount review">
+                <div className="space-y-2">
+                  {restaurants.filter((store) => (store.paymentSetupStatus ?? "not_started") !== "ready").length === 0 && (
+                    <EmptyState title="Payments are clear" detail="Payment requests will show here." />
+                  )}
+                  {restaurants
+                    .filter((store) => (store.paymentSetupStatus ?? "not_started") !== "ready")
+                    .slice(0, 6)
+                    .map((store) => (
+                      <button
+                        key={store.id}
+                        type="button"
+                        onClick={() => setSelectedStore(store)}
+                        className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3 rounded-2xl bg-muted/55 p-3 text-left transition hover:bg-muted"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-black">{store.name}</span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {store.paystackSubaccount?.trim() || "No subaccount code submitted"}
+                          </span>
+                        </span>
+                        <StatusPill value={store.paymentSetupStatus ?? "not_started"} />
+                      </button>
+                    ))}
+                </div>
+              </Panel>
             </section>
 
             <section className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
@@ -843,6 +895,186 @@ function AdminDashboard() {
                 </table>
               </div>
             </Panel>
+
+            <section className="grid gap-4 lg:grid-cols-2">
+              <Panel title="Stores" subtitle="Approve, suspend, review payments, or remove stores">
+                <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
+                  {restaurants.length === 0 && (
+                    <EmptyState title="No restaurants yet" detail="Only real restaurant signups will appear here." />
+                  )}
+                  {restaurants.map((store) => (
+                    <StoreModerationRow
+                      key={store.id}
+                      store={store}
+                      owner={users.find((entry) => entry.id === store.ownerId)}
+                      onOpen={() => setSelectedStore(store)}
+                      onRefresh={() => setTick((value) => value + 1)}
+                    />
+                  ))}
+                </div>
+              </Panel>
+
+              <Panel title="Menu items" subtitle="Hide or remove meals across the platform">
+                <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
+                  {meals.length === 0 && (
+                    <EmptyState title="No foods yet" detail="Foods created by real stores will appear here." />
+                  )}
+                  {meals.map((meal) => {
+                    const store = restaurants.find((entry) => entry.id === meal.restaurantId);
+                    const active = (meal.moderationStatus ?? "active") === "active";
+                    return (
+                      <div
+                        key={meal.id}
+                        className="flex min-w-0 flex-col gap-3 rounded-2xl bg-muted/55 p-3 sm:flex-row sm:items-center"
+                      >
+                        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-card">
+                          {meal.image ? (
+                            <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-black">{meal.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {store?.name ?? "Unknown restaurant"} - {naira(meal.price)}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void backend
+                                .updateMeal(meal.id, { moderationStatus: active ? "hidden" : "active" })
+                                .then(() => setTick((value) => value + 1));
+                              notify("success", active ? "Meal hidden" : "Meal restored", {
+                                id: `meal-moderation:${meal.id}`,
+                              });
+                            }}
+                            className="rounded-xl bg-card px-3 py-2 text-[11px] font-black"
+                          >
+                            {active ? "Hide" : "Restore"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!confirm(`Delete ${meal.name}?`)) return;
+                              void backend.deleteMeal(meal.id).then(() => setTick((value) => value + 1));
+                              notify("success", "Meal deleted", { id: `meal-delete:${meal.id}` });
+                            }}
+                            className="grid h-9 w-9 place-items-center rounded-xl bg-destructive/10 text-destructive"
+                            aria-label={`Delete ${meal.name}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Panel>
+
+              <Panel title="Users" subtitle="Manage customer, store, and admin accounts">
+                <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
+                  {users.length === 0 && (
+                    <EmptyState title="No users yet" detail="Registered accounts will appear here." />
+                  )}
+                  {users.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex min-w-0 flex-col gap-3 rounded-2xl bg-muted/55 p-3 sm:flex-row sm:items-center"
+                    >
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-card text-sm font-black">
+                        {entry.avatar || entry.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black">{entry.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{entry.email}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        <StatusPill value={entry.status ?? entry.role} />
+                        {entry.id !== user.id && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const blocked = entry.status === "blocked";
+                                void backend
+                                  .updateUser(entry.id, { status: blocked ? "active" : "blocked" })
+                                  .then(() => setTick((value) => value + 1));
+                                notify("success", blocked ? "User restored" : "User blocked", {
+                                  id: `user-status:${entry.id}`,
+                                });
+                              }}
+                              className="rounded-xl bg-card px-3 py-2 text-[11px] font-black"
+                            >
+                              {entry.status === "blocked" ? "Restore" : "Block"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!confirm(`Delete ${entry.name}?`)) return;
+                                void backend.deleteUser(entry.id).then(() => setTick((value) => value + 1));
+                                notify("success", "User deleted", { id: `user-delete:${entry.id}` });
+                              }}
+                              className="grid h-9 w-9 place-items-center rounded-xl bg-destructive/10 text-destructive"
+                              aria-label={`Delete ${entry.name}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+
+              <Panel title="Orders" subtitle="Cancel stuck orders or clean test transactions">
+                <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
+                  {orders.length === 0 && (
+                    <EmptyState title="No orders yet" detail="Real customer orders will appear here." />
+                  )}
+                  {orders.map((order) => (
+                    <div key={order.id} className="rounded-2xl bg-muted/55 p-3">
+                      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black">Order #{order.id.slice(-5)}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {restaurants.find((store) => store.id === order.restaurantId)?.name ?? order.restaurantId}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <StatusPill value={order.status} />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void backend
+                                .updateOrder(order.id, { status: "cancelled", cancelledAt: new Date().toISOString() })
+                                .then(() => setTick((value) => value + 1));
+                              notify("success", "Order cancelled", { id: `order-cancel:${order.id}` });
+                            }}
+                            className="rounded-xl bg-card px-3 py-2 text-[11px] font-black"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!confirm(`Delete order #${order.id.slice(-5)}?`)) return;
+                              void backend.deleteOrder(order.id).then(() => setTick((value) => value + 1));
+                              notify("success", "Order deleted", { id: `order-delete:${order.id}` });
+                            }}
+                            className="grid h-9 w-9 place-items-center rounded-xl bg-destructive/10 text-destructive"
+                            aria-label={`Delete order ${order.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            </section>
           </section>
         )}
 
@@ -1354,6 +1586,110 @@ function AdminStatField({
   );
 }
 
+function StatusPill({ value }: { value: string }) {
+  const normalized = value.replaceAll("_", " ");
+  const good = ["active", "verified", "ready", "paid", "completed", "open"].includes(value);
+  const bad = ["blocked", "suspended", "rejected", "cancelled", "hidden"].includes(value);
+  return (
+    <span
+      className={`inline-flex min-h-7 items-center rounded-full px-2.5 text-[10px] font-black capitalize ${
+        good
+          ? "bg-success/15 text-success"
+          : bad
+            ? "bg-destructive/10 text-destructive"
+            : "bg-warning/15 text-warning"
+      }`}
+    >
+      {normalized}
+    </span>
+  );
+}
+
+function StoreModerationRow({
+  store,
+  owner,
+  onOpen,
+  onRefresh,
+}: {
+  store: Restaurant;
+  owner?: User;
+  onOpen: () => void;
+  onRefresh: () => void;
+}) {
+  const suspended = store.moderationStatus === "suspended";
+  return (
+    <div className="rounded-2xl bg-muted/55 p-3">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-card">
+            {store.image ? (
+              <img src={store.image} alt={store.name} className="h-full w-full object-cover" />
+            ) : null}
+          </div>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-black">{store.name}</span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {owner?.email ?? store.address ?? "No owner email"}
+            </span>
+          </span>
+        </button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <StatusPill value={store.verificationStatus ?? "pending"} />
+          <StatusPill value={store.paymentSetupStatus ?? "not_started"} />
+          <button
+            type="button"
+            onClick={() => {
+              void backend
+                .updateRestaurant(store.id, {
+                  verificationStatus: "verified",
+                  moderationStatus: "active",
+                })
+                .then(onRefresh);
+              notify("success", "Store approved", { id: `store-approve:${store.id}` });
+            }}
+            className="rounded-xl bg-success/10 px-3 py-2 text-[11px] font-black text-success"
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void backend
+                .updateRestaurant(store.id, {
+                  moderationStatus: suspended ? "active" : "suspended",
+                  suspensionReason: suspended ? "" : "Admin moderation action",
+                })
+                .then(onRefresh);
+              notify("success", suspended ? "Store restored" : "Store suspended", {
+                id: `store-suspend:${store.id}`,
+              });
+            }}
+            className="rounded-xl bg-card px-3 py-2 text-[11px] font-black"
+          >
+            {suspended ? "Restore" : "Suspend"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!confirm(`Delete ${store.name}? This removes the store only.`)) return;
+              void backend.deleteRestaurant(store.id).then(onRefresh);
+              notify("success", "Store deleted", { id: `store-delete:${store.id}` });
+            }}
+            className="grid h-9 w-9 place-items-center rounded-xl bg-destructive/10 text-destructive"
+            aria-label={`Delete ${store.name}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StoreDetail({
   store,
   owner,
@@ -1374,6 +1710,7 @@ function StoreDetail({
   const revenue = orders
     .filter((order) => order.status === "completed")
     .reduce((sum, order) => sum + Number(order.total), 0);
+  const [paymentCode, setPaymentCode] = useState(store.paystackSubaccount ?? "");
   return (
     <div
       className="fixed inset-0 z-50 flex justify-end bg-black/45 backdrop-blur-sm"
@@ -1427,9 +1764,10 @@ function StoreDetail({
               <DetailRow label="Email" value={owner?.email ?? "-"} />
               <DetailRow label="Phone" value={store.phone || "-"} />
               <DetailRow label="Status" value={store.isOpen === "1" ? "Open" : "Closed"} />
-              <DetailRow label="Verification" value={store.verificationStatus ?? "verified"} />
+              <DetailRow label="Verification" value={store.verificationStatus ?? "pending"} />
               <DetailRow label="Moderation" value={store.moderationStatus ?? "active"} />
               <DetailRow label="Payments" value={store.paymentSetupStatus ?? "not_started"} />
+              <DetailRow label="Paystack code" value={store.paystackSubaccount || "-"} />
             </div>
           </Panel>
 
@@ -1478,17 +1816,35 @@ function StoreDetail({
                 type="button"
                 onClick={() => {
                   void backend
-                    .updateRestaurant(store.id, { paymentSetupStatus: "ready" })
+                    .updateRestaurant(store.id, {
+                      paystackSubaccount: paymentCode.trim(),
+                      paymentSetupStatus: paymentCode.trim() ? "ready" : "pending_review",
+                    })
                     .then(onRefresh);
-                  notify("success", "Payment setup marked ready", {
+                  notify("success", paymentCode.trim() ? "Payment setup marked ready" : "Payment request kept in review", {
                     id: `store-payment-ready:${store.id}`,
                   });
                 }}
-                className="rounded-xl bg-success/10 px-3 py-2 text-xs font-black text-success"
+                className="rounded-xl bg-success/10 px-3 py-2 text-xs font-black text-success sm:col-span-2"
               >
-                Mark payments ready
+                Save Paystack code and approve
               </button>
             </div>
+            <label className="mt-3 block">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Paystack subaccount code
+              </span>
+              <input
+                value={paymentCode}
+                onChange={(event) => setPaymentCode(event.target.value)}
+                placeholder="ACCT_xxxxxxxxxx"
+                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold outline-none focus:border-primary"
+              />
+            </label>
+            <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
+              Create the restaurant subaccount in Paystack, paste the generated subaccount code here,
+              then approve it for checkout routing.
+            </p>
           </Panel>
 
           <Panel title="Menu items" subtitle={`${meals.length} published dishes`}>

@@ -93,7 +93,7 @@ export async function startPaystackPayment({
   const key = getPaystackPublicKey();
   if (!key) {
     await new Promise((resolve) => window.setTimeout(resolve, 500));
-    return `${reference}-demo`;
+    return `${reference}-local`;
   }
 
   await loadPaystackScript();
