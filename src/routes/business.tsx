@@ -355,13 +355,20 @@ function RestaurantOnboarding({
   });
   const [imageBusy, setImageBusy] = useState(false);
 
-  const coords = form.lat && form.lng ? { lat: Number(form.lat), lng: Number(form.lng) } : null;
+  const latNumber = Number(form.lat);
+  const lngNumber = Number(form.lng);
+  const hasValidCoords =
+    Number.isFinite(latNumber) &&
+    Number.isFinite(lngNumber) &&
+    Math.abs(latNumber) <= 90 &&
+    Math.abs(lngNumber) <= 180;
+  const coords = hasValidCoords ? { lat: latNumber, lng: lngNumber } : null;
   const canContinue =
     step === 0
       ? form.owner.trim().length > 1 && form.restaurant.trim().length > 1
       : step === 1
         ? form.intro.trim().length > 0 && form.phone.trim().length > 5
-        : Boolean(form.address && form.lat && form.lng);
+        : Boolean(form.address.trim() && hasValidCoords);
 
   const update = (key: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -399,6 +406,7 @@ function RestaurantOnboarding({
   };
 
   const save = async () => {
+    if (saving) return;
     if (!canContinue) return;
     setSaving(true);
     try {
@@ -422,8 +430,10 @@ function RestaurantOnboarding({
         paymentSetupStatus: "not_started",
       };
       await backend.setRestaurant(restaurant);
-      toast.success("Restaurant profile created");
+      toast.success("Restaurant profile created. Sign in to open your dashboard.");
       refresh();
+      logout();
+      nav({ to: "/login", replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Restaurant setup failed");
     } finally {
@@ -604,10 +614,34 @@ function RestaurantOnboarding({
                 <textarea
                   value={form.address}
                   onChange={(event) => update("address", event.target.value)}
-                  placeholder="Address"
+                  placeholder="Restaurant address"
                   rows={2}
                   className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-primary"
                 />
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Manual coordinates
+                  </p>
+                  <div className="mt-1 grid gap-2 sm:grid-cols-2">
+                    <input
+                      value={form.lat}
+                      onChange={(event) => update("lat", event.target.value)}
+                      inputMode="decimal"
+                      placeholder="Latitude"
+                      className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-primary"
+                    />
+                    <input
+                      value={form.lng}
+                      onChange={(event) => update("lng", event.target.value)}
+                      inputMode="decimal"
+                      placeholder="Longitude"
+                      className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-primary"
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    Enter the restaurant's actual map coordinates if the owner is somewhere else.
+                  </p>
+                </div>
               </div>
             )}
           </div>

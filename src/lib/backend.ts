@@ -26,6 +26,12 @@ type Row = { id: string } & Record<string, unknown>;
 
 const useSupabase = import.meta.env.VITE_DATA_BACKEND === "supabase" && isSupabaseConfigured;
 
+export const backendInfo = {
+  mode: useSupabase ? "supabase" : "local",
+  label: useSupabase ? "Supabase database" : "Local browser storage",
+  supabaseConfigured: isSupabaseConfigured,
+};
+
 const fileFor: Record<CollectionName, string> = {
   users: FILES.users,
   restaurants: FILES.restaurants,

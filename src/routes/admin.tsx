@@ -44,7 +44,7 @@ import {
   YAxis,
 } from "recharts";
 
-import { backend } from "@/lib/backend";
+import { backend, backendInfo } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
 import type { Feedback, Meal, Order, PlatformStats, Restaurant, Review, User } from "@/lib/seed";
@@ -359,7 +359,18 @@ function AdminDashboard() {
       <main className="mx-auto w-full max-w-7xl space-y-5 overflow-x-hidden px-4 py-5 sm:px-6 lg:px-8">
         <div className="flex flex-col justify-between gap-3 rounded-3xl border border-border bg-card p-4 shadow-soft sm:flex-row sm:items-center">
           <div>
-            <p className="text-sm font-black">Live platform data</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-black">Live platform data</p>
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-black ${
+                  backendInfo.mode === "supabase"
+                    ? "bg-success/15 text-success"
+                    : "bg-warning/15 text-warning"
+                }`}
+              >
+                {backendInfo.label}
+              </span>
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
               Admin metrics read directly from users, restaurants, orders, reviews, and feedback.
             </p>
