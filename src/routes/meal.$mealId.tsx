@@ -134,9 +134,9 @@ function MealPage() {
         </Link>
       </div>
 
-      <div className="-mt-8 mx-auto max-w-3xl bg-background px-4 pt-2 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto -mt-3 max-w-3xl rounded-t-3xl bg-background px-4 pt-5 shadow-[0_-10px_30px_rgba(0,0,0,0.04)] sm:px-6 sm:pt-6 lg:mt-0 lg:px-8 lg:shadow-none">
         <main className="min-w-0">
-          <h1 className="text-2xl font-bold">{meal.name}</h1>
+          <h1 className="break-words text-2xl font-bold leading-tight">{meal.name}</h1>
           {restaurant && (
             <Link
               to="/restaurant/$restaurantId"
