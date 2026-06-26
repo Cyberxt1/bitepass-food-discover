@@ -15,11 +15,9 @@ import type { LucideIcon } from "lucide-react";
 import { backend } from "@/lib/backend";
 import {
   ensureSeed,
-  type Order,
   type Restaurant,
   type User,
 } from "@/lib/seed";
-import { naira } from "@/lib/format";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -44,8 +42,6 @@ type LandingFoodCard = {
 };
 
 type LandingStats = {
-  completedTransactions: number;
-  completedRevenue: number;
   stores: number;
   users: number;
 };
@@ -105,8 +101,6 @@ const features = [
 ] satisfies Array<[string, string, LucideIcon]>;
 
 const defaultLandingStats: LandingStats = {
-  completedTransactions: 0,
-  completedRevenue: 0,
   stores: 0,
   users: 0,
 };
@@ -197,13 +191,12 @@ function Landing() {
     async function loadStats() {
       try {
         ensureSeed();
-        const [users, restaurants, orders] = await Promise.all([
+        const [users, restaurants] = await Promise.all([
           backend.users(),
           backend.restaurants(),
-          backend.orders(),
         ]);
         if (cancelled) return;
-        setStats(deriveLandingStats(users, restaurants, orders));
+        setStats(deriveLandingStats(users, restaurants));
       } catch (error) {
         console.error("Landing stats could not be loaded", error);
         if (!cancelled) setStats(defaultLandingStats);
@@ -336,19 +329,6 @@ function Landing() {
                 </Link>
               </div>
 
-              <div className="mt-8 grid max-w-xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[var(--landing-border)] bg-[var(--landing-border)] sm:grid-cols-4">
-                {[
-                  [formatLandingCount(stats.completedTransactions), "completed"],
-                  [naira(stats.completedRevenue), "revenue"],
-                  [formatLandingCount(stats.stores), "stores"],
-                  [formatLandingCount(stats.users), "users"],
-                ].map(([value, label]) => (
-                  <div key={label} className="bg-[var(--landing-card)] px-4 py-3">
-                    <p className="text-lg font-black">{value}</p>
-                    <p className="text-xs text-[var(--landing-muted)]">{label}</p>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <Reveal>
@@ -549,15 +529,8 @@ function Landing() {
   );
 }
 
-function deriveLandingStats(
-  users: User[],
-  restaurants: Restaurant[],
-  orders: Order[],
-): LandingStats {
-  const completedOrders = orders.filter((order) => order.status === "completed");
+function deriveLandingStats(users: User[], restaurants: Restaurant[]): LandingStats {
   return {
-    completedTransactions: completedOrders.length,
-    completedRevenue: completedOrders.reduce((sum, order) => sum + Number(order.total), 0),
     stores: restaurants.length,
     users: users.length,
   };
