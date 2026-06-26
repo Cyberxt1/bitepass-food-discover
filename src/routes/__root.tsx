@@ -190,6 +190,10 @@ function AppShell() {
           data-swipe-direction={swipeDirection ?? undefined}
           onAnimationEnd={() => setSwipeDirection(null)}
           onTouchStart={(event) => {
+            if ((event.target as Element | null)?.closest("[data-no-tab-swipe]")) {
+              touchStartRef.current = null;
+              return;
+            }
             const touch = event.touches[0];
             touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
           }}
