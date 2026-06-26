@@ -7,7 +7,7 @@ import {
   useRouter,
   useRouterState,
 } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChefHat, Home, Receipt, Search, ShoppingBag, User as UserIcon } from "lucide-react";
 
 import { ThemeProvider } from "@/lib/theme";
@@ -104,8 +104,6 @@ function AppShell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const nav = useNavigate();
   const { authReady, updateProfile, user } = useAuth();
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const [swipeDirection, setSwipeDirection] = useState<"next" | "previous" | null>(null);
   const fullWidth =
     path === "/" ||
     path === "/login" ||
@@ -116,28 +114,6 @@ function AppShell() {
   const isAuthPage = path === "/login" || path === "/signup";
   const isAdminPage = path.startsWith("/admin");
   const isPublicPage = path === "/" || isAuthPage || isAdminPage;
-  const swipeRoutes = userNavItems.map((item) => item.to);
-  const activeSwipeIndex = swipeRoutes.findIndex((to) =>
-    to === "/discover" ? path === "/discover" : path.startsWith(to),
-  );
-
-  const handleTouchEnd = (clientX: number, clientY: number) => {
-    const start = touchStartRef.current;
-    touchStartRef.current = null;
-    if (!start || activeSwipeIndex < 0 || window.matchMedia("(min-width: 1024px)").matches) return;
-
-    const deltaX = clientX - start.x;
-    const deltaY = clientY - start.y;
-    if (Math.abs(deltaX) < 90 || Math.abs(deltaX) < Math.abs(deltaY) * 1.4) return;
-
-    const nextIndex = deltaX < 0 ? activeSwipeIndex + 1 : activeSwipeIndex - 1;
-    const nextRoute = swipeRoutes[nextIndex];
-    if (nextRoute) {
-      setSwipeDirection(deltaX < 0 ? "next" : "previous");
-      nav({ to: nextRoute });
-    }
-  };
-
   useEffect(() => {
     if (!authReady) return;
     trackAuditEvent({
@@ -187,20 +163,6 @@ function AppShell() {
         <div
           key={path}
           className="mx-auto min-h-screen w-full max-w-md pb-32 lg:max-w-none lg:pb-0 lg:pl-24 xl:pl-28"
-          data-swipe-direction={swipeDirection ?? undefined}
-          onAnimationEnd={() => setSwipeDirection(null)}
-          onTouchStart={(event) => {
-            if ((event.target as Element | null)?.closest("[data-no-tab-swipe]")) {
-              touchStartRef.current = null;
-              return;
-            }
-            const touch = event.touches[0];
-            touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
-          }}
-          onTouchEnd={(event) => {
-            const touch = event.changedTouches[0];
-            if (touch) handleTouchEnd(touch.clientX, touch.clientY);
-          }}
         >
           <Outlet />
         </div>
