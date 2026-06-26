@@ -17,6 +17,7 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as NearbyRouteImport } from './routes/nearby'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as CravingsRouteImport } from './routes/cravings'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as BusinessRouteImport } from './routes/business'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -66,6 +67,11 @@ const DiscoverRoute = DiscoverRouteImport.update({
   path: '/discover',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CravingsRoute = CravingsRouteImport.update({
+  id: '/cravings',
+  path: '/cravings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CartRoute = CartRouteImport.update({
   id: '/cart',
   path: '/cart',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/business': typeof BusinessRoute
   '/cart': typeof CartRoute
+  '/cravings': typeof CravingsRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
   '/nearby': typeof NearbyRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/business': typeof BusinessRoute
   '/cart': typeof CartRoute
+  '/cravings': typeof CravingsRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
   '/nearby': typeof NearbyRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/business': typeof BusinessRoute
   '/cart': typeof CartRoute
+  '/cravings': typeof CravingsRoute
   '/discover': typeof DiscoverRoute
   '/login': typeof LoginRoute
   '/nearby': typeof NearbyRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/business'
     | '/cart'
+    | '/cravings'
     | '/discover'
     | '/login'
     | '/nearby'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/business'
     | '/cart'
+    | '/cravings'
     | '/discover'
     | '/login'
     | '/nearby'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/business'
     | '/cart'
+    | '/cravings'
     | '/discover'
     | '/login'
     | '/nearby'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   BusinessRoute: typeof BusinessRoute
   CartRoute: typeof CartRoute
+  CravingsRoute: typeof CravingsRoute
   DiscoverRoute: typeof DiscoverRoute
   LoginRoute: typeof LoginRoute
   NearbyRoute: typeof NearbyRoute
@@ -303,6 +316,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CartRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cravings': {
+      id: '/cravings'
+      path: '/cravings'
+      fullPath: '/cravings'
+      preLoaderRoute: typeof CravingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/business': {
       id: '/business'
       path: '/business'
@@ -360,6 +380,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   BusinessRoute: BusinessRoute,
   CartRoute: CartRoute,
+  CravingsRoute: CravingsRoute,
   DiscoverRoute: DiscoverRoute,
   LoginRoute: LoginRoute,
   NearbyRoute: NearbyRoute,
