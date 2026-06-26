@@ -9,15 +9,8 @@ import {
   MapPin,
   ShieldCheck,
   Utensils,
-  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { backend } from "@/lib/backend";
-import {
-  ensureSeed,
-  type Restaurant,
-  type User,
-} from "@/lib/seed";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -39,11 +32,6 @@ type LandingFoodCard = {
   time: string;
   image: string;
   className: string;
-};
-
-type LandingStats = {
-  stores: number;
-  users: number;
 };
 
 const cardPositions = [
@@ -99,11 +87,6 @@ const features = [
   ["Verified kitchens", "Restaurants are checked before they go live.", ShieldCheck],
   ["Simple reorders", "Repeat your usual lunch in a few taps.", Utensils],
 ] satisfies Array<[string, string, LucideIcon]>;
-
-const defaultLandingStats: LandingStats = {
-  stores: 0,
-  users: 0,
-};
 
 const heroHeadlines = [
   "I hate wasting time when I am hungry.",
@@ -180,35 +163,10 @@ function FoodFan({ cards }: { cards: LandingFoodCard[] }) {
 }
 
 function Landing() {
-  const [stats, setStats] = useState<LandingStats>(defaultLandingStats);
   const [landingDark, setLandingDark] = useState(false);
   const [headlineIndex, setHeadlineIndex] = useState(0);
   const [typedHeadline, setTypedHeadline] = useState(heroHeadlines[0]);
   const currentHeadline = heroHeadlines[headlineIndex];
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadStats() {
-      try {
-        ensureSeed();
-        const [users, restaurants] = await Promise.all([
-          backend.users(),
-          backend.restaurants(),
-        ]);
-        if (cancelled) return;
-        setStats(deriveLandingStats(users, restaurants));
-      } catch (error) {
-        console.error("Landing stats could not be loaded", error);
-        if (!cancelled) setStats(defaultLandingStats);
-      }
-    }
-    void loadStats();
-    const timer = window.setInterval(() => void loadStats(), 10000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -473,31 +431,6 @@ function Landing() {
           </Reveal>
         </section>
 
-        <section className="px-5 pb-12">
-          <Reveal>
-            <div className="mx-auto flex max-w-6xl flex-col gap-5 rounded-[1.5rem] border border-[#e8ddd2] bg-[#201b17] p-6 text-white md:flex-row md:items-center md:justify-between md:p-7">
-              <div className="flex items-start gap-4">
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/10 text-[#ffb591]">
-                  <Users className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ffb591]">
-                    Live platform data
-                  </p>
-                  <h2 className="mt-2 text-2xl font-black tracking-[-0.02em]">
-                    Join {formatLandingCount(stats.users)} users across {formatLandingCount(stats.stores)} stores.
-                  </h2>
-                </div>
-              </div>
-              <Link
-                to="/signup"
-                className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-[#201b17]"
-              >
-                Join BitePass <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </Reveal>
-        </section>
       </main>
 
       <footer className="border-t border-[var(--landing-border-soft)] px-5 py-8">
@@ -527,17 +460,4 @@ function Landing() {
       </footer>
     </div>
   );
-}
-
-function deriveLandingStats(users: User[], restaurants: Restaurant[]): LandingStats {
-  return {
-    stores: restaurants.length,
-    users: users.length,
-  };
-}
-
-function formatLandingCount(value: number | string) {
-  const number = Number(value || 0);
-  if (number >= 1000) return `${Math.floor(number / 1000)}k+`;
-  return String(number);
 }
