@@ -39,6 +39,11 @@ const Ctx = createContext<AuthCtx | null>(null);
 const useSupabaseAuth = import.meta.env.VITE_AUTH_BACKEND === "supabase" && isSupabaseConfigured;
 const ADMIN_EMAIL = "biteepass1@gmail.com";
 
+export const authInfo = {
+  mode: useSupabaseAuth ? "supabase" : "local",
+  label: useSupabaseAuth ? "Supabase auth" : "Local auth",
+};
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }

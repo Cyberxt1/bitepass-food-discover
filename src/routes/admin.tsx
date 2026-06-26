@@ -45,7 +45,8 @@ import {
 } from "recharts";
 
 import { backend, backendInfo } from "@/lib/backend";
-import { useAuth } from "@/lib/auth";
+import { authInfo, useAuth } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 import { naira } from "@/lib/format";
 import type { Feedback, Meal, Order, PlatformStats, Restaurant, Review, User } from "@/lib/seed";
 import { readAuditEvents, type AuditEvent } from "@/lib/audit";
@@ -213,12 +214,32 @@ function AdminDashboard() {
 
     async function loadAdminData() {
       let loadError = "";
+      if (backendInfo.mode === "supabase") {
+        if (authInfo.mode !== "supabase") {
+          setAdminDataError(
+            "Admin data is connected to Supabase, but auth is local. Set VITE_AUTH_BACKEND=supabase and redeploy so RLS can read the database.",
+          );
+          return;
+        }
+
+        const { data, error } = await supabase!.auth.getSession();
+        if (cancelled) return;
+        if (error || !data.session) {
+          setAdminDataError(
+            error?.message ||
+              "Supabase session is missing. Sign out, sign in again with the Supabase admin email, then refresh admin data.",
+          );
+          return;
+        }
+      }
+
       const readAdminCollection = async <T,>(label: string, load: () => Promise<T[]>) => {
         try {
           return await load();
         } catch (error) {
           console.warn(`Admin ${label} failed to load`, error);
-          loadError = `${label} could not load. Other admin data is still shown.`;
+          const message = error instanceof Error ? error.message : "Unknown error";
+          loadError = `${label} could not load: ${message}`;
           return [];
         }
       };
@@ -244,6 +265,17 @@ function AdminDashboard() {
       const visibleUsers = nextUsers.some((entry) => entry.id === user.id)
         ? nextUsers
         : [user, ...nextUsers];
+      if (
+        backendInfo.mode === "supabase" &&
+        nextRestaurants.length === 0 &&
+        nextMeals.length === 0 &&
+        nextOrders.length === 0 &&
+        nextUsers.length <= 1
+      ) {
+        loadError =
+          loadError ||
+          "Supabase returned no platform rows for users, restaurants, meals, and orders. Check that the live database has rows and that the schema/RLS from supabase/schema.sql is applied.";
+      }
       if (!nextUsers.some((entry) => entry.id === user.id)) {
         void backend.setUser(user);
       }
@@ -389,6 +421,15 @@ function AdminDashboard() {
                 }`}
               >
                 {backendInfo.label}
+              </span>
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-black ${
+                  authInfo.mode === "supabase"
+                    ? "bg-success/15 text-success"
+                    : "bg-warning/15 text-warning"
+                }`}
+              >
+                {authInfo.label}
               </span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
