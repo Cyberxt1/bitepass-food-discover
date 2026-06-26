@@ -82,7 +82,7 @@ const statusColors = [
 
 function AdminAccess({ login }: { login: (email: string, password: string) => Promise<User> }) {
   const nav = useNavigate();
-  const [email, setEmail] = useState("admin@bitepass.test");
+  const [email, setEmail] = useState("biteepass1@gmail.com");
   const [password, setPassword] = useState("1234");
   const [loading, setLoading] = useState(false);
 
@@ -151,7 +151,7 @@ function AdminAccess({ login }: { login: (email: string, password: string) => Pr
         </form>
 
         <div className="mt-5 rounded-2xl bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">
-          Local dev admin: <span className="font-black text-foreground">admin@bitepass.test</span> /{" "}
+          Local dev admin: <span className="font-black text-foreground">biteepass1@gmail.com</span> /{" "}
           <span className="font-black text-foreground">1234</span>
         </div>
       </div>

@@ -37,6 +37,7 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 const useSupabaseAuth = import.meta.env.VITE_AUTH_BACKEND === "supabase" && isSupabaseConfigured;
+const ADMIN_EMAIL = "biteepass1@gmail.com";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -57,14 +58,14 @@ function findLocalUserByCredentials(email: string, password: string) {
 }
 
 async function ensureLocalAdminForLogin(email: string, password: string) {
-  if (normalizeEmail(email) !== "admin@bitepass.test" || password.trim() !== "1234") return null;
+  if (normalizeEmail(email) !== ADMIN_EMAIL || password.trim() !== "1234") return null;
 
   const users = await backend.users();
-  const existing = users.find((entry) => normalizeEmail(entry.email) === "admin@bitepass.test");
+  const existing = users.find((entry) => normalizeEmail(entry.email) === ADMIN_EMAIL);
   const admin: User = {
     id: existing?.id ?? "u-admin-local",
     name: existing?.name || "BitePass Admin",
-    email: "admin@bitepass.test",
+    email: ADMIN_EMAIL,
     password: "1234",
     role: "admin",
     avatar: existing?.avatar || "A",
@@ -87,12 +88,13 @@ function userFromAuth(params: {
   role?: string;
 }): User {
   const name = params.name?.trim() || params.email?.split("@")[0] || "BitePass user";
+  const email = normalizeEmail(params.email ?? "");
   return {
     id: params.id,
     name,
-    email: normalizeEmail(params.email ?? ""),
+    email,
     password: "",
-    role: params.role ?? "customer",
+    role: email === ADMIN_EMAIL ? "admin" : params.role ?? "customer",
     avatar: name.charAt(0).toUpperCase(),
   };
 }
@@ -108,7 +110,15 @@ async function getOrCreateAuthProfile(params: {
     (entry) =>
       entry.id === params.id || normalizeEmail(entry.email) === normalizeEmail(params.email ?? ""),
   );
-  if (existing) return existing;
+  if (existing) {
+    const email = normalizeEmail(existing.email || params.email || "");
+    if (email === ADMIN_EMAIL && existing.role !== "admin") {
+      const promoted = { ...existing, role: "admin" as const };
+      await backend.updateUser(existing.id, { role: "admin" });
+      return promoted;
+    }
+    return existing;
+  }
   const user = userFromAuth(params);
   await backend.setUser(user);
   return user;

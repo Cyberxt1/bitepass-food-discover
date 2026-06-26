@@ -103,7 +103,9 @@ async function patchCollectionDoc(
       throw new Error(`Supabase ${name} update failed: ${error.message}`);
     }
     if (!data) {
-      throw new Error(`Supabase ${name} update failed: no matching row was updated`);
+      throw new Error(
+        `Supabase ${name} update failed: no row was updated. Check that this account has admin permission in Supabase RLS.`,
+      );
     }
     updateRow(fileFor[name], (row) => row.id === id, data);
     return;
