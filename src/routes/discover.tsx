@@ -172,9 +172,7 @@ function Discover() {
   const visibleNearbyRestaurants = nearbyRestaurants.filter(
     (restaurant) => !mutedRestaurantIds.has(restaurant.id),
   );
-  const displayLimit =
-    typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches ? 6 : 4;
-  const displayRestaurants = (coords ? visibleNearbyRestaurants : []).slice(0, displayLimit);
+  const displayRestaurants = (coords ? visibleNearbyRestaurants : []).slice(0, 4);
 
   useEffect(() => {
     if (!coords) {
@@ -410,14 +408,6 @@ function Discover() {
                     {requestingLocation ? "Locating..." : "Use location"}
                   </button>
                 )}
-                {coords && visibleNearbyRestaurants.length > 0 && (
-                  <Link
-                    to="/nearby"
-                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-primary transition hover:bg-muted"
-                  >
-                    View all
-                  </Link>
-                )}
               </div>
 
               {!coords && !loading ? (
@@ -431,12 +421,47 @@ function Discover() {
                   detail="Try searching while more kitchens join your area."
                 />
               ) : (
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+                <div
+                  data-no-tab-swipe
+                  className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0"
+                  style={{ touchAction: "pan-x" }}
+                  onTouchStart={(event) => event.stopPropagation()}
+                  onTouchMove={(event) => event.stopPropagation()}
+                  onTouchEnd={(event) => event.stopPropagation()}
+                >
                   {loading
-                    ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-                    : displayRestaurants.map((r) => (
-                        <RestaurantCard key={r.id} r={r} distanceLabel={distanceFor(r)} compact />
-                      ))}
+                    ? Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="w-[72vw] max-w-[260px] shrink-0 snap-center">
+                          <SkeletonCard />
+                        </div>
+                      ))
+                    : (
+                      <>
+                        {displayRestaurants.map((r) => (
+                          <div key={r.id} className="w-[72vw] max-w-[260px] shrink-0 snap-center">
+                            <RestaurantCard
+                              r={r}
+                              distanceLabel={distanceFor(r)}
+                              compact
+                              minimal
+                            />
+                          </div>
+                        ))}
+                        {visibleNearbyRestaurants.length >= 4 && (
+                          <Link
+                            to="/nearby"
+                            className="grid min-h-[220px] w-[72vw] max-w-[260px] shrink-0 snap-center place-items-center rounded-2xl border border-dashed border-primary/40 bg-primary/10 p-5 text-center text-primary shadow-soft transition active:scale-[0.98]"
+                          >
+                            <span>
+                              <span className="block text-sm font-black">View all</span>
+                              <span className="mt-1 block text-xs font-bold text-primary/75">
+                                See every restaurant near you
+                              </span>
+                            </span>
+                          </Link>
+                        )}
+                      </>
+                    )}
                 </div>
               )}
             </section>

@@ -161,7 +161,7 @@ export function distanceKm(a: Coordinates, b: Coordinates): number {
 }
 
 export function formatDistance(km: number): string {
-  if (km < 1) return `${Math.round(km * 1000)} m`;
+  if (km < 1) return `${Math.max(km, 0).toFixed(1)} km`;
   return `${km.toFixed(km < 10 ? 1 : 0)} km`;
 }
 

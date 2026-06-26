@@ -6,11 +6,83 @@ export function RestaurantCard({
   r,
   distanceLabel,
   compact = false,
+  minimal = false,
 }: {
   r: Restaurant;
   distanceLabel?: string;
   compact?: boolean;
+  minimal?: boolean;
 }) {
+  const primaryTag =
+    r.tags
+      .split("|")
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+      .find((tag) => tag.toLowerCase() !== "nigerian") ??
+    r.tags
+      .split("|")
+      .map((tag) => tag.trim())
+      .filter(Boolean)[0];
+
+  if (minimal) {
+    return (
+      <Link
+        to="/restaurant/$restaurantId"
+        params={{ restaurantId: r.id }}
+        className="group block overflow-hidden rounded-2xl bg-card shadow-soft transition active:scale-[0.98]"
+      >
+        <div className="relative aspect-[1.35/1] overflow-hidden bg-muted">
+          {r.image ? (
+            <img
+              src={r.image}
+              alt={r.name}
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            />
+          ) : null}
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/80 to-transparent" />
+          {r.verificationStatus === "verified" && (
+            <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-success text-success-foreground shadow-soft">
+              <Check className="h-4 w-4" />
+            </span>
+          )}
+          <h3 className="absolute bottom-2 left-3 right-3 line-clamp-2 text-base font-black leading-tight text-white">
+            {r.name}
+          </h3>
+        </div>
+        <div className="space-y-2 p-3">
+          <div className="flex items-center justify-between gap-2">
+            {primaryTag ? (
+              <span className="min-w-0 truncate rounded-full bg-muted px-2.5 py-1 text-[11px] font-black text-foreground">
+                {primaryTag}
+              </span>
+            ) : (
+              <span />
+            )}
+            {r.isOpen === "0" ? (
+              <span className="shrink-0 rounded-full bg-destructive/10 px-2.5 py-1 text-[10px] font-black text-destructive">
+                Closed
+              </span>
+            ) : (
+              <span className="shrink-0 rounded-full bg-success/10 px-2.5 py-1 text-[10px] font-black text-success">
+                Open
+              </span>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-2 text-[11px] font-bold text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {r.prepTime} min
+            </span>
+            <span className="flex min-w-0 items-center gap-1">
+              <MapPin className="h-3 w-3 shrink-0" />
+              <span className="truncate">{distanceLabel ?? `${r.distance} km`}</span>
+            </span>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
   return (
     <Link
       to="/restaurant/$restaurantId"
