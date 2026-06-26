@@ -103,6 +103,8 @@ function CartPage() {
     setCheckoutStage("Opening payment...");
     try {
       const orderId = "o" + Date.now();
+      const paymentStoreName = restaurant.paymentDisplayName?.trim() || restaurant.name;
+      const subaccountCode = restaurant.paystackSubaccount?.trim();
       const paymentReference = await startPaystackPayment({
         amountNaira: grand,
         email: user.email,
@@ -110,8 +112,8 @@ function CartPage() {
         reference: `bitepass-${orderId}`,
         address: user.address,
         restaurantId: restaurant.id,
-        restaurantName: restaurant.name,
-        subaccountCode: restaurant.paystackSubaccount?.trim(),
+        restaurantName: paymentStoreName,
+        subaccountCode,
         platformFeeNaira: fee,
       });
       setCheckoutStage("Sending order to kitchen...");
@@ -142,7 +144,7 @@ function CartPage() {
         discountCode: "",
         paymentStatus: "paid",
         paymentReference,
-        paymentRecipient: restaurant.paystackSubaccount?.trim() || "platform",
+        paymentRecipient: subaccountCode ? paymentStoreName : "platform",
         placedAt: new Date().toISOString(),
         paidAt: new Date().toISOString(),
       });

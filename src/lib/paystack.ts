@@ -105,16 +105,21 @@ export async function startPaystackPayment({
       amount: Math.round(amountNaira * 100),
       currency: "NGN",
       ref: reference,
-      label: name,
+      label: restaurantName,
       subaccount: subaccountCode,
       transaction_charge: platformFeeNaira ? Math.round(platformFeeNaira * 100) : undefined,
       bearer: subaccountCode ? "subaccount" : undefined,
       metadata: {
         custom_fields: [
           {
-            display_name: "Restaurant",
+            display_name: "Store",
             variable_name: "restaurant_name",
             value: restaurantName,
+          },
+          {
+            display_name: "Customer",
+            variable_name: "customer_name",
+            value: name,
           },
           {
             display_name: "Restaurant ID",
