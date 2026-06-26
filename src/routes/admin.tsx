@@ -178,6 +178,7 @@ function AdminDashboard() {
   const [selectedStore, setSelectedStore] = useState<Restaurant | null>(null);
   const [selectedPaymentStore, setSelectedPaymentStore] = useState<Restaurant | null>(null);
   const [paymentView, setPaymentView] = useState<PaymentSetupView>("requests");
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const patchRestaurantState = (id: string, patch: Partial<Restaurant>) => {
     setRestaurants((current) =>
@@ -185,6 +186,21 @@ function AdminDashboard() {
     );
     setSelectedStore((current) => (current?.id === id ? { ...current, ...patch } : current));
     setSelectedPaymentStore((current) => (current?.id === id ? { ...current, ...patch } : current));
+  };
+
+  const signOutAndGo = async (to: "/" | "/admin") => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout();
+      nav({ to, replace: true });
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Logout failed", {
+        id: "admin-logout-error",
+      });
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   useEffect(() => {
@@ -294,13 +310,11 @@ function AdminDashboard() {
           </p>
           <button
             type="button"
-            onClick={() => {
-              logout();
-              nav({ to: "/admin", replace: true });
-            }}
+            onClick={() => void signOutAndGo("/admin")}
+            disabled={loggingOut}
             className="mt-5 rounded-2xl bg-gradient-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-glow"
           >
-            Switch account
+            {loggingOut ? "Signing out..." : "Switch account"}
           </button>
         </div>
       </div>
@@ -328,20 +342,18 @@ function AdminDashboard() {
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-black leading-tight">Admin operations</p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="hidden text-[11px] text-muted-foreground sm:block">
                 Traffic, accounts, stores, orders, and support
               </p>
             </div>
           </div>
           <button
-            onClick={() => {
-              logout();
-              nav({ to: "/" });
-            }}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            onClick={() => void signOutAndGo("/")}
+            disabled={loggingOut}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-60"
             aria-label="Sign out"
           >
-            <LogOut className="h-4 w-4" />
+            {loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
           </button>
         </div>
 
@@ -1547,15 +1559,15 @@ function Kpi({
 }) {
   return (
     <div
-      className={`rounded-2xl p-3.5 shadow-soft ${accent ? "bg-gradient-primary text-primary-foreground" : "bg-card"}`}
+      className={`min-w-0 overflow-hidden rounded-2xl p-3.5 shadow-soft ${accent ? "bg-gradient-primary text-primary-foreground" : "bg-card"}`}
     >
       <Icon className={`h-4 w-4 ${accent ? "opacity-90" : "text-muted-foreground"}`} />
       <p
-        className={`mt-3 text-[10px] font-black uppercase tracking-wider ${accent ? "opacity-85" : "text-muted-foreground"}`}
+        className={`mt-3 break-words text-[10px] font-black uppercase tracking-wide ${accent ? "opacity-85" : "text-muted-foreground"}`}
       >
         {label}
       </p>
-      <p className="mt-1 truncate text-lg font-black leading-tight">{value}</p>
+      <p className="mt-1 break-words text-lg font-black leading-tight">{value}</p>
     </div>
   );
 }
@@ -1570,7 +1582,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl bg-card p-4 shadow-soft">
+    <section className="min-w-0 overflow-hidden rounded-2xl bg-card p-4 shadow-soft">
       <div className="mb-4">
         <h2 className="text-base font-black">{title}</h2>
         {subtitle && <p className="mt-1 text-xs leading-5 text-muted-foreground">{subtitle}</p>}
@@ -1644,10 +1656,10 @@ function ActionCard({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl bg-muted/55 p-4">
+    <div className="min-w-0 overflow-hidden rounded-2xl bg-muted/55 p-4">
       <Icon className="h-5 w-5 text-primary" />
-      <p className="mt-4 text-xs font-black text-muted-foreground">{title}</p>
-      <p className="mt-1 text-2xl font-black">{value}</p>
+      <p className="mt-4 break-words text-xs font-black text-muted-foreground">{title}</p>
+      <p className="mt-1 break-words text-2xl font-black">{value}</p>
     </div>
   );
 }
@@ -2182,12 +2194,12 @@ function StoreModerationRow({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap gap-2 xl:justify-end">
+        <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap xl:justify-end">
           <button
             type="button"
             onClick={() => void verifyStore()}
             disabled={verified || Boolean(busyAction)}
-            className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-[11px] font-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-65 ${
+            className={`inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-[11px] font-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-65 ${
               verified
                 ? "bg-success/10 text-success"
                 : verificationRequested
@@ -2206,7 +2218,7 @@ function StoreModerationRow({
             type="button"
             onClick={onPaymentOpen}
             disabled={Boolean(busyAction)}
-            className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-[11px] font-black transition active:scale-95 disabled:opacity-65 ${
+            className={`inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-[11px] font-black transition active:scale-95 disabled:opacity-65 ${
               paymentReady
                 ? "bg-success/10 text-success"
                 : paymentRequested
@@ -2223,7 +2235,7 @@ function StoreModerationRow({
             type="button"
             onClick={() => void toggleSuspension()}
             disabled={Boolean(busyAction)}
-            className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-[11px] font-black transition active:scale-95 disabled:opacity-65 ${
+            className={`inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-[11px] font-black transition active:scale-95 disabled:opacity-65 ${
               suspended ? "bg-success/10 text-success" : "bg-card text-foreground hover:bg-muted"
             }`}
           >

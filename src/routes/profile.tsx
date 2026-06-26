@@ -4,6 +4,7 @@ import {
   Bell,
   Headphones,
   LocateFixed,
+  Loader2,
   LogOut,
   MessageCircle,
   Moon,
@@ -32,6 +33,7 @@ function ProfilePage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackCategory, setFeedbackCategory] = useState("general");
   const [sendingFeedback, setSendingFeedback] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const inviteUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/signup`
@@ -65,10 +67,20 @@ function ProfilePage() {
     );
   }
 
-  const signOut = () => {
-    logout();
-    notify("success", "Signed out", { id: "signout-success" });
-    nav({ to: "/" });
+  const signOut = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout();
+      notify("success", "Signed out", { id: "signout-success" });
+      nav({ to: "/", replace: true });
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Logout failed", {
+        id: "signout-error",
+      });
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const refreshLocation = async () => {
@@ -155,10 +167,12 @@ function ProfilePage() {
           </section>
 
           <button
-            onClick={signOut}
-            className="flex w-full items-center justify-center gap-3 rounded-2xl border border-destructive/20 bg-card px-4 py-3.5 text-sm font-medium text-destructive shadow-soft hover:bg-destructive/5"
+            onClick={() => void signOut()}
+            disabled={loggingOut}
+            className="flex w-full items-center justify-center gap-3 rounded-2xl border border-destructive/20 bg-card px-4 py-3.5 text-sm font-medium text-destructive shadow-soft hover:bg-destructive/5 disabled:opacity-60"
           >
-            <LogOut className="h-4 w-4" /> Sign out
+            {loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+            {loggingOut ? "Signing out..." : "Sign out"}
           </button>
         </aside>
 

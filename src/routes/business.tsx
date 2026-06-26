@@ -62,7 +62,21 @@ function BusinessDashboard() {
   const [tab, setTab] = useState<Tab>("analytics");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tick, setTick] = useState(0);
+  const [loggingOut, setLoggingOut] = useState(false);
   const refresh = () => setTick((x) => x + 1);
+
+  const signOut = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout();
+      nav({ to: "/", replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Logout failed");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) nav({ to: "/login" });
@@ -241,16 +255,14 @@ function BusinessDashboard() {
 
         <div className="border-t border-border p-3">
           <button
-            onClick={() => {
-              logout();
-              nav({ to: "/" });
-            }}
+            onClick={() => void signOut()}
+            disabled={loggingOut}
             className={`flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive ${
               sidebarOpen ? "justify-start" : "justify-center"
             }`}
           >
-            <LogOut className="h-4 w-4 shrink-0" />
-            {sidebarOpen && <span>Sign out</span>}
+            {loggingOut ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <LogOut className="h-4 w-4 shrink-0" />}
+            {sidebarOpen && <span>{loggingOut ? "Signing out..." : "Sign out"}</span>}
           </button>
         </div>
       </aside>
@@ -353,7 +365,7 @@ function RestaurantOnboarding({
   ownerName: string;
   refresh: () => void;
   onCreated: (restaurant: Restaurant) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }) {
   const nav = useNavigate();
   const [step, setStep] = useState(0);
@@ -371,6 +383,7 @@ function RestaurantOnboarding({
     image: "",
   });
   const [imageBusy, setImageBusy] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const latNumber = Number(form.lat);
   const lngNumber = Number(form.lng);
@@ -389,6 +402,19 @@ function RestaurantOnboarding({
 
   const update = (key: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const signOut = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout();
+      nav({ to: "/", replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Logout failed");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const useCurrentLocation = async () => {
@@ -474,14 +500,12 @@ function RestaurantOnboarding({
     <div className="relative flex min-h-[100dvh] items-start justify-center bg-gradient-hero px-5 pb-8 pt-20 sm:items-center sm:py-16">
       <button
         type="button"
-        onClick={() => {
-          logout();
-          nav({ to: "/" });
-        }}
-        className="absolute right-5 top-6 inline-flex items-center gap-2 rounded-full bg-card px-4 py-2 text-xs font-bold text-muted-foreground shadow-soft transition hover:text-destructive"
+        onClick={() => void signOut()}
+        disabled={loggingOut}
+        className="absolute right-5 top-6 inline-flex items-center gap-2 rounded-full bg-card px-4 py-2 text-xs font-bold text-muted-foreground shadow-soft transition hover:text-destructive disabled:opacity-60"
       >
-        <LogOut className="h-3.5 w-3.5" />
-        Sign out
+        {loggingOut ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+        {loggingOut ? "Signing out..." : "Sign out"}
       </button>
 
       <div className="w-full max-w-md">

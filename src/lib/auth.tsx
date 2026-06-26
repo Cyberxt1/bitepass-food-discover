@@ -32,7 +32,7 @@ type AuthCtx = {
   loginWithGoogle: () => Promise<User>;
   signup: (name: string, email: string, password: string, options?: SignupOptions) => Promise<User>;
   updateProfile: (patch: Partial<User>) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -381,8 +381,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u;
   };
 
-  const logout = () => {
+  const logout = async () => {
     const currentUser = user;
+    if (useSupabaseAuth && supabase) {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    }
     clearSession();
     writeFile(FILES.session, "");
     setUser(null);
@@ -396,9 +400,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: `${currentUser.name} logged out`,
         detail: `${currentUser.role} account signed out`,
       });
-    }
-    if (useSupabaseAuth && supabase) {
-      void supabase.auth.signOut();
     }
   };
 
