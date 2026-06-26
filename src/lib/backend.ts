@@ -93,14 +93,19 @@ async function patchCollectionDoc(
   patch: Record<string, unknown>,
 ) {
   if (useSupabase && supabase) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from(name)
       .update(cleanRow({ id, ...patch }))
-      .eq("id", id);
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
     if (error) {
       throw new Error(`Supabase ${name} update failed: ${error.message}`);
     }
-    updateRow(fileFor[name], (row) => row.id === id, patch);
+    if (!data) {
+      throw new Error(`Supabase ${name} update failed: no matching row was updated`);
+    }
+    updateRow(fileFor[name], (row) => row.id === id, data);
     return;
   }
   updateRow(fileFor[name], (row) => row.id === id, patch);

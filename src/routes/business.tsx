@@ -45,6 +45,7 @@ import type { Discount, Meal, Order, Restaurant } from "@/lib/seed";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
 import { parseMealOptions, stringifyMealOptions, type MealOption } from "@/lib/meal-options";
+import { inferMealCategory, mealCategories } from "@/lib/meal-category";
 import { nextOrderStatus, normalizeOrderStatus, orderTimestampPatch } from "@/lib/platform";
 import { compressImageFile } from "@/lib/image-upload";
 import { getCurrentLocationDetails } from "@/lib/location";
@@ -1493,7 +1494,7 @@ function MealForm({
     description: meal?.description || "",
     price: meal?.price || "",
     servingUnit: meal?.servingUnit || "plate",
-    category: meal?.category || "Rice",
+    category: meal?.category || inferMealCategory(meal?.name ?? "", meal?.description ?? ""),
     prepTime: meal?.prepTime || "15",
     availableFrom: meal?.availableFrom || "10",
     availableTo: meal?.availableTo || "22",
@@ -1501,6 +1502,15 @@ function MealForm({
   const [options, setOptions] = useState<MealOption[]>(parseMealOptions(meal?.options));
   const [image, setImage] = useState(meal?.image || "");
   const [imageBusy, setImageBusy] = useState(false);
+  const [categoryTouched, setCategoryTouched] = useState(Boolean(meal?.category));
+
+  useEffect(() => {
+    if (categoryTouched) return;
+    const nextCategory = inferMealCategory(form.name, form.description);
+    setForm((current) =>
+      current.category === nextCategory ? current : { ...current, category: nextCategory },
+    );
+  }, [categoryTouched, form.description, form.name]);
 
   const uploadImage = async (file?: File) => {
     if (!file) return;
@@ -1520,14 +1530,22 @@ function MealForm({
       toast.error("Name and price required");
       return;
     }
+    const mealForm = {
+      ...form,
+      category: form.category.trim() || inferMealCategory(form.name, form.description),
+    };
     if (meal) {
-      void backend.updateMeal(meal.id, { ...form, image, options: stringifyMealOptions(options) });
+      void backend.updateMeal(meal.id, {
+        ...mealForm,
+        image,
+        options: stringifyMealOptions(options),
+      });
       toast.success("Dish updated");
     } else {
       void backend.addMeal({
         id: "m" + Date.now(),
         restaurantId,
-        ...form,
+        ...mealForm,
         image,
         options: stringifyMealOptions(options),
         rating: "0",
@@ -1641,7 +1659,30 @@ function MealForm({
             rows={2}
           />
         </label>
-        {F("category", "Category")}
+        <label className="block">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Category
+          </span>
+          <input
+            value={form.category}
+            list="meal-category-options"
+            onChange={(e) => {
+              setCategoryTouched(true);
+              setForm({ ...form, category: e.target.value });
+            }}
+            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          />
+          <datalist id="meal-category-options">
+            {mealCategories.map((category) => (
+              <option key={category} value={category} />
+            ))}
+          </datalist>
+          {!categoryTouched && form.category !== "Meals" && (
+            <span className="mt-1 inline-flex rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black text-primary">
+              Auto: {form.category}
+            </span>
+          )}
+        </label>
         {F("prepTime", "Prep time (min)", "number")}
         {F("availableFrom", "Available from (hour 0-23)", "number")}
         {F("availableTo", "Available to (hour 0-23)", "number")}

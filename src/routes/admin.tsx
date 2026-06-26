@@ -179,6 +179,14 @@ function AdminDashboard() {
   const [selectedPaymentStore, setSelectedPaymentStore] = useState<Restaurant | null>(null);
   const [paymentView, setPaymentView] = useState<PaymentSetupView>("requests");
 
+  const patchRestaurantState = (id: string, patch: Partial<Restaurant>) => {
+    setRestaurants((current) =>
+      current.map((store) => (store.id === id ? { ...store, ...patch } : store)),
+    );
+    setSelectedStore((current) => (current?.id === id ? { ...current, ...patch } : current));
+    setSelectedPaymentStore((current) => (current?.id === id ? { ...current, ...patch } : current));
+  };
+
   useEffect(() => {
     if (user && user.role !== "admin") nav({ to: "/" });
   }, [user, nav]);
@@ -448,6 +456,7 @@ function AdminDashboard() {
                         owner={users.find((entry) => entry.id === store.ownerId)}
                         onOpen={() => setSelectedStore(store)}
                         onPaymentOpen={() => setSelectedPaymentStore(store)}
+                        onStoreUpdated={(patch) => patchRestaurantState(store.id, patch)}
                         onRefresh={() => setTick((value) => value + 1)}
                       />
                     ))}
@@ -643,6 +652,7 @@ function AdminDashboard() {
             view={paymentView}
             onViewChange={setPaymentView}
             onOpen={setSelectedPaymentStore}
+            onStoreUpdated={(id, patch) => patchRestaurantState(id, patch)}
             onRefresh={() => setTick((value) => value + 1)}
           />
         )}
@@ -976,6 +986,7 @@ function AdminDashboard() {
                       owner={users.find((entry) => entry.id === store.ownerId)}
                       onOpen={() => setSelectedStore(store)}
                       onPaymentOpen={() => setSelectedPaymentStore(store)}
+                      onStoreUpdated={(patch) => patchRestaurantState(store.id, patch)}
                       onRefresh={() => setTick((value) => value + 1)}
                     />
                   ))}
@@ -1211,11 +1222,7 @@ function AdminDashboard() {
           orders={orders.filter((order) => order.restaurantId === selectedStore.id)}
           reviews={reviews.filter((review) => review.restaurantId === selectedStore.id)}
           onClose={() => setSelectedStore(null)}
-          onStoreUpdated={(patch) =>
-            setSelectedStore((current) =>
-              current && current.id === selectedStore.id ? { ...current, ...patch } : current,
-            )
-          }
+          onStoreUpdated={(patch) => patchRestaurantState(selectedStore.id, patch)}
           onRefresh={() => setTick((value) => value + 1)}
         />
       )}
@@ -1225,11 +1232,7 @@ function AdminDashboard() {
           store={selectedPaymentStore}
           owner={users.find((entry) => entry.id === selectedPaymentStore.ownerId)}
           onClose={() => setSelectedPaymentStore(null)}
-          onStoreUpdated={(patch) =>
-            setSelectedPaymentStore((current) =>
-              current && current.id === selectedPaymentStore.id ? { ...current, ...patch } : current,
-            )
-          }
+          onStoreUpdated={(patch) => patchRestaurantState(selectedPaymentStore.id, patch)}
           onRefresh={() => setTick((value) => value + 1)}
         />
       )}
@@ -1679,6 +1682,7 @@ function PaymentSetupsPanel({
   view,
   onViewChange,
   onOpen,
+  onStoreUpdated,
   onRefresh,
 }: {
   restaurants: Restaurant[];
@@ -1686,6 +1690,7 @@ function PaymentSetupsPanel({
   view: PaymentSetupView;
   onViewChange: (view: PaymentSetupView) => void;
   onOpen: (store: Restaurant) => void;
+  onStoreUpdated: (id: string, patch: Partial<Restaurant>) => void;
   onRefresh: () => void;
 }) {
   const [verifyingId, setVerifyingId] = useState("");
@@ -1761,10 +1766,12 @@ function PaymentSetupsPanel({
                   onClick={async () => {
                     setVerifyingId(store.id);
                     try {
-                      await backend.updateRestaurant(store.id, {
+                      const patch = {
                         verificationStatus: "verified",
                         moderationStatus: "active",
-                      });
+                      };
+                      await backend.updateRestaurant(store.id, patch);
+                      onStoreUpdated(store.id, patch);
                       notify("success", `${store.name} verified`, {
                         id: `verify-store:${store.id}`,
                       });
@@ -1870,8 +1877,8 @@ function PaymentSetupModal({
   }, [store.id, store.name, store.paystackSubaccount, store.paymentDisplayName]);
 
   const updateStore = async (patch: Partial<Restaurant>) => {
-    onStoreUpdated(patch);
     await backend.updateRestaurant(store.id, patch);
+    onStoreUpdated(patch);
     onRefresh();
   };
 
@@ -2024,12 +2031,14 @@ function StoreModerationRow({
   owner,
   onOpen,
   onPaymentOpen,
+  onStoreUpdated,
   onRefresh,
 }: {
   store: Restaurant;
   owner?: User;
   onOpen: () => void;
   onPaymentOpen: () => void;
+  onStoreUpdated: (patch: Partial<Restaurant>) => void;
   onRefresh: () => void;
 }) {
   const suspended = store.moderationStatus === "suspended";
@@ -2044,10 +2053,12 @@ function StoreModerationRow({
     if (verified || busyAction) return;
     setBusyAction("verify");
     try {
-      await backend.updateRestaurant(store.id, {
+      const patch = {
         verificationStatus: "verified",
         moderationStatus: "active",
-      });
+      };
+      await backend.updateRestaurant(store.id, patch);
+      onStoreUpdated(patch);
       notify("success", `${store.name} verified`, { id: `store-verify:${store.id}` });
       onRefresh();
     } catch (error) {
@@ -2270,9 +2281,10 @@ function StoreDetail({
   useEffect(() => {
     setPaymentCode(store.paystackSubaccount ?? "");
   }, [store.id, store.paystackSubaccount]);
-  const updateStore = (patch: Partial<Restaurant>) => {
+  const updateStore = async (patch: Partial<Restaurant>) => {
+    await backend.updateRestaurant(store.id, patch);
     onStoreUpdated(patch);
-    return backend.updateRestaurant(store.id, patch).then(onRefresh);
+    onRefresh();
   };
   return (
     <div
@@ -2336,23 +2348,36 @@ function StoreDetail({
 
           <Panel title="Admin moderation" subtitle="Control store visibility and payment readiness">
             <div className="grid gap-2 sm:grid-cols-2">
-              {(["verified", "pending", "rejected"] as const).map((status) => (
+              {(
+                [
+                  ["verified", "Verified"],
+                  ["pending_review", "Requested"],
+                  ["not_started", "Not verified"],
+                ] as const
+              ).map(([status, label]) => (
                 <button
                   key={status}
                   type="button"
                   onClick={() => {
-                    void updateStore({ verificationStatus: status });
-                    notify("success", `Store marked ${status}`, {
-                      id: `store-verify:${store.id}:${status}`,
-                    });
+                    void updateStore({ verificationStatus: status })
+                      .then(() => {
+                        notify("success", `Store marked ${label.toLowerCase()}`, {
+                          id: `store-verify:${store.id}:${status}`,
+                        });
+                      })
+                      .catch((error) => {
+                        notify("error", error instanceof Error ? error.message : "Store update failed", {
+                          id: `store-verify-error:${store.id}:${status}`,
+                        });
+                      });
                   }}
-                  className={`rounded-xl px-3 py-2 text-xs font-black capitalize ${
-                    (store.verificationStatus ?? "verified") === status
+                  className={`rounded-xl px-3 py-2 text-xs font-black ${
+                    (store.verificationStatus ?? "not_started") === status
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {status}
+                  {label}
                 </button>
               ))}
               <button
@@ -2362,10 +2387,17 @@ function StoreDetail({
                   void updateStore({
                     moderationStatus: suspended ? "active" : "suspended",
                     suspensionReason: suspended ? "" : "Admin moderation action",
-                  });
-                  notify("success", suspended ? "Store restored" : "Store suspended", {
-                    id: `store-moderation:${store.id}`,
-                  });
+                  })
+                    .then(() => {
+                      notify("success", suspended ? "Store restored" : "Store suspended", {
+                        id: `store-moderation:${store.id}`,
+                      });
+                    })
+                    .catch((error) => {
+                      notify("error", error instanceof Error ? error.message : "Store update failed", {
+                        id: `store-moderation-error:${store.id}`,
+                      });
+                    });
                 }}
                 className="rounded-xl bg-destructive/10 px-3 py-2 text-xs font-black text-destructive"
               >
@@ -2387,10 +2419,17 @@ function StoreDetail({
                     verificationStatus: "verified",
                     moderationStatus: "active",
                     suspensionReason: "",
-                  });
-                  notify("success", "Payment setup complete. Customers can order from this store.", {
-                    id: `store-payment-ready:${store.id}`,
-                  });
+                  })
+                    .then(() => {
+                      notify("success", "Payment setup complete. Customers can order from this store.", {
+                        id: `store-payment-ready:${store.id}`,
+                      });
+                    })
+                    .catch((error) => {
+                      notify("error", error instanceof Error ? error.message : "Payment setup failed", {
+                        id: `store-payment-ready-error:${store.id}`,
+                      });
+                    });
                 }}
                 className="rounded-xl bg-success/10 px-3 py-2 text-xs font-black text-success sm:col-span-2"
               >
