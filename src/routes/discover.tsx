@@ -470,7 +470,7 @@ function Discover() {
                     ))
                   : !coords
                     ? (
-                      <div className="min-w-0 sm:col-span-2 lg:col-span-3">
+                      <div className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:col-span-2 sm:w-auto sm:max-w-none sm:shrink lg:col-span-3">
                         <EmptyPanel
                           title="Set your location to see nearby foods"
                           detail="Trending now only shows dishes from restaurants near you."
@@ -480,7 +480,7 @@ function Discover() {
                     )
                   : trending.length === 0
                     ? (
-                      <div className="min-w-0 sm:col-span-2 lg:col-span-3">
+                      <div className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:col-span-2 sm:w-auto sm:max-w-none sm:shrink lg:col-span-3">
                         <EmptyPanel
                           title="No nearby foods yet"
                           detail="Approved dishes from restaurants within 40 km will show here."
@@ -493,7 +493,7 @@ function Discover() {
                       return (
                         <div
                           key={m.id}
-                          className="min-w-0"
+                          className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink"
                         >
                           <MealCard
                             meal={m}
