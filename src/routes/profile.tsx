@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   CheckCircle2,
   Bell,
+  Flame,
   Headphones,
   LocateFixed,
   Loader2,
@@ -197,6 +198,16 @@ function ProfilePage() {
               </div>
               <p className="text-lg font-bold">Notifications</p>
               <p className="mt-1 text-sm text-muted-foreground">Review alerts and order updates.</p>
+            </Link>
+            <Link
+              to="/cravings"
+              className="rounded-3xl bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card"
+            >
+              <div className="mb-4 inline-flex rounded-2xl bg-primary/10 p-3 text-primary">
+                <Flame className="h-5 w-5" />
+              </div>
+              <p className="text-lg font-bold">My cravings</p>
+              <p className="mt-1 text-sm text-muted-foreground">View meals you saved.</p>
             </Link>
           </div>
 

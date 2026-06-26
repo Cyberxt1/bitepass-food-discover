@@ -46,7 +46,7 @@ import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
 import { parseMealOptions, stringifyMealOptions, type MealOption } from "@/lib/meal-options";
 import { inferMealCategory, mealCategories } from "@/lib/meal-category";
-import { nextOrderStatus, normalizeOrderStatus, orderTimestampPatch } from "@/lib/platform";
+import { normalizeOrderStatus, orderTimestampPatch } from "@/lib/platform";
 import { pickupTimingLabel } from "@/lib/pickup-time";
 import { compressImageFile } from "@/lib/image-upload";
 import { getCurrentLocationDetails } from "@/lib/location";
@@ -1193,7 +1193,7 @@ function Overview({
 /* ---------------- ORDERS ---------------- */
 function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }) {
   const [filter, setFilter] = useState<"all" | "active" | "completed">("active");
-  const flow = ["paid", "accepted", "preparing", "ready", "picked_up", "completed"];
+  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const statusRank: Record<string, number> = {
     received: 0,
     paid: 0,
@@ -1204,12 +1204,41 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
     completed: 5,
     cancelled: 6,
   };
-  const actionLabel: Record<string, string> = {
-    accepted: "Accept order",
-    preparing: "Accept & start",
-    ready: "Mark ready",
-    picked_up: "Picked up",
-    completed: "Complete pickup",
+
+  const vendorActionForOrder = (order: Order): { label: string; success: string; patch: Partial<Order> } | null => {
+    const normalized = normalizeOrderStatus(order.status);
+    const isPaid = order.paymentStatus === "paid";
+    if (!isPaid && !["ready", "picked_up", "completed"].includes(normalized)) return null;
+    if (normalized === "paid") {
+      return {
+        label: "Accept order",
+        success: "Order accepted",
+        patch: {
+          status: "preparing",
+          ...orderTimestampPatch("accepted"),
+          ...orderTimestampPatch("preparing"),
+        },
+      };
+    }
+    if (normalized === "accepted" || normalized === "preparing") {
+      return {
+        label: "Ready for pickup",
+        success: "Order marked ready",
+        patch: { status: "ready", ...orderTimestampPatch("ready") },
+      };
+    }
+    if (normalized === "ready" || normalized === "picked_up") {
+      return {
+        label: "Complete order",
+        success: "Order completed",
+        patch: {
+          status: "completed",
+          ...orderTimestampPatch("picked_up"),
+          ...orderTimestampPatch("completed"),
+        },
+      };
+    }
+    return null;
   };
 
   const filtered = orders
@@ -1226,17 +1255,31 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
-  const advance = (id: string, next: string) => {
-    backend.updateOrder(id, { status: next, ...orderTimestampPatch(next) }).then(refresh);
-    toast.success(
-      next === "accepted" ? "Order accepted" : `Order set to ${next.replace("_", " ")}`,
-    );
+  const advance = async (id: string, action: NonNullable<ReturnType<typeof vendorActionForOrder>>) => {
+    if (busyOrderId) return;
+    setBusyOrderId(id);
+    try {
+      await backend.updateOrder(id, action.patch);
+      refresh();
+      toast.success(action.success);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update order");
+    } finally {
+      setBusyOrderId(null);
+    }
   };
-  const cancel = (id: string) => {
-    backend
-      .updateOrder(id, { status: "cancelled", ...orderTimestampPatch("cancelled") })
-      .then(refresh);
-    toast.info("Order cancelled");
+  const cancel = async (id: string) => {
+    if (busyOrderId) return;
+    setBusyOrderId(id);
+    try {
+      await backend.updateOrder(id, { status: "cancelled", ...orderTimestampPatch("cancelled") });
+      refresh();
+      toast.info("Order cancelled");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not cancel order");
+    } finally {
+      setBusyOrderId(null);
+    }
   };
 
   return (
@@ -1273,7 +1316,9 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
               options?: { name: string; price: number; qty?: number }[];
             }[];
             const normalizedStatus = normalizeOrderStatus(o.status);
-            const next = nextOrderStatus(o.status);
+            const vendorAction = vendorActionForOrder(o);
+            const canCancel = ["accepted", "preparing"].includes(normalizedStatus);
+            const isBusy = busyOrderId === o.id;
             const isNewPaid = o.paymentStatus === "paid" && ["received", "paid"].includes(o.status);
             return (
               <div
@@ -1352,20 +1397,23 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
                   <span className="text-sm font-bold">Total: {naira(o.total)}</span>
                   <div className="flex gap-2">
-                    {!["received", "paid", "completed", "cancelled"].includes(o.status) && (
+                    {canCancel && (
                       <button
                         onClick={() => cancel(o.id)}
-                        className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive transition"
+                        disabled={Boolean(busyOrderId)}
+                        className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold transition hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        Cancel
+                        {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Cancel"}
                       </button>
                     )}
-                    {next && (
+                    {vendorAction && (
                       <button
-                        onClick={() => advance(o.id, next)}
-                        className="rounded-full bg-gradient-primary px-4 py-1.5 text-xs font-bold text-primary-foreground shadow-soft transition active:scale-95"
+                        onClick={() => advance(o.id, vendorAction)}
+                        disabled={Boolean(busyOrderId)}
+                        className="inline-flex items-center gap-2 rounded-full bg-gradient-primary px-4 py-1.5 text-xs font-bold text-primary-foreground shadow-soft transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
                       >
-                        {actionLabel[next] ?? `Set ${next}`}
+                        {isBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        {vendorAction.label}
                       </button>
                     )}
                   </div>
