@@ -44,9 +44,8 @@ export function orderTimestampPatch(status: string) {
 }
 
 export function isRestaurantPublic(restaurant: Restaurant) {
-  const verified = (restaurant.verificationStatus ?? "verified") === "verified";
   const active = (restaurant.moderationStatus ?? "active") === "active";
-  return verified && active;
+  return active;
 }
 
 export function isMealPublic(meal: Meal) {
@@ -70,7 +69,7 @@ export function validateCheckout(params: {
   meals: Meal[];
   paystackConfigured: boolean;
 }) {
-  const { user, restaurant, items, meals, paystackConfigured } = params;
+  const { user, restaurant, items, meals } = params;
   if (!user) return "Please sign in to checkout";
   if (items.length === 0) return "Select at least one cart item to checkout";
   if (new Set(items.map((item) => item.restaurantId)).size > 1) {
@@ -79,12 +78,6 @@ export function validateCheckout(params: {
   if (!restaurant) return "Restaurant could not be found";
   if (!isRestaurantPublic(restaurant)) return "This restaurant is not accepting orders yet";
   if (restaurant.isOpen === "0") return "This restaurant is closed right now";
-  if (
-    paystackConfigured &&
-    (!restaurant.paystackSubaccount?.trim() || restaurant.paymentSetupStatus !== "ready")
-  ) {
-    return "This store has not finished payment setup yet";
-  }
   const mealById = new Map(meals.map((meal) => [meal.id, meal]));
   const unavailable = items.find((item) => {
     const meal = mealById.get(item.mealId);

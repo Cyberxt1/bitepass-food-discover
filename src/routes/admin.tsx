@@ -447,6 +447,7 @@ function AdminDashboard() {
                         store={store}
                         owner={users.find((entry) => entry.id === store.ownerId)}
                         onOpen={() => setSelectedStore(store)}
+                        onPaymentOpen={() => setSelectedPaymentStore(store)}
                         onRefresh={() => setTick((value) => value + 1)}
                       />
                     ))}
@@ -642,6 +643,7 @@ function AdminDashboard() {
             view={paymentView}
             onViewChange={setPaymentView}
             onOpen={setSelectedPaymentStore}
+            onRefresh={() => setTick((value) => value + 1)}
           />
         )}
 
@@ -973,6 +975,7 @@ function AdminDashboard() {
                       store={store}
                       owner={users.find((entry) => entry.id === store.ownerId)}
                       onOpen={() => setSelectedStore(store)}
+                      onPaymentOpen={() => setSelectedPaymentStore(store)}
                       onRefresh={() => setTick((value) => value + 1)}
                     />
                   ))}
@@ -1676,13 +1679,19 @@ function PaymentSetupsPanel({
   view,
   onViewChange,
   onOpen,
+  onRefresh,
 }: {
   restaurants: Restaurant[];
   users: User[];
   view: PaymentSetupView;
   onViewChange: (view: PaymentSetupView) => void;
   onOpen: (store: Restaurant) => void;
+  onRefresh: () => void;
 }) {
+  const [verifyingId, setVerifyingId] = useState("");
+  const verificationRequests = restaurants.filter(
+    (store) => store.verificationStatus === "pending_review",
+  );
   const buckets: Record<PaymentSetupView, Restaurant[]> = {
     requests: restaurants.filter((store) => store.paymentSetupStatus === "pending_review"),
     approved: restaurants.filter((store) => store.paymentSetupStatus === "ready"),
@@ -1724,6 +1733,60 @@ function PaymentSetupsPanel({
           ))}
         </div>
       </div>
+
+      <Panel title="Store verification requests" subtitle="Approve stores that asked for verification">
+        <div className="space-y-2">
+          {verificationRequests.length === 0 && (
+            <EmptyState
+              title="No verification requests"
+              detail="Stores can request verification from their dashboard."
+            />
+          )}
+          {verificationRequests.map((store) => {
+            const owner = users.find((entry) => entry.id === store.ownerId);
+            return (
+              <div
+                key={store.id}
+                className="flex min-w-0 flex-col gap-3 rounded-2xl bg-muted/55 p-3 sm:flex-row sm:items-center"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-black">{store.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {owner?.email ?? store.phone ?? "No owner contact"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={verifyingId === store.id}
+                  onClick={async () => {
+                    setVerifyingId(store.id);
+                    try {
+                      await backend.updateRestaurant(store.id, {
+                        verificationStatus: "verified",
+                        moderationStatus: "active",
+                      });
+                      notify("success", `${store.name} verified`, {
+                        id: `verify-store:${store.id}`,
+                      });
+                      onRefresh();
+                    } catch (error) {
+                      notify("error", error instanceof Error ? error.message : "Verification failed", {
+                        id: `verify-store-error:${store.id}`,
+                      });
+                    } finally {
+                      setVerifyingId("");
+                    }
+                  }}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-success px-4 text-sm font-black text-success-foreground disabled:opacity-60"
+                >
+                  {verifyingId === store.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Verify
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
 
       <Panel
         title={
@@ -1798,11 +1861,13 @@ function PaymentSetupModal({
   onRefresh: () => void;
 }) {
   const [code, setCode] = useState(store.paystackSubaccount ?? "");
+  const [displayName, setDisplayName] = useState(store.paymentDisplayName ?? store.name);
   const [busyAction, setBusyAction] = useState<"approve" | "reject" | null>(null);
 
   useEffect(() => {
     setCode(store.paystackSubaccount ?? "");
-  }, [store.id, store.paystackSubaccount]);
+    setDisplayName(store.paymentDisplayName ?? store.name);
+  }, [store.id, store.name, store.paystackSubaccount, store.paymentDisplayName]);
 
   const updateStore = async (patch: Partial<Restaurant>) => {
     onStoreUpdated(patch);
@@ -1822,8 +1887,8 @@ function PaymentSetupModal({
     try {
       await updateStore({
         paystackSubaccount: trimmed,
+        paymentDisplayName: displayName.trim() || store.name,
         paymentSetupStatus: "ready",
-        verificationStatus: "verified",
         moderationStatus: "active",
         suspensionReason: "",
       });
@@ -1887,6 +1952,18 @@ function PaymentSetupModal({
 
         <label className="mt-4 block">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Payment display name
+          </span>
+          <input
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            disabled={Boolean(busyAction)}
+            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-bold outline-none focus:border-primary disabled:opacity-60"
+          />
+        </label>
+
+        <label className="mt-3 block">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Paystack subaccount ID
           </span>
           <input
@@ -1946,21 +2023,95 @@ function StoreModerationRow({
   store,
   owner,
   onOpen,
+  onPaymentOpen,
   onRefresh,
 }: {
   store: Restaurant;
   owner?: User;
   onOpen: () => void;
+  onPaymentOpen: () => void;
   onRefresh: () => void;
 }) {
   const suspended = store.moderationStatus === "suspended";
+  const verified = store.verificationStatus === "verified";
+  const verificationRequested = store.verificationStatus === "pending_review";
+  const paymentReady = store.paymentSetupStatus === "ready";
+  const paymentRequested = store.paymentSetupStatus === "pending_review";
+  const paymentRejected = store.paymentSetupStatus === "rejected";
+  const [busyAction, setBusyAction] = useState<"verify" | "suspend" | "delete" | null>(null);
+
+  const verifyStore = async () => {
+    if (verified || busyAction) return;
+    setBusyAction("verify");
+    try {
+      await backend.updateRestaurant(store.id, {
+        verificationStatus: "verified",
+        moderationStatus: "active",
+      });
+      notify("success", `${store.name} verified`, { id: `store-verify:${store.id}` });
+      onRefresh();
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Store verification failed", {
+        id: `store-verify-error:${store.id}`,
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const toggleSuspension = async () => {
+    if (busyAction) return;
+    setBusyAction("suspend");
+    try {
+      await backend.updateRestaurant(store.id, {
+        moderationStatus: suspended ? "active" : "suspended",
+        suspensionReason: suspended ? "" : "Admin moderation action",
+      });
+      notify("success", suspended ? "Store restored" : "Store suspended", {
+        id: `store-suspend:${store.id}`,
+      });
+      onRefresh();
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Store update failed", {
+        id: `store-suspend-error:${store.id}`,
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const deleteStore = async () => {
+    if (busyAction) return;
+    if (!confirm(`Delete ${store.name}? This removes the store only.`)) return;
+    setBusyAction("delete");
+    try {
+      await backend.deleteRestaurant(store.id);
+      notify("success", "Store deleted", { id: `store-delete:${store.id}` });
+      onRefresh();
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Store delete failed", {
+        id: `store-delete-error:${store.id}`,
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const paymentLabel = paymentReady
+    ? "Edit payment"
+    : paymentRequested
+      ? "Review payment"
+      : paymentRejected
+        ? "Fix payment"
+        : "Setup payment";
+
   return (
-    <div className="rounded-2xl bg-muted/55 p-3">
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+    <div className="rounded-2xl bg-muted/55 p-3 ring-1 ring-transparent transition hover:bg-muted/80 hover:ring-border">
+      <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center">
         <button
           type="button"
           onClick={onOpen}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition active:scale-[0.99]"
         >
           <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-card">
             {store.image ? (
@@ -1974,52 +2125,118 @@ function StoreModerationRow({
             </span>
           </span>
         </button>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <StatusPill value={store.verificationStatus ?? "pending"} />
-          <StatusPill value={store.paymentSetupStatus ?? "not_started"} />
+
+        <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:min-w-[300px]">
+          <div
+            className={`rounded-xl px-3 py-2 ${
+              verified
+                ? "bg-success/10 text-success"
+                : verificationRequested
+                  ? "bg-warning/15 text-warning"
+                  : "bg-card text-muted-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2 text-[10px] font-black uppercase">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Verification
+            </span>
+            <span className="mt-1 block text-xs font-black">
+              {verified ? "Verified" : verificationRequested ? "Requested" : "Not verified"}
+            </span>
+          </div>
+          <div
+            className={`rounded-xl px-3 py-2 ${
+              paymentReady
+                ? "bg-success/10 text-success"
+                : paymentRequested
+                  ? "bg-warning/15 text-warning"
+                  : paymentRejected
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-card text-muted-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2 text-[10px] font-black uppercase">
+              <CircleDollarSign className="h-3.5 w-3.5" />
+              Payment
+            </span>
+            <span className="mt-1 block text-xs font-black">
+              {paymentReady
+                ? "Ready"
+                : paymentRequested
+                  ? "Requested"
+                  : paymentRejected
+                    ? "Rejected"
+                    : "Not setup"}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-wrap gap-2 xl:justify-end">
           <button
             type="button"
-            onClick={() => {
-              void backend
-                .updateRestaurant(store.id, {
-                  verificationStatus: "verified",
-                  moderationStatus: "active",
-                })
-                .then(onRefresh);
-              notify("success", "Store approved", { id: `store-approve:${store.id}` });
-            }}
-            className="rounded-xl bg-success/10 px-3 py-2 text-[11px] font-black text-success"
+            onClick={() => void verifyStore()}
+            disabled={verified || Boolean(busyAction)}
+            className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-[11px] font-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-65 ${
+              verified
+                ? "bg-success/10 text-success"
+                : verificationRequested
+                  ? "bg-success text-success-foreground"
+                  : "bg-card text-foreground hover:bg-success/10 hover:text-success"
+            }`}
           >
-            Approve
+            {busyAction === "verify" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : verified ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : null}
+            {busyAction === "verify" ? "Verifying..." : verified ? "Verified" : "Verify store"}
           </button>
           <button
             type="button"
-            onClick={() => {
-              void backend
-                .updateRestaurant(store.id, {
-                  moderationStatus: suspended ? "active" : "suspended",
-                  suspensionReason: suspended ? "" : "Admin moderation action",
-                })
-                .then(onRefresh);
-              notify("success", suspended ? "Store restored" : "Store suspended", {
-                id: `store-suspend:${store.id}`,
-              });
-            }}
-            className="rounded-xl bg-card px-3 py-2 text-[11px] font-black"
+            onClick={onPaymentOpen}
+            disabled={Boolean(busyAction)}
+            className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-[11px] font-black transition active:scale-95 disabled:opacity-65 ${
+              paymentReady
+                ? "bg-success/10 text-success"
+                : paymentRequested
+                  ? "bg-foreground text-background"
+                  : paymentRejected
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-card text-foreground hover:bg-muted"
+            }`}
           >
-            {suspended ? "Restore" : "Suspend"}
+            <CircleDollarSign className="h-4 w-4" />
+            {paymentLabel}
           </button>
           <button
             type="button"
-            onClick={() => {
-              if (!confirm(`Delete ${store.name}? This removes the store only.`)) return;
-              void backend.deleteRestaurant(store.id).then(onRefresh);
-              notify("success", "Store deleted", { id: `store-delete:${store.id}` });
-            }}
-            className="grid h-9 w-9 place-items-center rounded-xl bg-destructive/10 text-destructive"
+            onClick={() => void toggleSuspension()}
+            disabled={Boolean(busyAction)}
+            className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-[11px] font-black transition active:scale-95 disabled:opacity-65 ${
+              suspended ? "bg-success/10 text-success" : "bg-card text-foreground hover:bg-muted"
+            }`}
+          >
+            {busyAction === "suspend" && <Loader2 className="h-4 w-4 animate-spin" />}
+            {busyAction === "suspend"
+              ? suspended
+                ? "Restoring..."
+                : "Suspending..."
+              : suspended
+                ? "Restore"
+                : "Suspend"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void deleteStore()}
+            disabled={Boolean(busyAction)}
+            className="grid h-10 w-10 place-items-center rounded-xl bg-destructive/10 text-destructive transition active:scale-95 disabled:opacity-65"
             aria-label={`Delete ${store.name}`}
           >
-            <Trash2 className="h-4 w-4" />
+            {busyAction === "delete" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>

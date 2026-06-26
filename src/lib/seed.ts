@@ -21,6 +21,7 @@ export type Restaurant = {
   lat: string;
   lng: string;
   paystackSubaccount?: string;
+  paymentDisplayName?: string;
   paymentSetupStatus?: string;
   verificationStatus?: string;
   moderationStatus?: string;

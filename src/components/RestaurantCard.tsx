@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Star, Clock, MapPin } from "lucide-react";
+import { Star, Clock, MapPin, Check } from "lucide-react";
 import type { Restaurant } from "@/lib/seed";
 
 export function RestaurantCard({
@@ -79,6 +79,12 @@ export function RestaurantCard({
             {r.rating}
           </span>
         </div>
+        {r.verificationStatus === "verified" && (
+          <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-1 text-[10px] font-black text-success">
+            <Check className="h-3 w-3" />
+            Verified
+          </span>
+        )}
         {r.address && (
           <p
             className={`${compact ? "mt-1" : "mt-1.5"} flex items-start gap-1 text-[11px] font-semibold leading-4 text-foreground`}

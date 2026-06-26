@@ -153,7 +153,15 @@ function RestaurantPage() {
         <div className="rounded-3xl bg-card p-5 shadow-card animate-slide-up">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h1 className="text-xl font-bold">{restaurant.name}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold">{restaurant.name}</h1>
+                {restaurant.verificationStatus === "verified" && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-1 text-[10px] font-black text-success">
+                    <Check className="h-3 w-3" />
+                    Verified
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">{restaurant.cuisine} cuisine</p>
             </div>
             <span className="flex shrink-0 items-center gap-1 rounded-lg bg-success/10 px-2 py-1 text-sm font-bold text-success">

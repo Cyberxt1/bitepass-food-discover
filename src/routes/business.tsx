@@ -27,6 +27,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Loader2,
+  ShieldCheck,
+  CreditCard,
 } from "lucide-react";
 import {
   Bar,
@@ -67,6 +69,7 @@ function BusinessDashboard() {
   }, [user, nav]);
 
   const [restaurant, setRestaurant] = useState<Restaurant | undefined>();
+  const [taskPanelOpen, setTaskPanelOpen] = useState(false);
   const [dashboardLoaded, setDashboardLoaded] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -324,6 +327,16 @@ function BusinessDashboard() {
         {tab === "menu" && <MenuTab restaurantId={restaurant.id} meals={meals} refresh={refresh} />}
         {tab === "profile" && <ProfileTab restaurant={restaurant} refresh={refresh} />}
       </main>
+
+      <StoreSetupTasks
+        restaurant={restaurant}
+        open={taskPanelOpen}
+        onOpenChange={setTaskPanelOpen}
+        onUpdated={(patch) => {
+          setRestaurant((current) => (current ? { ...current, ...patch } : current));
+          refresh();
+        }}
+      />
     </div>
   );
 }
@@ -431,6 +444,8 @@ function RestaurantOnboarding({
         lat: hasValidCoords ? form.lat.trim() : "",
         lng: hasValidCoords ? form.lng.trim() : "",
         paymentSetupStatus: "not_started",
+        verificationStatus: "not_started",
+        moderationStatus: "active",
       };
       await backend.setRestaurant(restaurant);
       const savedRestaurant = (await backend.restaurants()).find((entry) => entry.id === restaurant.id);
@@ -698,6 +713,204 @@ function OnboardingField({
       <Icon className="h-4 w-4 text-muted-foreground" />
       {children}
     </label>
+  );
+}
+
+function StoreSetupTasks({
+  restaurant,
+  open,
+  onOpenChange,
+  onUpdated,
+}: {
+  restaurant: Restaurant;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onUpdated: (patch: Partial<Restaurant>) => void;
+}) {
+  const verificationStatus = restaurant.verificationStatus ?? "not_started";
+  const paymentStatus = restaurant.paymentSetupStatus ?? "not_started";
+  const verified = verificationStatus === "verified";
+  const paymentReady = paymentStatus === "ready";
+  const [paymentName, setPaymentName] = useState(
+    restaurant.paymentDisplayName || restaurant.name || "",
+  );
+  const [busy, setBusy] = useState<"verify" | "payment" | null>(null);
+
+  useEffect(() => {
+    setPaymentName(restaurant.paymentDisplayName || restaurant.name || "");
+  }, [restaurant.id, restaurant.name, restaurant.paymentDisplayName]);
+
+  const requestVerification = async () => {
+    if (busy || verificationStatus === "pending_review" || verified) return;
+    setBusy("verify");
+    const patch = { verificationStatus: "pending_review" };
+    onUpdated(patch);
+    try {
+      await backend.updateRestaurant(restaurant.id, patch);
+      toast.success("Verification request sent to admin");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Verification request failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const requestPayment = async () => {
+    if (busy || paymentStatus === "pending_review" || paymentReady) return;
+    const name = paymentName.trim();
+    if (name.length < 2) {
+      toast.error("Enter the payment display name");
+      return;
+    }
+    setBusy("payment");
+    const patch = {
+      paymentDisplayName: name,
+      paymentSetupStatus: "pending_review",
+    };
+    onUpdated(patch);
+    try {
+      await backend.updateRestaurant(restaurant.id, patch);
+      toast.success("Payment setup request sent to admin");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Payment request failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (verified && paymentReady) {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpenChange(true)}
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-success px-4 py-3 text-sm font-black text-success-foreground shadow-card"
+      >
+        <Check className="h-4 w-4" />
+        Store ready
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => onOpenChange(true)}
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-3 text-sm font-black text-background shadow-card"
+      >
+        <ShieldCheck className="h-4 w-4" />
+        Complete setup
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-end bg-black/45 px-3 py-4 backdrop-blur-sm sm:place-items-center"
+          onClick={() => onOpenChange(false)}
+        >
+          <section
+            className="w-full max-w-lg rounded-2xl bg-background p-4 shadow-card animate-slide-up"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-lg font-black">Complete store setup</p>
+                <p className="mt-1 text-sm text-muted-foreground">{restaurant.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="grid h-9 w-9 place-items-center rounded-xl bg-muted"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-sm font-black">
+                      <ShieldCheck className="h-4 w-4 text-primary" />
+                      Verify store
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Ask admin to verify this restaurant. Verified stores show a green check to customers.
+                    </p>
+                  </div>
+                  <TaskStatus status={verificationStatus} completeLabel="Verified" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void requestVerification()}
+                  disabled={busy === "verify" || verificationStatus === "pending_review" || verified}
+                  className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 text-sm font-black text-background transition active:scale-95 disabled:opacity-55 sm:w-auto"
+                >
+                  {busy === "verify" && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {verified
+                    ? "Verified"
+                    : verificationStatus === "pending_review"
+                      ? "Verification pending"
+                      : "Request verification"}
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-sm font-black">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      Setup payment
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Enter the store name exactly how it should appear for payments, then send the request.
+                    </p>
+                  </div>
+                  <TaskStatus status={paymentStatus} completeLabel="Ready" />
+                </div>
+                <input
+                  value={paymentName}
+                  onChange={(event) => setPaymentName(event.target.value)}
+                  disabled={paymentReady || paymentStatus === "pending_review"}
+                  placeholder="Payment display name"
+                  className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold outline-none focus:border-primary disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => void requestPayment()}
+                  disabled={busy === "payment" || paymentStatus === "pending_review" || paymentReady}
+                  className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 text-sm font-black text-background transition active:scale-95 disabled:opacity-55 sm:w-auto"
+                >
+                  {busy === "payment" && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {paymentReady
+                    ? "Payment ready"
+                    : paymentStatus === "pending_review"
+                      ? "Payment request pending"
+                      : "Request payment setup"}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
+
+function TaskStatus({ status, completeLabel }: { status: string; completeLabel: string }) {
+  const complete = status === "verified" || status === "ready";
+  const pending = status === "pending_review";
+  return (
+    <span
+      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${
+        complete
+          ? "bg-success/15 text-success"
+          : pending
+            ? "bg-warning/15 text-warning"
+            : "bg-muted text-muted-foreground"
+      }`}
+    >
+      {complete ? completeLabel : pending ? "Pending" : "Open"}
+    </span>
   );
 }
 
@@ -1741,9 +1954,21 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
   }, [restaurant]);
 
   const save = () => {
-    const { paystackSubaccount, paymentSetupStatus, ...profile } = form;
+    const {
+      paystackSubaccount,
+      paymentDisplayName,
+      paymentSetupStatus,
+      verificationStatus,
+      moderationStatus,
+      suspensionReason,
+      ...profile
+    } = form;
     void paystackSubaccount;
+    void paymentDisplayName;
     void paymentSetupStatus;
+    void verificationStatus;
+    void moderationStatus;
+    void suspensionReason;
     backend.updateRestaurant(restaurant.id, profile).then(refresh);
     toast.success("Profile updated");
   };
@@ -1881,48 +2106,6 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
           {F("tags", "Tags (pipe-separated)")}
           {F("prepTime", "Avg prep time (min)", "number")}
           {F("phone", "Phone")}
-          <div className="md:col-span-2 rounded-xl border border-border bg-background p-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-xs font-bold">Payment setup</p>
-                <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                  Request setup here. Admin creates the Paystack subaccount, assigns the payment ID,
-                  and marks this store ready for checkout.
-                </p>
-              </div>
-              <span
-                className={`w-fit rounded-full px-3 py-1 text-[11px] font-bold capitalize ${
-                  paymentStatus === "ready"
-                    ? "bg-success/15 text-success"
-                    : paymentStatus === "pending_review"
-                      ? "bg-warning/15 text-warning"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {paymentStatus === "ready"
-                  ? "Complete"
-                  : paymentStatus === "pending_review"
-                    ? "Request sent"
-                    : paymentStatus === "rejected"
-                      ? "Rejected"
-                      : "Not requested"}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={requestPaymentSetup}
-              disabled={paymentStatus === "pending_review" || paymentStatus === "ready"}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-2.5 text-sm font-bold text-background transition active:scale-95 disabled:opacity-50 sm:w-auto"
-            >
-              {paymentStatus === "ready"
-                ? "Payment setup complete"
-                : paymentStatus === "pending_review"
-                  ? "Request already sent"
-                  : paymentStatus === "rejected"
-                    ? "Request again"
-                    : "Request payment setup"}
-            </button>
-          </div>
           <div className="md:col-span-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Location

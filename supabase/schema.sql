@@ -35,6 +35,7 @@ create table if not exists public.restaurants (
   lat text not null default '',
   lng text not null default '',
   "paystackSubaccount" text,
+  "paymentDisplayName" text,
   "paymentSetupStatus" text,
   "verificationStatus" text,
   "moderationStatus" text,
@@ -144,6 +145,7 @@ create table if not exists public."platformStats" (
 
 alter table public.users add column if not exists status text;
 alter table public.restaurants add column if not exists "paystackSubaccount" text;
+alter table public.restaurants add column if not exists "paymentDisplayName" text;
 alter table public.restaurants add column if not exists "paymentSetupStatus" text;
 alter table public.restaurants add column if not exists "verificationStatus" text;
 alter table public.restaurants add column if not exists "moderationStatus" text;
