@@ -404,12 +404,12 @@ function AdminDashboard() {
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-6">
           <Kpi
-            icon={CircleDollarSign}
-            label="Completed value"
-            value={naira(metrics.completedRevenue)}
+            icon={ShoppingBag}
+            label="Completed transactions"
+            value={`${metrics.completedOrders}`}
             accent
           />
-          <Kpi icon={ShoppingBag} label="Transactions" value={`${metrics.completedOrders}`} />
+          <Kpi icon={CircleDollarSign} label="Completed revenue" value={naira(metrics.completedRevenue)} />
           <Kpi icon={Store} label="Stores" value={`${restaurants.length}`} />
           <Kpi icon={Users} label="Users" value={`${users.length}`} />
           <Kpi icon={Activity} label="Traffic" value={`${metrics.pageViews}`} />
