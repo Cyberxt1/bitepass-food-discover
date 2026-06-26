@@ -453,8 +453,8 @@ function Discover() {
               </div>
               <div
                 data-no-tab-swipe
-                className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3"
-                style={{ touchAction: "pan-x" }}
+                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                style={{ touchAction: "pan-y" }}
                 onTouchStart={(event) => event.stopPropagation()}
                 onTouchMove={(event) => event.stopPropagation()}
                 onTouchEnd={(event) => event.stopPropagation()}
@@ -463,14 +463,14 @@ function Discover() {
                   ? Array.from({ length: 3 }).map((_, i) => (
                       <div
                         key={i}
-                        className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink"
+                        className="min-w-0"
                       >
                         <SkeletonCard />
                       </div>
                     ))
                   : !coords
                     ? (
-                      <div className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:col-span-2 sm:w-auto sm:max-w-none sm:shrink lg:col-span-3">
+                      <div className="min-w-0 sm:col-span-2 lg:col-span-3">
                         <EmptyPanel
                           title="Set your location to see nearby foods"
                           detail="Trending now only shows dishes from restaurants near you."
@@ -480,7 +480,7 @@ function Discover() {
                     )
                   : trending.length === 0
                     ? (
-                      <div className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:col-span-2 sm:w-auto sm:max-w-none sm:shrink lg:col-span-3">
+                      <div className="min-w-0 sm:col-span-2 lg:col-span-3">
                         <EmptyPanel
                           title="No nearby foods yet"
                           detail="Approved dishes from restaurants within 40 km will show here."
@@ -493,7 +493,7 @@ function Discover() {
                       return (
                         <div
                           key={m.id}
-                          className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink"
+                          className="min-w-0"
                         >
                           <MealCard
                             meal={m}
