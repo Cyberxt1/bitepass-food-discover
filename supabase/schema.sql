@@ -11,6 +11,7 @@ create table if not exists public.users (
   address text,
   lat text,
   lng text,
+  "likedMealIds" text,
   status text,
   created_at timestamptz not null default now()
 );
@@ -144,6 +145,7 @@ create table if not exists public."platformStats" (
 );
 
 alter table public.users add column if not exists status text;
+alter table public.users add column if not exists "likedMealIds" text;
 alter table public.restaurants add column if not exists "paystackSubaccount" text;
 alter table public.restaurants add column if not exists "paymentDisplayName" text;
 alter table public.restaurants add column if not exists "paymentSetupStatus" text;

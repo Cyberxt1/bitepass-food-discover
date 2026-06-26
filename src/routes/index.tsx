@@ -307,9 +307,14 @@ function Landing() {
                 Osun State
               </span>
 
-              <h1 className="mt-5 min-h-[3.15em] text-5xl font-black leading-[1.02] tracking-[-0.03em] text-[var(--landing-text)] md:min-h-[2.1em] md:text-6xl">
-                <span>{typedHeadline}</span>
-                <span className="ml-1 inline-block h-[0.82em] w-[4px] translate-y-1 rounded-full bg-[#ff6b2d] align-baseline animate-type-caret" />
+              <h1 className="relative mt-5 grid h-[210px] overflow-hidden text-5xl font-black leading-[1.02] tracking-[-0.03em] text-[var(--landing-text)] min-[430px]:h-[160px] md:h-[130px] md:text-6xl">
+                <span className="pointer-events-none invisible col-start-1 row-start-1">
+                  Good food should be ready when I arrive.
+                </span>
+                <span className="col-start-1 row-start-1 self-start">
+                  {typedHeadline}
+                  <span className="ml-1 inline-block h-[0.82em] w-[4px] translate-y-1 rounded-full bg-[#ff6b2d] align-baseline animate-type-caret" />
+                </span>
               </h1>
 
               <p className="mt-5 max-w-lg text-base leading-7 text-[var(--landing-muted)] md:text-lg">

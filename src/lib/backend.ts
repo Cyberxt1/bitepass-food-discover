@@ -54,6 +54,11 @@ function cleanRow<T extends Row>(item: T): Row {
   return Object.fromEntries(Object.entries(item).filter(([, value]) => value !== undefined)) as Row;
 }
 
+function isMissingSupabaseColumn(error: { message?: string }, column: string) {
+  const message = error.message?.toLowerCase() ?? "";
+  return message.includes(column.toLowerCase()) && message.includes("schema cache");
+}
+
 async function readSupabaseTable<T extends Row>(name: CollectionName): Promise<T[]> {
   if (!supabase) return [];
 
@@ -100,6 +105,27 @@ async function patchCollectionDoc(
       .select("*")
       .maybeSingle();
     if (error) {
+      if (name === "users" && "likedMealIds" in patch && isMissingSupabaseColumn(error, "likedMealIds")) {
+        const { likedMealIds: _likedMealIds, ...retryPatch } = patch;
+        if (Object.keys(retryPatch).length > 0) {
+          const { data: retryData, error: retryError } = await supabase
+            .from(name)
+            .update(cleanRow({ id, ...retryPatch }))
+            .eq("id", id)
+            .select("*")
+            .maybeSingle();
+          if (retryError) {
+            throw new Error(`Supabase ${name} update failed: ${retryError.message}`);
+          }
+          if (retryData) updateRow(fileFor[name], (row) => row.id === id, retryData);
+        } else {
+          updateRow(fileFor[name], (row) => row.id === id, patch);
+        }
+        console.warn(
+          'Supabase users."likedMealIds" is missing. Run supabase/add-liked-meal-ids.sql so cravings can sync to the database.',
+        );
+        return;
+      }
       throw new Error(`Supabase ${name} update failed: ${error.message}`);
     }
     if (!data) {
