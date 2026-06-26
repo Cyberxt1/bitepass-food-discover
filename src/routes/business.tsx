@@ -47,6 +47,7 @@ import { naira } from "@/lib/format";
 import { parseMealOptions, stringifyMealOptions, type MealOption } from "@/lib/meal-options";
 import { inferMealCategory, mealCategories } from "@/lib/meal-category";
 import { nextOrderStatus, normalizeOrderStatus, orderTimestampPatch } from "@/lib/platform";
+import { pickupTimingLabel } from "@/lib/pickup-time";
 import { compressImageFile } from "@/lib/image-upload";
 import { getCurrentLocationDetails } from "@/lib/location";
 import { LocationPreview } from "@/components/LocationPreview";
@@ -1296,8 +1297,8 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                     <p className="text-[11px] text-muted-foreground">
                       {new Date(o.createdAt).toLocaleString()}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Pickup: {new Date(o.pickupTime).toLocaleString()}
+                    <p className="text-[11px] font-bold text-primary">
+                      {pickupTimingLabel(o.pickupTime)}
                     </p>
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">

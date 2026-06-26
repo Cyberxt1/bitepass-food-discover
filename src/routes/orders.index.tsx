@@ -5,6 +5,7 @@ import type { Order } from "@/lib/seed";
 import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
 import { backend } from "@/lib/backend";
+import { pickupTimingLabel } from "@/lib/pickup-time";
 
 export const Route = createFileRoute("/orders/")({ component: OrdersList });
 
@@ -84,8 +85,8 @@ function OrdersList() {
                     <p className="text-xs text-muted-foreground">
                       {new Date(order.createdAt).toLocaleString()}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Pickup: {new Date(order.pickupTime).toLocaleString()}
+                    <p className="text-[11px] font-bold text-primary">
+                      {pickupTimingLabel(order.pickupTime)}
                     </p>
                   </div>
                   <div className="flex gap-2">

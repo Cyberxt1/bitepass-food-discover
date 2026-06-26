@@ -338,9 +338,6 @@ function Discover() {
                 <div
                   ref={cravingsRef}
                   className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth"
-                  onTouchStart={(event) => event.stopPropagation()}
-                  onTouchMove={(event) => event.stopPropagation()}
-                  onTouchEnd={(event) => event.stopPropagation()}
                   onScroll={(event) => {
                     const el = event.currentTarget;
                     const cardWidth = 144;
@@ -422,12 +419,7 @@ function Discover() {
                 />
               ) : (
                 <div
-                  data-no-tab-swipe
                   className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0"
-                  style={{ touchAction: "pan-x" }}
-                  onTouchStart={(event) => event.stopPropagation()}
-                  onTouchMove={(event) => event.stopPropagation()}
-                  onTouchEnd={(event) => event.stopPropagation()}
                 >
                   {loading
                     ? Array.from({ length: 4 }).map((_, i) => (
@@ -477,12 +469,7 @@ function Discover() {
                 </Link>
               </div>
               <div
-                data-no-tab-swipe
                 className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0"
-                style={{ touchAction: "pan-x" }}
-                onTouchStart={(event) => event.stopPropagation()}
-                onTouchMove={(event) => event.stopPropagation()}
-                onTouchEnd={(event) => event.stopPropagation()}
               >
                 {loading
                   ? Array.from({ length: 3 }).map((_, i) => (

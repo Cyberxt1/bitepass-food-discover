@@ -8,6 +8,7 @@ import { backend } from "@/lib/backend";
 import { isPaystackConfigured, startPaystackPayment } from "@/lib/paystack";
 import { notify } from "@/lib/notifications";
 import { validateCheckout } from "@/lib/platform";
+import { defaultPickupTime, pickupTimingLabel } from "@/lib/pickup-time";
 import type { Restaurant } from "@/lib/seed";
 
 export const Route = createFileRoute("/cart")({ component: CartPage });
@@ -18,19 +19,13 @@ function CartPage() {
   const nav = useNavigate();
   const [placing, setPlacing] = useState(false);
   const [checkoutStage, setCheckoutStage] = useState("Pay and place order");
-  const [pickupMode, setPickupMode] = useState<"asap" | "scheduled">("asap");
-  const [pickupAt, setPickupAt] = useState(getDefaultPickupTime());
   const [currentRestaurant, setCurrentRestaurant] = useState<Restaurant | undefined>();
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setSelectedItemIds((current) => {
       const itemIds = new Set(items.map((item) => item.id));
-      const next = new Set([...current].filter((id) => itemIds.has(id)));
-      items.forEach((item) => {
-        if (!current.has(item.id)) next.add(item.id);
-      });
-      return next;
+      return new Set([...current].filter((id) => itemIds.has(id)));
     });
   }, [items]);
 
@@ -81,24 +76,6 @@ function CartPage() {
     }
     if (!restaurant) return;
 
-    if (pickupMode === "scheduled") {
-      if (!pickupAt) {
-        notify("error", "Choose a pickup time", { id: "cart-pickup-required" });
-        return;
-      }
-
-      const scheduledPickup = new Date(pickupAt);
-      if (Number.isNaN(scheduledPickup.getTime())) {
-        notify("error", "Choose a valid pickup time", { id: "cart-pickup-invalid" });
-        return;
-      }
-
-      if (scheduledPickup.getTime() < Date.now()) {
-        notify("error", "Pickup time must be in the future", { id: "cart-pickup-past" });
-        return;
-      }
-    }
-
     setPlacing(true);
     setCheckoutStage("Opening payment...");
     try {
@@ -117,10 +94,7 @@ function CartPage() {
         platformFeeNaira: fee,
       });
       setCheckoutStage("Sending order to kitchen...");
-      const pickupTime =
-        pickupMode === "scheduled" && pickupAt
-          ? new Date(pickupAt).toISOString()
-          : new Date().toISOString();
+      const pickupTime = defaultPickupTime().toISOString();
       await backend.addOrder({
         id: orderId,
         userId: user.id,
@@ -329,75 +303,63 @@ function CartPage() {
             </section>
 
             <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
-              <div className="rounded-2xl bg-card p-4 shadow-soft">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Clock className="h-4 w-4 text-primary" />
-                  Pickup time
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPickupMode("asap")}
-                    className={`rounded-2xl border px-3 py-3 text-left transition ${pickupMode === "asap" ? "border-primary bg-primary/10 text-foreground" : "border-border bg-muted/40 text-muted-foreground"}`}
-                  >
-                    <p className="text-sm font-semibold">ASAP</p>
-                    <p className="mt-1 text-xs">Prepare right away</p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPickupMode("scheduled")}
-                    className={`rounded-2xl border px-3 py-3 text-left transition ${pickupMode === "scheduled" ? "border-primary bg-primary/10 text-foreground" : "border-border bg-muted/40 text-muted-foreground"}`}
-                  >
-                    <p className="text-sm font-semibold">Set a time</p>
-                    <p className="mt-1 text-xs">Choose pickup time</p>
-                  </button>
-                </div>
-                {pickupMode === "scheduled" && (
-                  <div className="mt-3">
-                    <input
-                      type="datetime-local"
-                      value={pickupAt}
-                      min={getMinPickupTime()}
-                      onChange={(event) => setPickupAt(event.target.value)}
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-2xl bg-card p-4 shadow-soft">
-                <p className="text-sm font-semibold">Payment</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {isPaystackConfigured()
-                    ? "Checkout is powered by Paystack."
-                    : "Demo checkout is active until Paystack is configured."}
-                </p>
-                {restaurantClosed && (
-                  <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
-                    This restaurant is closed. You cannot place this order until it reopens.
+              {selectedItems.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border bg-card p-5 text-center shadow-soft">
+                  <CheckSquare className="mx-auto h-5 w-5 text-muted-foreground" />
+                  <p className="mt-3 text-sm font-black">Pick meals to checkout</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Select one or more cart items first. Checkout will appear after that.
                   </p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-2xl bg-card p-4 shadow-soft">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <Clock className="h-4 w-4 text-primary" />
+                      {pickupTimingLabel(defaultPickupTime())}
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      The restaurant gets your paid order immediately and prepares it for quick pickup.
+                    </p>
+                  </div>
 
-              <div className="rounded-2xl bg-card p-4 shadow-soft">
-                <Row label="Subtotal" value={naira(selectedSubtotal)} />
-                <Row label="Service fee" value={naira(fee)} />
-                <div className="my-2 border-t border-border" />
-                <Row label="Total" value={naira(grand)} bold />
-              </div>
+                  <div className="rounded-2xl bg-card p-4 shadow-soft">
+                    <p className="text-sm font-semibold">Payment</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {isPaystackConfigured()
+                        ? "Checkout is powered by Paystack."
+                        : "Demo checkout is active until Paystack is configured."}
+                    </p>
+                    {restaurantClosed && (
+                      <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+                        This restaurant is closed. You cannot place this order until it reopens.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl bg-card p-4 shadow-soft">
+                    <Row label="Subtotal" value={naira(selectedSubtotal)} />
+                    <Row label="Service fee" value={naira(fee)} />
+                    <div className="my-2 border-t border-border" />
+                    <Row label="Total" value={naira(grand)} bold />
+                  </div>
+                </>
+              )}
             </aside>
           </main>
 
-          <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3 lg:bottom-6 lg:left-auto lg:right-8 lg:max-w-sm lg:translate-x-0">
-            <button
-              onClick={place}
-              disabled={placing || restaurantClosed || selectedItems.length === 0}
-              className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow active:scale-95 disabled:opacity-70"
-            >
-              <span>{placing ? checkoutStage : "Pay and place order"}</span>
-              <span>{naira(grand)}</span>
-            </button>
-          </div>
+          {selectedItems.length > 0 && (
+            <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 pb-3 lg:bottom-6 lg:left-auto lg:right-8 lg:max-w-sm lg:translate-x-0">
+              <button
+                onClick={place}
+                disabled={placing || restaurantClosed}
+                className="flex w-full items-center justify-between rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow active:scale-95 disabled:opacity-70"
+              >
+                <span>{placing ? checkoutStage : "Pay and place order"}</span>
+                <span>{naira(grand)}</span>
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -413,17 +375,3 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
   );
 }
 
-function toLocalInputValue(date: Date) {
-  const offsetMs = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
-}
-
-function getDefaultPickupTime() {
-  const date = new Date();
-  date.setMinutes(date.getMinutes() + 30, 0, 0);
-  return toLocalInputValue(date);
-}
-
-function getMinPickupTime() {
-  return toLocalInputValue(new Date());
-}

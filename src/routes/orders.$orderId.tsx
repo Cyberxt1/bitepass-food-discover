@@ -7,6 +7,7 @@ import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import { notify } from "@/lib/notifications";
 import { canViewOrder, normalizeOrderStatus, orderFlow } from "@/lib/platform";
+import { pickupTimingLabel } from "@/lib/pickup-time";
 
 export const Route = createFileRoute("/orders/$orderId")({ component: OrderDetail });
 
@@ -154,7 +155,7 @@ function OrderDetail() {
           </p>
           <p className="mt-1 text-xs opacity-85">Pickup at {restaurantName}</p>
           <p className="mt-1 text-xs opacity-85">
-            Requested pickup: {new Date(order.pickupTime).toLocaleString()}
+            {pickupTimingLabel(order.pickupTime)}
           </p>
         </div>
 
