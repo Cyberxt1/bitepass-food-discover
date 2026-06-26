@@ -463,7 +463,7 @@ function Discover() {
                   ? Array.from({ length: 3 }).map((_, i) => (
                       <div
                         key={i}
-                        className="min-w-0"
+                        className="w-[82vw] max-w-[360px] shrink-0 snap-center sm:w-auto sm:max-w-none sm:shrink"
                       >
                         <SkeletonCard />
                       </div>
