@@ -30,6 +30,7 @@ type NotificationsContextValue = {
   updatePreferences: (patch: Partial<NotificationPreferences>) => void;
   markAllRead: () => void;
   markRead: (id: string) => void;
+  deleteNotification: (id: string) => void;
   clearAll: () => void;
 };
 
@@ -41,7 +42,11 @@ const MAX_NOTIFICATIONS = 40;
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 
 let notificationsStore: AppNotification[] = [];
-let preferencesStore: NotificationPreferences = { enabled: true, orderUpdates: true, promos: true };
+let preferencesStore: NotificationPreferences = {
+  enabled: true,
+  orderUpdates: true,
+  promos: false,
+};
 let activeScope = "guest";
 let loadedScope = "";
 const listeners = new Set<() => void>();
@@ -64,10 +69,14 @@ function loadNotifications(scope = activeScope) {
   if (loadedScope === scope) return;
   loadedScope = scope;
   notificationsStore = [];
-  preferencesStore = { enabled: true, orderUpdates: true, promos: true };
+  preferencesStore = { enabled: true, orderUpdates: true, promos: false };
   try {
     const raw = window.localStorage.getItem(storageKey(scope));
-    notificationsStore = raw ? (JSON.parse(raw) as AppNotification[]) : [];
+    notificationsStore = raw
+      ? (JSON.parse(raw) as AppNotification[]).filter((notification) =>
+          isImportantNotification(notification.id),
+        )
+      : [];
     const rawPrefs = window.localStorage.getItem(preferencesKey(scope));
     preferencesStore = rawPrefs
       ? { ...preferencesStore, ...(JSON.parse(rawPrefs) as Partial<NotificationPreferences>) }
@@ -75,6 +84,10 @@ function loadNotifications(scope = activeScope) {
   } catch {
     notificationsStore = [];
   }
+}
+
+function isImportantNotification(id: string) {
+  return /(order-paid|cart-payment|order-status|payment|account|vendor-new-orders)/i.test(id);
 }
 
 function saveNotifications() {
@@ -121,7 +134,7 @@ export function notify(level: NotificationLevel, title: string, options: NotifyO
   if (level === "error") toast.error(title, { id: toastId, duration: 2600 });
   if (level === "info") toast.info(title, { id: toastId, duration: 2200 });
 
-  if (options.persist !== false) {
+  if (options.persist === true) {
     pushNotification({
       id: `notification:${Date.now()}:${eventKey}`,
       title,
@@ -178,6 +191,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         notificationsStore = notificationsStore.map((notification) =>
           notification.id === id ? { ...notification, read: true } : notification,
         );
+        saveNotifications();
+        emitNotifications();
+      },
+      deleteNotification: (id: string) => {
+        notificationsStore = notificationsStore.filter((notification) => notification.id !== id);
         saveNotifications();
         emitNotifications();
       },

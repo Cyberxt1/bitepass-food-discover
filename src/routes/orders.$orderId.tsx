@@ -50,7 +50,7 @@ function OrderDetail() {
               `Order update: ${normalizeOrderStatus(visible.status).replace("_", " ")}`,
               {
                 id: `order-status:${visible.id}:${visible.status}`,
-                persist: false,
+                persist: true,
               },
             );
           }
@@ -154,9 +154,7 @@ function OrderDetail() {
             {normalizedStatus === "completed" ? "DONE" : normalizedStatus.toUpperCase()}
           </p>
           <p className="mt-1 text-xs opacity-85">Pickup at {restaurantName}</p>
-          <p className="mt-1 text-xs opacity-85">
-            {pickupTimingLabel(order.pickupTime)}
-          </p>
+          <p className="mt-1 text-xs opacity-85">{pickupTimingLabel(order.pickupTime)}</p>
         </div>
 
         <div className="rounded-2xl bg-card p-4 shadow-soft lg:row-span-2">

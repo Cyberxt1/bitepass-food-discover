@@ -126,11 +126,12 @@ function CartPage() {
       selectedItems.forEach((item) => remove(item.id));
       notify("success", "Payment successful, order sent to the store", {
         id: `order-paid:${orderId}`,
+        persist: true,
       });
       nav({ to: "/orders/$orderId", params: { orderId } });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Payment could not be completed";
-      notify("error", message, { id: `cart-payment-error:${message}` });
+      notify("error", message, { id: `cart-payment-error:${message}`, persist: true });
     } finally {
       setPlacing(false);
       setCheckoutStage("Pay and place order");
@@ -319,7 +320,8 @@ function CartPage() {
                       {pickupTimingLabel(defaultPickupTime())}
                     </div>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      The restaurant gets your paid order immediately and prepares it for quick pickup.
+                      The restaurant gets your paid order immediately and prepares it for quick
+                      pickup.
                     </p>
                   </div>
 
@@ -374,4 +376,3 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
     </div>
   );
 }
-

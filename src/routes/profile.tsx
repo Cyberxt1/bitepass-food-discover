@@ -4,6 +4,7 @@ import {
   Bell,
   Flame,
   Headphones,
+  History,
   LocateFixed,
   Loader2,
   LogOut,
@@ -225,6 +226,18 @@ function ProfilePage() {
               <p className="text-lg font-bold">My cravings</p>
               <p className="mt-1 text-sm text-muted-foreground">View meals you saved.</p>
             </Link>
+            <Link
+              to="/history"
+              className="rounded-3xl bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card"
+            >
+              <div className="mb-4 inline-flex rounded-2xl bg-muted p-3">
+                <History className="h-5 w-5" />
+              </div>
+              <p className="text-lg font-bold">History</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Revisit completed and cancelled orders.
+              </p>
+            </Link>
           </div>
 
           <SettingsCard
@@ -300,7 +313,7 @@ function ProfilePage() {
 
           <SettingsCard
             title="Notification Preferences"
-            detail="Control what BitePass can alert you about."
+            detail="Keep only useful order, payment and account alerts."
           >
             <div className="space-y-2">
               <PreferenceRow
@@ -312,11 +325,6 @@ function ProfilePage() {
                 label="Order updates"
                 checked={preferences.orderUpdates}
                 onChange={(checked) => updatePreferences({ orderUpdates: checked })}
-              />
-              <PreferenceRow
-                label="Promos and discounts"
-                checked={preferences.promos}
-                onChange={(checked) => updatePreferences({ promos: checked })}
               />
             </div>
           </SettingsCard>

@@ -1,12 +1,12 @@
-const CACHE_NAME = "bitepass-v4";
+const CACHE_NAME = "bitepass-v5";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [
   OFFLINE_URL,
   "/manifest.webmanifest",
-  "/app-icon-32.png",
-  "/app-icon-180.png",
-  "/app-icon-192.png",
-  "/app-icon-512.png",
+  "/imagelogo-app-v2-32.png",
+  "/imagelogo-app-v2-180.png",
+  "/imagelogo-app-v2-192.png",
+  "/imagelogo-app-v2-512.png",
   "/splash-logo.jpg",
   "/brand-logo.png",
   "/landing-food-11.jpg",

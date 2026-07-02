@@ -30,16 +30,6 @@ import {
   ShieldCheck,
   CreditCard,
 } from "lucide-react";
-import {
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { backend } from "@/lib/backend";
 import type { Discount, Meal, Order, Restaurant } from "@/lib/seed";
 import { useAuth } from "@/lib/auth";
@@ -52,6 +42,7 @@ import { compressImageFile } from "@/lib/image-upload";
 import { getCurrentLocationDetails } from "@/lib/location";
 import { LocationPreview } from "@/components/LocationPreview";
 import { toast } from "sonner";
+import { notify } from "@/lib/notifications";
 
 export const Route = createFileRoute("/business")({ component: BusinessDashboard });
 
@@ -60,7 +51,7 @@ type Tab = "analytics" | "orders" | "menu" | "profile";
 function BusinessDashboard() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
-  const [tab, setTab] = useState<Tab>("analytics");
+  const [tab, setTab] = useState<Tab>("orders");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tick, setTick] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -128,10 +119,14 @@ function BusinessDashboard() {
         if (newOrders.length > 0) {
           setTab("orders");
           setSidebarOpen(false);
-          toast.success(`${newOrders.length} new paid order${newOrders.length === 1 ? "" : "s"}`, {
-            id: `vendor-new-orders:${newOrders.map((order) => order.id).join(":")}`,
-            duration: 7000,
-          });
+          notify(
+            "success",
+            `${newOrders.length} new paid order${newOrders.length === 1 ? "" : "s"}`,
+            {
+              id: `vendor-new-orders:${newOrders.map((order) => order.id).join(":")}`,
+              persist: true,
+            },
+          );
           if (typeof navigator !== "undefined" && "vibrate" in navigator) {
             navigator.vibrate?.([180, 80, 180]);
           }
@@ -157,7 +152,18 @@ function BusinessDashboard() {
     return () => window.clearInterval(timer);
   }, [user, restaurant?.id]);
 
-  if (!user || !dashboardLoaded) return null;
+  if (!user) return null;
+  if (!dashboardLoaded) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-6">
+        <div className="text-center">
+          <img src="/brand-logo.png" alt="BitePass" className="mx-auto h-16 w-16 object-contain" />
+          <span className="mx-auto mt-5 block h-9 w-9 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+          <p className="mt-3 text-sm font-bold">Opening your store...</p>
+        </div>
+      </div>
+    );
+  }
   if (!restaurant)
     return (
       <RestaurantOnboarding
@@ -170,10 +176,10 @@ function BusinessDashboard() {
     );
 
   const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
-    { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "orders", label: "Orders", icon: ShoppingBag },
     { id: "menu", label: "Menu", icon: UtensilsCrossed },
-    { id: "profile", label: "Profile", icon: Store },
+    { id: "profile", label: "Store setup", icon: Store },
+    { id: "analytics", label: "Overview", icon: BarChart3 },
   ];
   const activeTab = tabs.find((t) => t.id === tab) ?? tabs[0];
 
@@ -197,8 +203,8 @@ function BusinessDashboard() {
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
-              <ChefHat className="h-5 w-5" />
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white shadow-glow">
+              <img src="/brand-logo.png" alt="" className="h-9 w-9 object-contain" />
             </div>
             {sidebarOpen && (
               <div className="min-w-0">
@@ -262,7 +268,11 @@ function BusinessDashboard() {
               sidebarOpen ? "justify-start" : "justify-center"
             }`}
           >
-            {loggingOut ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <LogOut className="h-4 w-4 shrink-0" />}
+            {loggingOut ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4 shrink-0" />
+            )}
             {sidebarOpen && <span>{loggingOut ? "Signing out..." : "Sign out"}</span>}
           </button>
         </div>
@@ -270,7 +280,7 @@ function BusinessDashboard() {
 
       {/* Header */}
       <header className="sticky top-0 z-30 glass border-b border-border/40">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -280,8 +290,8 @@ function BusinessDashboard() {
             >
               <Menu className="h-4 w-4" />
             </button>
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
-              <ChefHat className="h-5 w-5" />
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-white shadow-glow">
+              <img src="/brand-logo.png" alt="" className="h-9 w-9 object-contain" />
             </div>
             <div>
               <p className="text-sm font-bold leading-tight">{activeTab.label}</p>
@@ -327,7 +337,7 @@ function BusinessDashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-5">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         {tab === "analytics" && (
           <Overview
             restaurant={restaurant}
@@ -337,7 +347,9 @@ function BusinessDashboard() {
             refresh={refresh}
           />
         )}
-        {tab === "orders" && <OrdersTab orders={orders} refresh={refresh} />}
+        {tab === "orders" && (
+          <OrdersTab restaurant={restaurant} orders={orders} refresh={refresh} />
+        )}
         {tab === "menu" && <MenuTab restaurantId={restaurant.id} meals={meals} refresh={refresh} />}
         {tab === "profile" && <ProfileTab restaurant={restaurant} refresh={refresh} />}
       </main>
@@ -476,9 +488,13 @@ function RestaurantOnboarding({
         moderationStatus: "active",
       };
       await backend.setRestaurant(restaurant);
-      const savedRestaurant = (await backend.restaurants()).find((entry) => entry.id === restaurant.id);
+      const savedRestaurant = (await backend.restaurants()).find(
+        (entry) => entry.id === restaurant.id,
+      );
       if (!savedRestaurant) {
-        throw new Error("Restaurant was saved but could not be read back. Check database policies.");
+        throw new Error(
+          "Restaurant was saved but could not be read back. Check database policies.",
+        );
       }
       toast.success("Restaurant profile created");
       onCreated(savedRestaurant);
@@ -505,7 +521,11 @@ function RestaurantOnboarding({
         disabled={loggingOut}
         className="absolute right-5 top-6 inline-flex items-center gap-2 rounded-full bg-card px-4 py-2 text-xs font-bold text-muted-foreground shadow-soft transition hover:text-destructive disabled:opacity-60"
       >
-        {loggingOut ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+        {loggingOut ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <LogOut className="h-3.5 w-3.5" />
+        )}
         {loggingOut ? "Signing out..." : "Sign out"}
       </button>
 
@@ -687,7 +707,8 @@ function RestaurantOnboarding({
                     />
                   </div>
                   <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                    Optional. Add map coordinates when you have them; the address is enough to finish setup.
+                    Optional. Add map coordinates when you have them; the address is enough to
+                    finish setup.
                   </p>
                 </div>
               </div>
@@ -860,7 +881,8 @@ function StoreSetupTasks({
                       Verify store
                     </p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Ask admin to verify this restaurant. Verified stores show a green check to customers.
+                      Ask admin to verify this restaurant. Verified stores show a green check to
+                      customers.
                     </p>
                   </div>
                   <TaskStatus status={verificationStatus} completeLabel="Verified" />
@@ -868,7 +890,9 @@ function StoreSetupTasks({
                 <button
                   type="button"
                   onClick={() => void requestVerification()}
-                  disabled={busy === "verify" || verificationStatus === "pending_review" || verified}
+                  disabled={
+                    busy === "verify" || verificationStatus === "pending_review" || verified
+                  }
                   className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 text-sm font-black text-background transition active:scale-95 disabled:opacity-55 sm:w-auto"
                 >
                   {busy === "verify" && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -888,7 +912,8 @@ function StoreSetupTasks({
                       Setup payment
                     </p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Enter the store name exactly how it should appear for payments, then send the request.
+                      Enter the store name exactly how it should appear for payments, then send the
+                      request.
                     </p>
                   </div>
                   <TaskStatus status={paymentStatus} completeLabel="Ready" />
@@ -903,7 +928,9 @@ function StoreSetupTasks({
                 <button
                   type="button"
                   onClick={() => void requestPayment()}
-                  disabled={busy === "payment" || paymentStatus === "pending_review" || paymentReady}
+                  disabled={
+                    busy === "payment" || paymentStatus === "pending_review" || paymentReady
+                  }
                   className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 text-sm font-black text-background transition active:scale-95 disabled:opacity-55 sm:w-auto"
                 >
                   {busy === "payment" && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -968,27 +995,12 @@ function Overview({
     toast.success(next === "1" ? "Restaurant is now open" : "Restaurant set to closed");
   };
 
-  // 7-day revenue trend
-  const trend = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    const key = d.toDateString();
-    const dayOrders = completed.filter((o) => new Date(o.createdAt).toDateString() === key);
-    const rev = dayOrders.reduce((s, o) => s + Number(o.total), 0);
-    return {
-      day: d.toLocaleDateString("en", { weekday: "short" }),
-      fullDate: d.toLocaleDateString("en-NG", { day: "numeric", month: "short" }),
-      rev,
-      orders: dayOrders.length,
-    };
-  });
-  const weeklyRevenue = trend.reduce((sum, day) => sum + day.rev, 0);
-  const totalTrendOrders = trend.reduce((sum, day) => sum + day.orders, 0);
-  const averageRevenue = weeklyRevenue / trend.length;
-  const bestDay = trend.reduce(
-    (best, current) => (current.rev > best.rev ? current : best),
-    trend[0],
+  const weekStart = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weeklyOrders = completed.filter(
+    (order) => new Date(order.createdAt).getTime() >= weekStart,
   );
+  const weeklyRevenue = weeklyOrders.reduce((sum, order) => sum + Number(order.total), 0);
+  const averageOrder = completed.length > 0 ? Math.round(revenue / completed.length) : 0;
 
   return (
     <div className="space-y-5">
@@ -1030,114 +1042,25 @@ function Overview({
         </div>
       </Card>
 
-      <Card title="Sales snapshot" subtitle="Last 7 days">
-        <div className="grid gap-2 sm:grid-cols-3">
-          <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
+      <Card title="Sales snapshot" subtitle="Useful totals without the noise">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl bg-muted/45 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              This week
+              Last 7 days
             </p>
-            <p className="mt-1 text-lg font-bold text-foreground">{naira(weeklyRevenue)}</p>
+            <p className="mt-2 text-xl font-black text-foreground">{naira(weeklyRevenue)}</p>
           </div>
-          <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
+          <div className="rounded-2xl bg-muted/45 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Orders
+              Completed orders
             </p>
-            <p className="mt-1 text-lg font-bold text-foreground">{totalTrendOrders}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {naira(Math.round(averageRevenue))} avg/day
-            </p>
+            <p className="mt-2 text-xl font-black text-foreground">{weeklyOrders.length}</p>
           </div>
-          <div className="rounded-2xl border border-border/60 bg-muted/35 p-3">
+          <div className="rounded-2xl bg-muted/45 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Best day
+              Average order
             </p>
-            <p className="mt-1 text-lg font-bold text-foreground">
-              {bestDay.rev > 0 ? bestDay.day : "No sales yet"}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {bestDay.rev > 0 ? naira(bestDay.rev) : "Complete orders to build a trend"}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-[28px] border border-border/60 bg-background p-3">
-          <div className="mb-3 flex flex-wrap gap-3 text-[11px] font-bold text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Revenue
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-success" /> Orders
-            </span>
-          </div>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={trend} margin={{ top: 10, right: 0, left: -10, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="oklch(0.9 0.01 80)" strokeDasharray="4 4" />
-                <XAxis
-                  dataKey="day"
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={11}
-                  stroke="oklch(0.5 0.02 50)"
-                />
-                <YAxis
-                  yAxisId="revenue"
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={11}
-                  width={42}
-                  stroke="oklch(0.5 0.02 50)"
-                  tickFormatter={(value: number) => compactNaira(value)}
-                />
-                <YAxis
-                  yAxisId="orders"
-                  orientation="right"
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={11}
-                  width={28}
-                  stroke="oklch(0.5 0.02 50)"
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  cursor={{ fill: "oklch(0.94 0.02 70 / 0.75)" }}
-                  contentStyle={{
-                    borderRadius: 18,
-                    border: "1px solid oklch(0.92 0.008 80)",
-                    background: "rgba(255,255,255,0.96)",
-                    boxShadow: "0 18px 45px rgba(15, 23, 42, 0.12)",
-                    fontSize: 12,
-                  }}
-                  formatter={(value: number, name: string) => [
-                    name === "rev" ? naira(value) : value,
-                    name === "rev" ? "Revenue" : "Orders",
-                  ]}
-                  labelFormatter={(_, payload) => {
-                    const item = payload?.[0]?.payload as
-                      | { fullDate?: string; orders?: number }
-                      | undefined;
-                    if (!item) return "";
-                    return `${item.fullDate} - ${item.orders ?? 0} order${item.orders === 1 ? "" : "s"}`;
-                  }}
-                />
-                <Bar
-                  yAxisId="revenue"
-                  dataKey="rev"
-                  fill="oklch(0.68 0.19 35)"
-                  radius={[8, 8, 3, 3]}
-                  barSize={28}
-                />
-                <Line
-                  yAxisId="orders"
-                  type="monotone"
-                  dataKey="orders"
-                  stroke="oklch(0.58 0.14 150)"
-                  strokeWidth={3}
-                  dot={{ r: 4, strokeWidth: 0, fill: "oklch(0.58 0.14 150)" }}
-                  activeDot={{ r: 6, strokeWidth: 0, fill: "oklch(0.58 0.14 150)" }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+            <p className="mt-2 text-xl font-black text-foreground">{naira(averageOrder)}</p>
           </div>
         </div>
       </Card>
@@ -1191,9 +1114,27 @@ function Overview({
 }
 
 /* ---------------- ORDERS ---------------- */
-function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }) {
+function OrdersTab({
+  restaurant,
+  orders,
+  refresh,
+}: {
+  restaurant: Restaurant;
+  orders: Order[];
+  refresh: () => void;
+}) {
   const [filter, setFilter] = useState<"all" | "active" | "completed">("active");
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const paidActive = orders.filter(
+    (order) =>
+      order.paymentStatus === "paid" &&
+      ["received", "paid", "accepted", "preparing", "ready", "picked_up"].includes(order.status),
+  ).length;
+  const awaitingPayment = orders.filter(
+    (order) =>
+      order.paymentStatus !== "paid" &&
+      ["received", "paid", "accepted", "preparing"].includes(order.status),
+  ).length;
   const statusRank: Record<string, number> = {
     received: 0,
     paid: 0,
@@ -1205,7 +1146,9 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
     cancelled: 6,
   };
 
-  const vendorActionForOrder = (order: Order): { label: string; success: string; patch: Partial<Order> } | null => {
+  const vendorActionForOrder = (
+    order: Order,
+  ): { label: string; success: string; patch: Partial<Order> } | null => {
     const normalized = normalizeOrderStatus(order.status);
     const isPaid = order.paymentStatus === "paid";
     if (!isPaid && !["ready", "picked_up", "completed"].includes(normalized)) return null;
@@ -1255,7 +1198,10 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
-  const advance = async (id: string, action: NonNullable<ReturnType<typeof vendorActionForOrder>>) => {
+  const advance = async (
+    id: string,
+    action: NonNullable<ReturnType<typeof vendorActionForOrder>>,
+  ) => {
     if (busyOrderId) return;
     setBusyOrderId(id);
     try {
@@ -1283,21 +1229,64 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
-        {(["active", "completed", "all"] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition capitalize ${
-              filter === f
-                ? "bg-foreground text-background"
-                : "bg-muted text-muted-foreground hover:bg-accent"
-            }`}
-          >
-            {f}
-          </button>
-        ))}
+    <div className="space-y-6">
+      <section className="rounded-3xl border border-success/25 bg-success/8 p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-success/15 text-success">
+              <CreditCard className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-black">Customers pay before pickup</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Prepare orders marked Paid. The customer arrives after you mark the food ready.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 text-center">
+            <span className="rounded-2xl bg-card px-4 py-2 shadow-soft">
+              <strong className="block text-lg text-success">{paidActive}</strong>
+              <span className="text-[10px] font-bold uppercase text-muted-foreground">Prepaid</span>
+            </span>
+            {awaitingPayment > 0 && (
+              <span className="rounded-2xl bg-card px-4 py-2 shadow-soft">
+                <strong className="block text-lg text-warning">{awaitingPayment}</strong>
+                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Unpaid
+                </span>
+              </span>
+            )}
+          </div>
+        </div>
+        {restaurant.paymentSetupStatus !== "ready" && (
+          <p className="mt-4 rounded-2xl bg-warning/10 px-4 py-3 text-xs font-semibold text-warning">
+            Finish payment setup under Store setup before taking prepaid orders.
+          </p>
+        )}
+      </section>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-black">Order queue</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Accept, prepare, mark ready, then complete pickup.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {(["active", "completed", "all"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition capitalize ${
+                filter === f
+                  ? "bg-foreground text-background"
+                  : "bg-muted text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -1306,7 +1295,7 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
           <p className="mt-2 text-sm font-semibold">No {filter} orders</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-5 xl:grid-cols-2">
           {filtered.map((o) => {
             const items = JSON.parse(o.items) as {
               name: string;
@@ -1323,7 +1312,7 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
             return (
               <div
                 key={o.id}
-                className={`rounded-2xl border p-4 shadow-soft animate-slide-up ${
+                className={`rounded-3xl border p-5 shadow-soft animate-slide-up ${
                   isNewPaid
                     ? "border-primary/45 bg-primary/8 ring-2 ring-primary/10"
                     : "border-transparent bg-card"
@@ -1350,6 +1339,11 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                     {o.paymentStatus === "paid" && (
                       <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-[11px] font-bold text-success">
                         Paid
+                      </span>
+                    )}
+                    {o.paymentStatus !== "paid" && (
+                      <span className="rounded-full bg-warning/15 px-2.5 py-0.5 text-[11px] font-bold text-warning">
+                        Awaiting payment
                       </span>
                     )}
                     <span
@@ -1394,7 +1388,12 @@ function OrdersTab({ orders, refresh }: { orders: Order[]; refresh: () => void }
                     </li>
                   ))}
                 </ul>
-                <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+                {o.paymentStatus !== "paid" && (
+                  <p className="mt-3 rounded-xl bg-warning/10 px-3 py-2 text-xs font-semibold text-warning">
+                    Do not prepare this order until payment is confirmed.
+                  </p>
+                )}
+                <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
                   <span className="text-sm font-bold">Total: {naira(o.total)}</span>
                   <div className="flex gap-2">
                     {canCancel && (
@@ -2059,7 +2058,9 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
   const [form, setForm] = useState(restaurant);
   const [locating, setLocating] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState(restaurant.paymentSetupStatus ?? "not_started");
+  const [paymentStatus, setPaymentStatus] = useState(
+    restaurant.paymentSetupStatus ?? "not_started",
+  );
   const coords = form.lat && form.lng ? { lat: Number(form.lat), lng: Number(form.lng) } : null;
 
   useEffect(() => {
@@ -2088,12 +2089,10 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
   };
   const requestPaymentSetup = () => {
     setPaymentStatus("pending_review");
-    backend
-      .updateRestaurant(restaurant.id, { paymentSetupStatus: "pending_review" })
-      .then(() => {
-        refresh();
-        setPaymentStatus("pending_review");
-      });
+    backend.updateRestaurant(restaurant.id, { paymentSetupStatus: "pending_review" }).then(() => {
+      refresh();
+      setPaymentStatus("pending_review");
+    });
     toast.success("Payment setup request sent to admin");
   };
   const useCurrentLocation = async () => {
@@ -2279,13 +2278,6 @@ function ProfileTab({ restaurant, refresh }: { restaurant: Restaurant; refresh: 
 }
 
 /* ---------------- shared ---------------- */
-function compactNaira(value: number) {
-  const amount = Math.abs(value);
-  if (amount >= 1_000_000) return `N${(value / 1_000_000).toFixed(amount >= 10_000_000 ? 0 : 1)}m`;
-  if (amount >= 1_000) return `N${(value / 1_000).toFixed(amount >= 10_000 ? 0 : 1)}k`;
-  return `N${Math.round(value)}`;
-}
-
 function Kpi({
   icon: Icon,
   label,
