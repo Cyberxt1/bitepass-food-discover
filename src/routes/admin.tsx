@@ -46,7 +46,7 @@ import {
 
 import { backend, backendInfo } from "@/lib/backend";
 import { authInfo, useAuth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { naira } from "@/lib/format";
 import type { Feedback, Meal, Order, PlatformStats, Restaurant, Review, User } from "@/lib/seed";
 import { readAuditEvents, type AuditEvent } from "@/lib/audit";
@@ -152,8 +152,8 @@ function AdminAccess({ login }: { login: (email: string, password: string) => Pr
         </form>
 
         <div className="mt-5 rounded-2xl bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">
-          Local dev admin: <span className="font-black text-foreground">biteepass1@gmail.com</span> /{" "}
-          <span className="font-black text-foreground">1234</span>
+          Local dev admin: <span className="font-black text-foreground">biteepass1@gmail.com</span>{" "}
+          / <span className="font-black text-foreground">1234</span>
         </div>
       </div>
     </div>
@@ -222,7 +222,10 @@ function AdminDashboard() {
           return;
         }
 
-        const { data, error } = await supabase!.auth.getSession();
+        const supabase = await getSupabase();
+        const { data, error } = supabase
+          ? await supabase.auth.getSession()
+          : { data: { session: null }, error: new Error("Supabase is not configured") };
         if (cancelled) return;
         if (error || !data.session) {
           setAdminDataError(
@@ -283,10 +286,10 @@ function AdminDashboard() {
       setMeals(nextMeals);
       setRestaurants(nextRestaurants);
       setSelectedStore((current) =>
-        current ? nextRestaurants.find((store) => store.id === current.id) ?? null : null,
+        current ? (nextRestaurants.find((store) => store.id === current.id) ?? null) : null,
       );
       setSelectedPaymentStore((current) =>
-        current ? nextRestaurants.find((store) => store.id === current.id) ?? null : null,
+        current ? (nextRestaurants.find((store) => store.id === current.id) ?? null) : null,
       );
       setUsers(visibleUsers);
       setReviews(nextReviews);
@@ -385,7 +388,11 @@ function AdminDashboard() {
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-60"
             aria-label="Sign out"
           >
-            {loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+            {loggingOut ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
           </button>
         </div>
 
@@ -462,7 +469,11 @@ function AdminDashboard() {
             value={`${metrics.completedOrders}`}
             accent
           />
-          <Kpi icon={CircleDollarSign} label="Completed revenue" value={naira(metrics.completedRevenue)} />
+          <Kpi
+            icon={CircleDollarSign}
+            label="Completed revenue"
+            value={naira(metrics.completedRevenue)}
+          />
           <Kpi icon={Store} label="Stores" value={`${restaurants.length}`} />
           <Kpi icon={Users} label="Users" value={`${users.length}`} />
           <Kpi icon={Activity} label="Traffic" value={`${metrics.pageViews}`} />
@@ -496,8 +507,13 @@ function AdminDashboard() {
                 subtitle="New restaurants stay hidden until you verify them"
               >
                 <div className="space-y-2">
-                  {restaurants.filter((store) => (store.verificationStatus ?? "pending") !== "verified").length === 0 && (
-                    <EmptyState title="No stores waiting" detail="Pending store requests will show here." />
+                  {restaurants.filter(
+                    (store) => (store.verificationStatus ?? "pending") !== "verified",
+                  ).length === 0 && (
+                    <EmptyState
+                      title="No stores waiting"
+                      detail="Pending store requests will show here."
+                    />
                   )}
                   {restaurants
                     .filter((store) => (store.verificationStatus ?? "pending") !== "verified")
@@ -517,8 +533,12 @@ function AdminDashboard() {
               </Panel>
               <Panel title="Payment setup" subtitle="Stores that need Paystack subaccount review">
                 <div className="space-y-2">
-                  {restaurants.filter((store) => store.paymentSetupStatus === "pending_review").length === 0 && (
-                    <EmptyState title="Payments are clear" detail="Payment requests will show here." />
+                  {restaurants.filter((store) => store.paymentSetupStatus === "pending_review")
+                    .length === 0 && (
+                    <EmptyState
+                      title="Payments are clear"
+                      detail="Payment requests will show here."
+                    />
                   )}
                   {restaurants
                     .filter((store) => store.paymentSetupStatus === "pending_review")
@@ -1030,7 +1050,10 @@ function AdminDashboard() {
               <Panel title="Stores" subtitle="Approve, suspend, review payments, or remove stores">
                 <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
                   {restaurants.length === 0 && (
-                    <EmptyState title="No restaurants yet" detail="Only real restaurant signups will appear here." />
+                    <EmptyState
+                      title="No restaurants yet"
+                      detail="Only real restaurant signups will appear here."
+                    />
                   )}
                   {restaurants.map((store) => (
                     <StoreModerationRow
@@ -1049,7 +1072,10 @@ function AdminDashboard() {
               <Panel title="Menu items" subtitle="Hide or remove meals across the platform">
                 <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
                   {meals.length === 0 && (
-                    <EmptyState title="No foods yet" detail="Foods created by real stores will appear here." />
+                    <EmptyState
+                      title="No foods yet"
+                      detail="Foods created by real stores will appear here."
+                    />
                   )}
                   {meals.map((meal) => {
                     const store = restaurants.find((entry) => entry.id === meal.restaurantId);
@@ -1061,7 +1087,11 @@ function AdminDashboard() {
                       >
                         <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-card">
                           {meal.image ? (
-                            <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
+                            <img
+                              src={meal.image}
+                              alt={meal.name}
+                              className="h-full w-full object-cover"
+                            />
                           ) : null}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -1075,7 +1105,9 @@ function AdminDashboard() {
                             type="button"
                             onClick={() => {
                               void backend
-                                .updateMeal(meal.id, { moderationStatus: active ? "hidden" : "active" })
+                                .updateMeal(meal.id, {
+                                  moderationStatus: active ? "hidden" : "active",
+                                })
                                 .then(() => setTick((value) => value + 1));
                               notify("success", active ? "Meal hidden" : "Meal restored", {
                                 id: `meal-moderation:${meal.id}`,
@@ -1089,7 +1121,9 @@ function AdminDashboard() {
                             type="button"
                             onClick={() => {
                               if (!confirm(`Delete ${meal.name}?`)) return;
-                              void backend.deleteMeal(meal.id).then(() => setTick((value) => value + 1));
+                              void backend
+                                .deleteMeal(meal.id)
+                                .then(() => setTick((value) => value + 1));
                               notify("success", "Meal deleted", { id: `meal-delete:${meal.id}` });
                             }}
                             className="grid h-9 w-9 place-items-center rounded-xl bg-destructive/10 text-destructive"
@@ -1107,7 +1141,10 @@ function AdminDashboard() {
               <Panel title="Users" subtitle="Manage customer, store, and admin accounts">
                 <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
                   {users.length === 0 && (
-                    <EmptyState title="No users yet" detail="Registered accounts will appear here." />
+                    <EmptyState
+                      title="No users yet"
+                      detail="Registered accounts will appear here."
+                    />
                   )}
                   {users.map((entry) => (
                     <div
@@ -1144,8 +1181,12 @@ function AdminDashboard() {
                               type="button"
                               onClick={() => {
                                 if (!confirm(`Delete ${entry.name}?`)) return;
-                                void backend.deleteUser(entry.id).then(() => setTick((value) => value + 1));
-                                notify("success", "User deleted", { id: `user-delete:${entry.id}` });
+                                void backend
+                                  .deleteUser(entry.id)
+                                  .then(() => setTick((value) => value + 1));
+                                notify("success", "User deleted", {
+                                  id: `user-delete:${entry.id}`,
+                                });
                               }}
                               className="grid h-9 w-9 place-items-center rounded-xl bg-destructive/10 text-destructive"
                               aria-label={`Delete ${entry.name}`}
@@ -1163,7 +1204,10 @@ function AdminDashboard() {
               <Panel title="Orders" subtitle="Cancel stuck orders or clean test transactions">
                 <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
                   {orders.length === 0 && (
-                    <EmptyState title="No orders yet" detail="Real customer orders will appear here." />
+                    <EmptyState
+                      title="No orders yet"
+                      detail="Real customer orders will appear here."
+                    />
                   )}
                   {orders.map((order) => (
                     <div key={order.id} className="rounded-2xl bg-muted/55 p-3">
@@ -1171,7 +1215,8 @@ function AdminDashboard() {
                         <div className="min-w-0">
                           <p className="truncate text-sm font-black">Order #{order.id.slice(-5)}</p>
                           <p className="truncate text-xs text-muted-foreground">
-                            {restaurants.find((store) => store.id === order.restaurantId)?.name ?? order.restaurantId}
+                            {restaurants.find((store) => store.id === order.restaurantId)?.name ??
+                              order.restaurantId}
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -1180,9 +1225,14 @@ function AdminDashboard() {
                             type="button"
                             onClick={() => {
                               void backend
-                                .updateOrder(order.id, { status: "cancelled", cancelledAt: new Date().toISOString() })
+                                .updateOrder(order.id, {
+                                  status: "cancelled",
+                                  cancelledAt: new Date().toISOString(),
+                                })
                                 .then(() => setTick((value) => value + 1));
-                              notify("success", "Order cancelled", { id: `order-cancel:${order.id}` });
+                              notify("success", "Order cancelled", {
+                                id: `order-cancel:${order.id}`,
+                              });
                             }}
                             className="rounded-xl bg-card px-3 py-2 text-[11px] font-black"
                           >
@@ -1192,8 +1242,12 @@ function AdminDashboard() {
                             type="button"
                             onClick={() => {
                               if (!confirm(`Delete order #${order.id.slice(-5)}?`)) return;
-                              void backend.deleteOrder(order.id).then(() => setTick((value) => value + 1));
-                              notify("success", "Order deleted", { id: `order-delete:${order.id}` });
+                              void backend
+                                .deleteOrder(order.id)
+                                .then(() => setTick((value) => value + 1));
+                              notify("success", "Order deleted", {
+                                id: `order-delete:${order.id}`,
+                              });
                             }}
                             className="grid h-9 w-9 place-items-center rounded-xl bg-destructive/10 text-destructive"
                             aria-label={`Delete order ${order.id}`}
@@ -1792,7 +1846,10 @@ function PaymentSetupsPanel({
         </div>
       </div>
 
-      <Panel title="Store verification requests" subtitle="Approve stores that asked for verification">
+      <Panel
+        title="Store verification requests"
+        subtitle="Approve stores that asked for verification"
+      >
         <div className="space-y-2">
           {verificationRequests.length === 0 && (
             <EmptyState
@@ -1830,9 +1887,13 @@ function PaymentSetupsPanel({
                       });
                       onRefresh();
                     } catch (error) {
-                      notify("error", error instanceof Error ? error.message : "Verification failed", {
-                        id: `verify-store-error:${store.id}`,
-                      });
+                      notify(
+                        "error",
+                        error instanceof Error ? error.message : "Verification failed",
+                        {
+                          id: `verify-store-error:${store.id}`,
+                        },
+                      );
                     } finally {
                       setVerifyingId("");
                     }
@@ -2419,9 +2480,13 @@ function StoreDetail({
                         });
                       })
                       .catch((error) => {
-                        notify("error", error instanceof Error ? error.message : "Store update failed", {
-                          id: `store-verify-error:${store.id}:${status}`,
-                        });
+                        notify(
+                          "error",
+                          error instanceof Error ? error.message : "Store update failed",
+                          {
+                            id: `store-verify-error:${store.id}:${status}`,
+                          },
+                        );
                       });
                   }}
                   className={`rounded-xl px-3 py-2 text-xs font-black ${
@@ -2447,9 +2512,13 @@ function StoreDetail({
                       });
                     })
                     .catch((error) => {
-                      notify("error", error instanceof Error ? error.message : "Store update failed", {
-                        id: `store-moderation-error:${store.id}`,
-                      });
+                      notify(
+                        "error",
+                        error instanceof Error ? error.message : "Store update failed",
+                        {
+                          id: `store-moderation-error:${store.id}`,
+                        },
+                      );
                     });
                 }}
                 className="rounded-xl bg-destructive/10 px-3 py-2 text-xs font-black text-destructive"
@@ -2474,14 +2543,22 @@ function StoreDetail({
                     suspensionReason: "",
                   })
                     .then(() => {
-                      notify("success", "Payment setup complete. Customers can order from this store.", {
-                        id: `store-payment-ready:${store.id}`,
-                      });
+                      notify(
+                        "success",
+                        "Payment setup complete. Customers can order from this store.",
+                        {
+                          id: `store-payment-ready:${store.id}`,
+                        },
+                      );
                     })
                     .catch((error) => {
-                      notify("error", error instanceof Error ? error.message : "Payment setup failed", {
-                        id: `store-payment-ready-error:${store.id}`,
-                      });
+                      notify(
+                        "error",
+                        error instanceof Error ? error.message : "Payment setup failed",
+                        {
+                          id: `store-payment-ready-error:${store.id}`,
+                        },
+                      );
                     });
                 }}
                 className="rounded-xl bg-success/10 px-3 py-2 text-xs font-black text-success sm:col-span-2"
@@ -2501,8 +2578,8 @@ function StoreDetail({
               />
             </label>
             <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
-              Create the restaurant subaccount in Paystack, paste the generated subaccount code here,
-              then approve it for checkout routing.
+              Create the restaurant subaccount in Paystack, paste the generated subaccount code
+              here, then approve it for checkout routing.
             </p>
           </Panel>
 

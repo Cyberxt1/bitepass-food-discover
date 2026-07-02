@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { readTable, writeFile, FILES } from "./csv-store";
 import { backend } from "./backend";
-import { isSupabaseConfigured, supabase } from "./supabase";
+import { getSupabase, isSupabaseConfigured } from "./supabase";
 import {
   clearSession,
   hasActiveSession,
@@ -99,7 +99,7 @@ function userFromAuth(params: {
     name,
     email,
     password: "",
-    role: email === ADMIN_EMAIL ? "admin" : params.role ?? "customer",
+    role: email === ADMIN_EMAIL ? "admin" : (params.role ?? "customer"),
     avatar: name.charAt(0).toUpperCase(),
   };
 }
@@ -159,7 +159,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function restoreSession() {
-      if (useSupabaseAuth && supabase) {
+      if (useSupabaseAuth) {
+        const supabase = await getSupabase();
+        if (!supabase) throw new Error("Supabase is not configured");
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
         const authUser = data.session?.user;
@@ -197,30 +199,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setAuthReady(true);
       });
 
-    const subscription =
-      useSupabaseAuth && supabase
-        ? supabase.auth.onAuthStateChange((_event, session) => {
-            const authUser = session?.user;
-            if (!authUser) return;
+    let unsubscribe: (() => void) | undefined;
 
-            void getOrCreateAuthProfile({
-              id: authUser.id,
-              name: authUser.user_metadata?.name as string | undefined,
-              email: authUser.email,
-              role: authUser.user_metadata?.role as string | undefined,
-            }).then((profile) => {
-              if (cancelled) return;
-              writeSessionCookie(profile.id);
-              writeFile(FILES.session, profile.id);
-              setUser(profile);
-              setAuthReady(true);
-            });
-          }).data.subscription
-        : null;
+    if (useSupabaseAuth) {
+      void getSupabase().then((supabase) => {
+        if (!supabase || cancelled) return;
+        const subscription = supabase.auth.onAuthStateChange((_event, session) => {
+          const authUser = session?.user;
+          if (!authUser) return;
+
+          void getOrCreateAuthProfile({
+            id: authUser.id,
+            name: authUser.user_metadata?.name as string | undefined,
+            email: authUser.email,
+            role: authUser.user_metadata?.role as string | undefined,
+          }).then((profile) => {
+            if (cancelled) return;
+            writeSessionCookie(profile.id);
+            writeFile(FILES.session, profile.id);
+            setUser(profile);
+            setAuthReady(true);
+          });
+        }).data.subscription;
+        unsubscribe = () => subscription.unsubscribe();
+      });
+    }
 
     return () => {
       cancelled = true;
-      subscription?.unsubscribe();
+      unsubscribe?.();
     };
   }, []);
 
@@ -228,7 +235,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const normalizedEmail = normalizeEmail(email);
     const normalizedPassword = password.trim();
 
-    if (useSupabaseAuth && supabase) {
+    if (useSupabaseAuth) {
+      const supabase = await getSupabase();
+      if (!supabase) throw new Error("Supabase is not configured");
       const { data, error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password: normalizedPassword,
@@ -277,7 +286,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithGoogle = async () => {
-    if (!useSupabaseAuth || !supabase) {
+    const supabase = useSupabaseAuth ? await getSupabase() : null;
+    if (!supabase) {
       throw new Error(
         "Supabase is missing on this build. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.",
       );
@@ -305,7 +315,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const role = options.role === "restaurant" ? "restaurant" : "customer";
     let id = createLocalId(role === "restaurant" ? "owner" : "u");
 
-    if (useSupabaseAuth && supabase) {
+    if (useSupabaseAuth) {
+      const supabase = await getSupabase();
+      if (!supabase) throw new Error("Supabase is not configured");
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password: normalizedPassword,
@@ -388,7 +400,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     const currentUser = user;
-    if (useSupabaseAuth && supabase) {
+    if (useSupabaseAuth) {
+      const supabase = await getSupabase();
+      if (!supabase) throw new Error("Supabase is not configured");
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     }

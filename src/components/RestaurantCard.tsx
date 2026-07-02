@@ -36,6 +36,8 @@ export function RestaurantCard({
             <img
               src={r.image}
               alt={r.name}
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
             />
           ) : null}
@@ -96,6 +98,8 @@ export function RestaurantCard({
           <img
             src={r.image}
             alt={r.name}
+            loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
           />
           <div

@@ -48,7 +48,7 @@ const stableLandingCards: LandingFoodCard[] = [
     place: "Ready lunch",
     time: "20 min",
     image:
-      "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?auto=format&fit=crop&w=480&q=55",
     className: cardPositions[0],
   },
   {
@@ -56,7 +56,7 @@ const stableLandingCards: LandingFoodCard[] = [
     place: "Campus pickup",
     time: "18 min",
     image:
-      "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=480&q=55",
     className: cardPositions[1],
   },
   {
@@ -64,7 +64,7 @@ const stableLandingCards: LandingFoodCard[] = [
     place: "Fast meals",
     time: "15 min",
     image:
-      "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=480&q=55",
     className: cardPositions[2],
   },
   {
@@ -72,7 +72,7 @@ const stableLandingCards: LandingFoodCard[] = [
     place: "Quick add-on",
     time: "5 min",
     image:
-      "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=480&q=55",
     className: cardPositions[3],
   },
 ];
@@ -133,17 +133,22 @@ function FoodFan({ cards }: { cards: LandingFoodCard[] }) {
   return (
     <div className="relative mx-auto h-[380px] w-full max-w-[540px] sm:h-[430px]">
       <div className="absolute inset-x-8 bottom-2 h-24 rounded-full bg-primary/15 blur-3xl" />
-      {visibleCards.map((card) => (
+      {visibleCards.map((card, index) => (
         <div
           key={card.name}
           className={`absolute h-[250px] w-[178px] overflow-hidden rounded-2xl border border-white/80 bg-card shadow-[0_22px_48px_-28px_oklch(0.18_0.02_50)] transition duration-300 hover:z-50 hover:-translate-y-2 hover:rotate-0 sm:h-[300px] sm:w-[214px] ${card.className}`}
         >
-          <div
-            className="h-full bg-cover bg-center"
-            style={{
-              backgroundImage: `linear-gradient(180deg, transparent 48%, rgba(0,0,0,.72) 100%), url(${card.image})`,
-            }}
+          <img
+            src={card.image}
+            alt=""
+            width="480"
+            height="480"
+            loading={index === 0 ? "eager" : "lazy"}
+            fetchPriority={index === 0 ? "high" : "low"}
+            decoding="async"
+            className="h-full w-full object-cover"
           />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent from-45% to-black/75" />
           <div className="absolute inset-x-3 bottom-3 rounded-xl border border-white/15 bg-black/45 p-3 text-white backdrop-blur">
             <div className="flex items-end justify-between gap-3">
               <div>

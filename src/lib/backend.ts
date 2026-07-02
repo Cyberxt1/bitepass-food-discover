@@ -1,5 +1,5 @@
 import { FILES, appendRow, deleteRow, readTable, updateRow } from "./csv-store";
-import { isSupabaseConfigured, supabase } from "./supabase";
+import { getSupabase, isSupabaseConfigured } from "./supabase";
 import type {
   Discount,
   Feedback,
@@ -60,6 +60,7 @@ function isMissingSupabaseColumn(error: { message?: string }, column: string) {
 }
 
 async function readSupabaseTable<T extends Row>(name: CollectionName): Promise<T[]> {
+  const supabase = await getSupabase();
   if (!supabase) return [];
 
   const { data, error } = await supabase.from(name).select("*");
@@ -81,7 +82,9 @@ async function readCollection<T extends Row>(name: CollectionName): Promise<T[]>
 }
 
 async function setCollectionDoc<T extends Row>(name: CollectionName, item: T) {
-  if (useSupabase && supabase) {
+  if (useSupabase) {
+    const supabase = await getSupabase();
+    if (!supabase) throw new Error("Supabase is not configured");
     const { error } = await supabase.from(name).upsert(cleanRow(item));
     if (error) {
       throw new Error(`Supabase ${name} write failed: ${error.message}`);
@@ -97,7 +100,9 @@ async function patchCollectionDoc(
   id: string,
   patch: Record<string, unknown>,
 ) {
-  if (useSupabase && supabase) {
+  if (useSupabase) {
+    const supabase = await getSupabase();
+    if (!supabase) throw new Error("Supabase is not configured");
     const { data, error } = await supabase
       .from(name)
       .update(cleanRow({ id, ...patch }))
@@ -105,7 +110,11 @@ async function patchCollectionDoc(
       .select("*")
       .maybeSingle();
     if (error) {
-      if (name === "users" && "likedMealIds" in patch && isMissingSupabaseColumn(error, "likedMealIds")) {
+      if (
+        name === "users" &&
+        "likedMealIds" in patch &&
+        isMissingSupabaseColumn(error, "likedMealIds")
+      ) {
         const { likedMealIds: _likedMealIds, ...retryPatch } = patch;
         if (Object.keys(retryPatch).length > 0) {
           const { data: retryData, error: retryError } = await supabase
@@ -140,7 +149,9 @@ async function patchCollectionDoc(
 }
 
 async function deleteCollectionDoc(name: CollectionName, id: string) {
-  if (useSupabase && supabase) {
+  if (useSupabase) {
+    const supabase = await getSupabase();
+    if (!supabase) throw new Error("Supabase is not configured");
     const { error } = await supabase.from(name).delete().eq("id", id);
     if (error) {
       throw new Error(`Supabase ${name} delete failed: ${error.message}`);
@@ -250,8 +261,7 @@ export const backend = {
     writeWithFallback(() => patchCollectionDoc("discounts", id, patch)),
 
   deleteUser: (id: string) => writeWithFallback(() => deleteCollectionDoc("users", id)),
-  deleteRestaurant: (id: string) =>
-    writeWithFallback(() => deleteCollectionDoc("restaurants", id)),
+  deleteRestaurant: (id: string) => writeWithFallback(() => deleteCollectionDoc("restaurants", id)),
   deleteMeal: (id: string) => writeWithFallback(() => deleteCollectionDoc("meals", id)),
   deleteOrder: (id: string) => writeWithFallback(() => deleteCollectionDoc("orders", id)),
   deleteReview: (id: string) => writeWithFallback(() => deleteCollectionDoc("reviews", id)),
