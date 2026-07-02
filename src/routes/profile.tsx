@@ -22,6 +22,8 @@ import { getCurrentLocationDetails, shortLocationLabel } from "@/lib/location";
 import { notify, useNotifications } from "@/lib/notifications";
 import { useTheme, type Theme } from "@/lib/theme";
 import { backend } from "@/lib/backend";
+import { PwaInstallButton } from "@/components/PwaInstallButton";
+import { usePwaInstall } from "@/lib/pwa";
 
 export const Route = createFileRoute("/profile")({ component: ProfilePage });
 
@@ -29,6 +31,7 @@ function ProfilePage() {
   const { user, logout, updateProfile } = useAuth();
   const { preferences, updatePreferences } = useNotifications();
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const { canInstall } = usePwaInstall();
   const nav = useNavigate();
   const [locating, setLocating] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -172,12 +175,25 @@ function ProfilePage() {
             disabled={loggingOut}
             className="flex w-full items-center justify-center gap-3 rounded-2xl border border-destructive/20 bg-card px-4 py-3.5 text-sm font-medium text-destructive shadow-soft hover:bg-destructive/5 disabled:opacity-60"
           >
-            {loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+            {loggingOut ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
             {loggingOut ? "Signing out..." : "Sign out"}
           </button>
         </aside>
 
         <section className="space-y-4">
+          {canInstall && (
+            <SettingsCard
+              title="Install BitePass"
+              detail="Keep BitePass on your home screen and open it like a regular app."
+            >
+              <PwaInstallButton className="w-full rounded-2xl bg-gradient-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-glow sm:w-auto" />
+            </SettingsCard>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             <Link
               to="/orders"

@@ -11,6 +11,7 @@ import {
   Utensils,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { PwaInstallButton } from "@/components/PwaInstallButton";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -213,7 +214,11 @@ function Landing() {
               type="button"
               onClick={() => setLandingDark((value) => !value)}
               className="h-6 w-6 rounded-full bg-[#ff6b2d] shadow-[0_0_0_5px_rgba(255,107,45,0.12)] transition active:scale-90"
-              aria-label={landingDark ? "Switch landing page to light theme" : "Switch landing page to dark theme"}
+              aria-label={
+                landingDark
+                  ? "Switch landing page to light theme"
+                  : "Switch landing page to dark theme"
+              }
             />
             <Link to="/" className="text-[var(--landing-text)]">
               BitePass
@@ -221,10 +226,16 @@ function Landing() {
           </div>
 
           <div className="hidden items-center gap-8 md:flex">
-            <a href="#how" className="text-sm text-[var(--landing-muted)] transition hover:text-[var(--landing-text)]">
+            <a
+              href="#how"
+              className="text-sm text-[var(--landing-muted)] transition hover:text-[var(--landing-text)]"
+            >
               How it works
             </a>
-            <a href="#features" className="text-sm text-[var(--landing-muted)] transition hover:text-[var(--landing-text)]">
+            <a
+              href="#features"
+              className="text-sm text-[var(--landing-muted)] transition hover:text-[var(--landing-text)]"
+            >
               Features
             </a>
             <a
@@ -236,7 +247,10 @@ function Landing() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link to="/login" className="hidden px-3 py-2 text-sm text-[var(--landing-muted)] md:inline-flex">
+            <Link
+              to="/login"
+              className="hidden px-3 py-2 text-sm text-[var(--landing-muted)] md:inline-flex"
+            >
               Sign in
             </Link>
             <Link
@@ -285,8 +299,11 @@ function Landing() {
                 >
                   Browse meals
                 </Link>
+                <PwaInstallButton
+                  label="Install BitePass"
+                  className="rounded-full border border-[var(--landing-border)] bg-[var(--landing-card)] px-5 py-3 text-sm font-bold text-[var(--landing-text)] transition hover:border-[#d3c4b8]"
+                />
               </div>
-
             </div>
 
             <Reveal>
@@ -319,7 +336,9 @@ function Landing() {
                       <Icon className="h-5 w-5" />
                     </div>
                     <h3 className="mt-5 font-black">{title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-[var(--landing-muted)]">{description}</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--landing-muted)]">
+                      {description}
+                    </p>
                   </div>
                 </Reveal>
               ))}
@@ -349,7 +368,9 @@ function Landing() {
                   <div className="h-full rounded-[1.25rem] border border-[var(--landing-border)] bg-[var(--landing-card)] p-5">
                     <Icon className="h-5 w-5 text-[#df521b]" />
                     <h3 className="mt-8 font-black">{title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-[var(--landing-muted)]">{description}</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--landing-muted)]">
+                      {description}
+                    </p>
                   </div>
                 </Reveal>
               ))}
@@ -390,20 +411,23 @@ function Landing() {
 
             <Reveal delay={120}>
               <div className="overflow-hidden rounded-[1.5rem] border border-[var(--landing-border)] bg-[var(--landing-card)]">
-                {stableLandingCards.slice(0, 3).map((card, index) => [
-                  `#${String(index + 1).padStart(2, "0")}`,
-                  card.name,
-                  card.place,
-                ]).map(([id, meal, status]) => (
-                  <div
-                    key={id}
-                    className="grid grid-cols-[0.7fr_1fr_0.7fr] gap-3 border-b border-[var(--landing-border-soft)] px-5 py-4 text-sm last:border-b-0"
-                  >
-                    <p className="font-black">{id}</p>
-                    <p className="text-[var(--landing-muted)]">{meal}</p>
-                    <p className="text-right font-bold text-[#20854f]">{status}</p>
-                  </div>
-                ))}
+                {stableLandingCards
+                  .slice(0, 3)
+                  .map((card, index) => [
+                    `#${String(index + 1).padStart(2, "0")}`,
+                    card.name,
+                    card.place,
+                  ])
+                  .map(([id, meal, status]) => (
+                    <div
+                      key={id}
+                      className="grid grid-cols-[0.7fr_1fr_0.7fr] gap-3 border-b border-[var(--landing-border-soft)] px-5 py-4 text-sm last:border-b-0"
+                    >
+                      <p className="font-black">{id}</p>
+                      <p className="text-[var(--landing-muted)]">{meal}</p>
+                      <p className="text-right font-bold text-[#20854f]">{status}</p>
+                    </div>
+                  ))}
               </div>
             </Reveal>
           </div>
@@ -430,7 +454,6 @@ function Landing() {
             </div>
           </Reveal>
         </section>
-
       </main>
 
       <footer className="border-t border-[var(--landing-border-soft)] px-5 py-8">
