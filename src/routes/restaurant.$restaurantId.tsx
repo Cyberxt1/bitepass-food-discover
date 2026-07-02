@@ -22,6 +22,7 @@ import { naira } from "@/lib/format";
 import { shortLocationLabel } from "@/lib/location";
 import { useCart } from "@/lib/cart";
 import { isMealPublic, isRestaurantPublic } from "@/lib/platform";
+import { ProgressiveItem } from "@/components/ProgressiveItem";
 
 export const Route = createFileRoute("/restaurant/$restaurantId")({ component: RestaurantPage });
 
@@ -341,48 +342,55 @@ function MenuSection({
             ))}
           </div>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            {visibleMeals.map((meal) => (
-              <div
-                key={meal.id}
-                className="flex min-w-0 items-center gap-3 rounded-2xl bg-card p-2 text-left shadow-soft transition hover:bg-muted"
-              >
-                <button
-                  type="button"
-                  onClick={() => setSelectedMeal(meal)}
-                  className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted text-left"
-                >
-                  {meal.image ? (
-                    <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="grid h-full place-items-center px-2 text-center text-[10px] font-black">
-                      {meal.name}
-                    </div>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedMeal(meal)}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <p className="line-clamp-1 text-sm font-black">{meal.name}</p>
-                  <p className="line-clamp-1 text-xs text-muted-foreground">{meal.description}</p>
-                  <p className="mt-1 text-sm font-black text-primary">{naira(meal.price)}</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleMealLike(meal)}
-                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-95 ${
-                    likedMealIds.has(meal.id)
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                  aria-label={
-                    likedMealIds.has(meal.id) ? "Remove from cravings" : "Save to cravings"
-                  }
-                >
-                  <Flame className={`h-4 w-4 ${likedMealIds.has(meal.id) ? "fill-current" : ""}`} />
-                </button>
-              </div>
+            {visibleMeals.map((meal, index) => (
+              <ProgressiveItem key={meal.id} index={index} intrinsicSize="80px">
+                <div className="flex min-w-0 items-center gap-3 rounded-2xl bg-card p-2 text-left shadow-soft transition hover:bg-muted">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMeal(meal)}
+                    className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted text-left"
+                  >
+                    {meal.image ? (
+                      <img
+                        src={meal.image}
+                        alt={meal.name}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full place-items-center px-2 text-center text-[10px] font-black">
+                        {meal.name}
+                      </div>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMeal(meal)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <p className="line-clamp-1 text-sm font-black">{meal.name}</p>
+                    <p className="line-clamp-1 text-xs text-muted-foreground">{meal.description}</p>
+                    <p className="mt-1 text-sm font-black text-primary">{naira(meal.price)}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleMealLike(meal)}
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-95 ${
+                      likedMealIds.has(meal.id)
+                        ? "border-primary/30 bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                    aria-label={
+                      likedMealIds.has(meal.id) ? "Remove from cravings" : "Save to cravings"
+                    }
+                  >
+                    <Flame
+                      className={`h-4 w-4 ${likedMealIds.has(meal.id) ? "fill-current" : ""}`}
+                    />
+                  </button>
+                </div>
+              </ProgressiveItem>
             ))}
           </div>
         </>

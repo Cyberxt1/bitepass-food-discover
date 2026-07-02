@@ -37,6 +37,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { MealCard } from "@/components/MealCard";
 import { SkeletonCard } from "@/components/SkeletonCard";
+import { ProgressiveItem } from "@/components/ProgressiveItem";
 
 export const Route = createFileRoute("/discover")({ component: Discover });
 const NEARBY_RADIUS_KM = 40;
@@ -418,42 +419,40 @@ function Discover() {
                   detail="Try searching while more kitchens join your area."
                 />
               ) : (
-                <div
-                  className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0"
-                >
-                  {loading
-                    ? Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="w-[72vw] max-w-[260px] shrink-0 snap-center">
-                          <SkeletonCard />
-                        </div>
-                      ))
-                    : (
-                      <>
-                        {displayRestaurants.map((r) => (
-                          <div key={r.id} className="w-[72vw] max-w-[260px] shrink-0 snap-center">
-                            <RestaurantCard
-                              r={r}
-                              distanceLabel={distanceFor(r)}
-                              compact
-                              minimal
-                            />
-                          </div>
-                        ))}
-                        {visibleNearbyRestaurants.length >= 4 && (
-                          <Link
-                            to="/nearby"
-                            className="grid min-h-[220px] w-[72vw] max-w-[260px] shrink-0 snap-center place-items-center rounded-2xl border border-dashed border-primary/40 bg-primary/10 p-5 text-center text-primary shadow-soft transition active:scale-[0.98]"
-                          >
-                            <span>
-                              <span className="block text-sm font-black">View all</span>
-                              <span className="mt-1 block text-xs font-bold text-primary/75">
-                                See every restaurant near you
-                              </span>
+                <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+                  {loading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="w-[72vw] max-w-[260px] shrink-0 snap-center">
+                        <SkeletonCard />
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      {displayRestaurants.map((r, index) => (
+                        <ProgressiveItem
+                          key={r.id}
+                          index={index}
+                          intrinsicSize="300px"
+                          className="w-[72vw] max-w-[260px] shrink-0 snap-center"
+                        >
+                          <RestaurantCard r={r} distanceLabel={distanceFor(r)} compact minimal />
+                        </ProgressiveItem>
+                      ))}
+                      {visibleNearbyRestaurants.length >= 4 && (
+                        <Link
+                          to="/nearby"
+                          className="grid min-h-[220px] w-[72vw] max-w-[260px] shrink-0 snap-center place-items-center rounded-2xl border border-dashed border-primary/40 bg-primary/10 p-5 text-center text-primary shadow-soft transition active:scale-[0.98]"
+                        >
+                          <span>
+                            <span className="block text-sm font-black">View all</span>
+                            <span className="mt-1 block text-xs font-bold text-primary/75">
+                              See every restaurant near you
                             </span>
-                          </Link>
-                        )}
-                      </>
-                    )}
+                          </span>
+                        </Link>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </section>
@@ -468,53 +467,48 @@ function Discover() {
                   See all <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
-              <div
-                className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0"
-              >
-                {loading
-                  ? Array.from({ length: 3 }).map((_, i) => (
-                      <div
-                        key={i}
+              <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="w-[82vw] max-w-[360px] shrink-0 snap-center">
+                      <SkeletonCard />
+                    </div>
+                  ))
+                ) : !coords ? (
+                  <div className="w-[82vw] max-w-[360px] shrink-0 snap-center">
+                    <EmptyPanel
+                      title="Set your location to see nearby foods"
+                      detail="Trending now only shows dishes from restaurants near you."
+                      compact
+                    />
+                  </div>
+                ) : trending.length === 0 ? (
+                  <div className="w-[82vw] max-w-[360px] shrink-0 snap-center">
+                    <EmptyPanel
+                      title="No nearby foods yet"
+                      detail="Approved dishes from restaurants within 40 km will show here."
+                      compact
+                    />
+                  </div>
+                ) : (
+                  trending.map((m, index) => {
+                    const rest = restaurants.find((r) => r.id === m.restaurantId);
+                    return (
+                      <ProgressiveItem
+                        key={m.id}
+                        index={index}
+                        intrinsicSize="360px"
                         className="w-[82vw] max-w-[360px] shrink-0 snap-center"
                       >
-                        <SkeletonCard />
-                      </div>
-                    ))
-                  : !coords
-                    ? (
-                      <div className="w-[82vw] max-w-[360px] shrink-0 snap-center">
-                        <EmptyPanel
-                          title="Set your location to see nearby foods"
-                          detail="Trending now only shows dishes from restaurants near you."
-                          compact
+                        <MealCard
+                          meal={m}
+                          restaurantName={rest?.name}
+                          onQuickView={setSelectedMeal}
                         />
-                      </div>
-                    )
-                  : trending.length === 0
-                    ? (
-                      <div className="w-[82vw] max-w-[360px] shrink-0 snap-center">
-                        <EmptyPanel
-                          title="No nearby foods yet"
-                          detail="Approved dishes from restaurants within 40 km will show here."
-                          compact
-                        />
-                      </div>
-                    )
-                    : trending.map((m) => {
-                      const rest = restaurants.find((r) => r.id === m.restaurantId);
-                      return (
-                        <div
-                          key={m.id}
-                          className="w-[82vw] max-w-[360px] shrink-0 snap-center"
-                        >
-                          <MealCard
-                            meal={m}
-                            restaurantName={rest?.name}
-                            onQuickView={setSelectedMeal}
-                          />
-                        </div>
-                      );
-                    })}
+                      </ProgressiveItem>
+                    );
+                  })
+                )}
               </div>
             </section>
           </div>

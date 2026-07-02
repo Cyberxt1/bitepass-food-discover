@@ -3,6 +3,7 @@ import { ArrowLeft, LocateFixed, Navigation } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { SkeletonCard } from "@/components/SkeletonCard";
+import { ProgressiveItem } from "@/components/ProgressiveItem";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import {
@@ -134,13 +135,10 @@ function NearbyPage() {
           </section>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {sortedRestaurants.map(({ restaurant, distance }) => (
-              <RestaurantCard
-                key={restaurant.id}
-                r={restaurant}
-                distanceLabel={formatDistance(distance)}
-                compact
-              />
+            {sortedRestaurants.map(({ restaurant, distance }, index) => (
+              <ProgressiveItem key={restaurant.id} index={index} intrinsicSize="300px">
+                <RestaurantCard r={restaurant} distanceLabel={formatDistance(distance)} compact />
+              </ProgressiveItem>
             ))}
           </div>
         )}

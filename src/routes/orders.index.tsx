@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
 import { backend } from "@/lib/backend";
 import { pickupTimingLabel } from "@/lib/pickup-time";
+import { ProgressiveItem } from "@/components/ProgressiveItem";
 
 export const Route = createFileRoute("/orders/")({ component: OrdersList });
 
@@ -69,50 +70,51 @@ function OrdersList() {
         </div>
       ) : (
         <main className="mx-auto grid max-w-6xl gap-3 px-4 pt-4 sm:px-6 md:grid-cols-2 lg:px-8 lg:pt-8 xl:grid-cols-3">
-          {orders.map((order) => {
+          {orders.map((order, index) => {
             const items = JSON.parse(order.items) as { name: string; qty: number }[];
             return (
-              <Link
-                key={order.id}
-                to="/orders/$orderId"
-                params={{ orderId: order.id }}
-                onClick={() => setOpeningOrderId(order.id)}
-                className="block rounded-2xl bg-card p-4 shadow-soft transition hover:-translate-y-0.5"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">Order #{order.id.slice(-5)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(order.createdAt).toLocaleString()}
-                    </p>
-                    <p className="text-[11px] font-bold text-primary">
-                      {pickupTimingLabel(order.pickupTime)}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${statusColors[order.status] ?? ""}`}
-                    >
-                      {order.status}
-                    </span>
-                    {order.paymentStatus === "paid" && (
-                      <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">
-                        paid
+              <ProgressiveItem key={order.id} index={index} intrinsicSize="170px">
+                <Link
+                  to="/orders/$orderId"
+                  params={{ orderId: order.id }}
+                  onClick={() => setOpeningOrderId(order.id)}
+                  className="block rounded-2xl bg-card p-4 shadow-soft transition hover:-translate-y-0.5"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-semibold">Order #{order.id.slice(-5)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(order.createdAt).toLocaleString()}
+                      </p>
+                      <p className="text-[11px] font-bold text-primary">
+                        {pickupTimingLabel(order.pickupTime)}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${statusColors[order.status] ?? ""}`}
+                      >
+                        {order.status}
                       </span>
-                    )}
+                      {order.paymentStatus === "paid" && (
+                        <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">
+                          paid
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <p className="mt-2 line-clamp-1 text-xs text-muted-foreground">
-                  {items.map((item) => `${item.qty}x ${item.name}`).join(", ")}
-                </p>
-                <div className="mt-2 text-sm font-bold text-primary">{naira(order.total)}</div>
-                {openingOrderId === order.id && (
-                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-xs font-bold text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                    Opening order...
-                  </div>
-                )}
-              </Link>
+                  <p className="mt-2 line-clamp-1 text-xs text-muted-foreground">
+                    {items.map((item) => `${item.qty}x ${item.name}`).join(", ")}
+                  </p>
+                  <div className="mt-2 text-sm font-bold text-primary">{naira(order.total)}</div>
+                  {openingOrderId === order.id && (
+                    <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-xs font-bold text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                      Opening order...
+                    </div>
+                  )}
+                </Link>
+              </ProgressiveItem>
             );
           })}
         </main>

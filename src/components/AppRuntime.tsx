@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ChefHat, Home, Receipt, Search, ShoppingBag, User as UserIcon } from "lucide-react";
+import { Home, Receipt, Search, ShoppingBag, User as UserIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
@@ -126,9 +126,9 @@ function DesktopUserNav() {
         <Link
           to="/discover"
           aria-label="BitePass home"
-          className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-glow"
+          className="grid h-12 w-12 place-items-center rounded-2xl bg-white shadow-glow"
         >
-          <ChefHat className="h-5 w-5" />
+          <img src="/brand-logo.png" alt="" className="h-10 w-10 object-contain" />
         </Link>
 
         <nav className="mt-8 flex w-full flex-1 flex-col items-center gap-2">

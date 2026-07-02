@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, LocateFixed, Search as SearchIcon } from "lucide-re
 import { z } from "zod";
 
 import { RestaurantCard } from "@/components/RestaurantCard";
+import { ProgressiveItem } from "@/components/ProgressiveItem";
 import { backend } from "@/lib/backend";
 import { useAuth } from "@/lib/auth";
 import type { Meal, Restaurant } from "@/lib/seed";
@@ -180,17 +181,18 @@ function SearchPage() {
           <LoadingPanel label="Searching restaurants..." />
         ) : hasSearch ? (
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {results.map((restaurant) => (
-              <RestaurantCard
-                key={restaurant.id}
-                r={restaurant}
-                compact
-                distanceLabel={
-                  coords && restaurantCoords(restaurant)
-                    ? formatDistance(distanceKm(coords, restaurantCoords(restaurant)!))
-                    : undefined
-                }
-              />
+            {results.map((restaurant, index) => (
+              <ProgressiveItem key={restaurant.id} index={index} intrinsicSize="300px">
+                <RestaurantCard
+                  r={restaurant}
+                  compact
+                  distanceLabel={
+                    coords && restaurantCoords(restaurant)
+                      ? formatDistance(distanceKm(coords, restaurantCoords(restaurant)!))
+                      : undefined
+                  }
+                />
+              </ProgressiveItem>
             ))}
           </div>
         ) : (

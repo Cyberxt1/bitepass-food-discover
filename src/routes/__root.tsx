@@ -3,12 +3,14 @@ import {
   Link,
   Outlet,
   createRootRouteWithContext,
+  useNavigate,
   useRouter,
   useRouterState,
 } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 
 import { hasActiveSession } from "@/lib/session-cookie";
+import { isRunningAsPwa } from "@/lib/pwa";
 
 const AppRuntime = lazy(() => import("@/components/AppRuntime"));
 
@@ -64,11 +66,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const path = useRouterState({ select: (state) => state.location.pathname });
+  const navigate = useNavigate();
   const [resumeSession, setResumeSession] = useState(false);
+  const runningAsPwa = isRunningAsPwa();
 
   useEffect(() => {
+    if (path === "/" && runningAsPwa) {
+      navigate({ to: "/discover", replace: true });
+      return;
+    }
     setResumeSession(path === "/" && hasActiveSession());
-  }, [path]);
+  }, [navigate, path, runningAsPwa]);
+
+  if (path === "/" && runningAsPwa) {
+    return <AppLoadingFallback />;
+  }
 
   if (path === "/" && !resumeSession) {
     return <Outlet />;
@@ -85,7 +97,12 @@ function AppLoadingFallback() {
   return (
     <div className="grid min-h-screen place-items-center bg-background px-6">
       <div className="text-center">
-        <span className="mx-auto block h-10 w-10 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+        <img
+          src="/splash-logo.jpg"
+          alt="BitePass"
+          className="mx-auto w-64 max-w-[72vw] rounded-2xl"
+        />
+        <span className="mx-auto mt-5 block h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
         <p className="mt-4 text-sm font-bold">Opening BitePass...</p>
       </div>
     </div>

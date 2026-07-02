@@ -1,12 +1,18 @@
-const CACHE_NAME = "bitepass-v2";
+const CACHE_NAME = "bitepass-v4";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [
   OFFLINE_URL,
   "/manifest.webmanifest",
-  "/favicon-32.png",
-  "/apple-touch-icon.png",
-  "/pwa-192.png",
-  "/pwa-512.png",
+  "/app-icon-32.png",
+  "/app-icon-180.png",
+  "/app-icon-192.png",
+  "/app-icon-512.png",
+  "/splash-logo.jpg",
+  "/brand-logo.png",
+  "/landing-food-11.jpg",
+  "/landing-food-13.jpg",
+  "/landing-food-15.jpg",
+  "/landing-food-18.jpg",
 ];
 
 self.addEventListener("install", (event) => {

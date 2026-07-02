@@ -18,8 +18,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="BitePass" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/app-icon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png" />
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
     <style>
       #bitepass-boot {
@@ -38,10 +38,9 @@
         text-align: center;
       }
       #bitepass-boot img {
-        width: 72px;
-        height: 72px;
-        border-radius: 20px;
-        box-shadow: 0 16px 40px rgba(249, 115, 22, 0.2);
+        width: min(300px, 76vw);
+        height: auto;
+        border-radius: 18px;
       }
       #bitepass-boot p {
         margin: 16px 0 0;
@@ -83,7 +82,7 @@
     <div id="app">
       <div id="bitepass-boot" role="status" aria-live="polite">
         <div>
-          <img src="/pwa-192.png" alt="" />
+          <img src="/splash-logo.jpg" alt="BitePass" />
           <p>Getting BitePass ready...</p>
           <span aria-hidden="true"></span>
         </div>

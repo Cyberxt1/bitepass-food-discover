@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { naira } from "@/lib/format";
 import { notify } from "@/lib/notifications";
 import type { Meal, Restaurant } from "@/lib/seed";
+import { ProgressiveItem } from "@/components/ProgressiveItem";
 
 export const Route = createFileRoute("/cravings")({ component: CravingsPage });
 
@@ -124,44 +125,52 @@ function CravingsPage() {
           </section>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {likedMeals.map((meal) => {
+            {likedMeals.map((meal, index) => {
               const restaurant = restaurantById.get(meal.restaurantId);
               return (
-                <article key={meal.id} className="overflow-hidden rounded-2xl bg-card shadow-soft">
-                  <Link to="/meal/$mealId" params={{ mealId: meal.id }} className="block">
-                    <div className="aspect-[4/3] overflow-hidden bg-muted">
-                      {meal.image ? (
-                        <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="grid h-full place-items-center px-5 text-center text-sm font-black">
-                          {meal.name}
-                        </div>
-                      )}
+                <ProgressiveItem key={meal.id} index={index} intrinsicSize="360px">
+                  <article className="overflow-hidden rounded-2xl bg-card shadow-soft">
+                    <Link to="/meal/$mealId" params={{ mealId: meal.id }} className="block">
+                      <div className="aspect-[4/3] overflow-hidden bg-muted">
+                        {meal.image ? (
+                          <img
+                            src={meal.image}
+                            alt={meal.name}
+                            loading="lazy"
+                            decoding="async"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="grid h-full place-items-center px-5 text-center text-sm font-black">
+                            {meal.name}
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="line-clamp-1 text-sm font-black">{meal.name}</p>
+                        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                          {restaurant?.name ?? "Restaurant"}
+                        </p>
+                        <p className="mt-2 text-sm font-black text-primary">{naira(meal.price)}</p>
+                      </div>
+                    </Link>
+                    <div className="border-t border-border p-2">
+                      <button
+                        type="button"
+                        onClick={() => void removeCraving(meal)}
+                        disabled={Boolean(removingId)}
+                        className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 text-xs font-black text-destructive transition active:scale-95 disabled:opacity-60"
+                      >
+                        {removingId === meal.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                        Remove
+                      </button>
                     </div>
-                    <div className="p-3">
-                      <p className="line-clamp-1 text-sm font-black">{meal.name}</p>
-                      <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                        {restaurant?.name ?? "Restaurant"}
-                      </p>
-                      <p className="mt-2 text-sm font-black text-primary">{naira(meal.price)}</p>
-                    </div>
-                  </Link>
-                  <div className="border-t border-border p-2">
-                    <button
-                      type="button"
-                      onClick={() => void removeCraving(meal)}
-                      disabled={Boolean(removingId)}
-                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 text-xs font-black text-destructive transition active:scale-95 disabled:opacity-60"
-                    >
-                      {removingId === meal.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                      Remove
-                    </button>
-                  </div>
-                </article>
+                  </article>
+                </ProgressiveItem>
               );
             })}
           </div>

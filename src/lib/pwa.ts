@@ -43,13 +43,18 @@ function getServerCanInstall() {
   return false;
 }
 
+export function isRunningAsPwa() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    ("standalone" in navigator &&
+      (navigator as Navigator & { standalone?: boolean }).standalone === true)
+  );
+}
+
 export function usePwaInstall() {
   const canPrompt = useSyncExternalStore(subscribe, getCanInstall, getServerCanInstall);
-  const isStandalone =
-    typeof window !== "undefined" &&
-    (window.matchMedia("(display-mode: standalone)").matches ||
-      ("standalone" in navigator &&
-        (navigator as Navigator & { standalone?: boolean }).standalone === true));
+  const isStandalone = isRunningAsPwa();
   const isIos =
     typeof navigator !== "undefined" &&
     /iphone|ipad|ipod/i.test(navigator.userAgent) &&

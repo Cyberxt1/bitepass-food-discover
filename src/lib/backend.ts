@@ -75,6 +75,13 @@ async function readCollection<T extends Row>(name: CollectionName): Promise<T[]>
   ensureSeed();
 
   if (useSupabase) {
+    const cached = readTable<T>(fileFor[name]);
+    if (cached.length > 0) {
+      void readSupabaseTable<T>(name).catch((error) => {
+        console.warn(`Background refresh for ${name} failed`, error);
+      });
+      return cached;
+    }
     return readSupabaseTable<T>(name);
   }
 

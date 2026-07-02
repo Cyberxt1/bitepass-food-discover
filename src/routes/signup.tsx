@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ChefHat, Lock, Mail, Store, User } from "lucide-react";
+import { ArrowLeft, Lock, Mail, Store, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getDashboardPath, useAuth } from "@/lib/auth";
 import { notify } from "@/lib/notifications";
@@ -63,8 +63,8 @@ function SignupPage() {
       <div className="w-full max-w-md">
         <div className="rounded-[2rem] border border-border/80 bg-background/80 p-5 shadow-card backdrop-blur md:p-7">
           <div className="text-center animate-slide-up">
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-glow">
-              <ChefHat className="h-6 w-6 text-primary-foreground" />
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white shadow-glow">
+              <img src="/brand-logo.png" alt="BitePass" className="h-14 w-14 object-contain" />
             </div>
             <h1 className="mt-4 text-2xl font-bold">Create your account</h1>
             <p className="mt-1 text-sm text-muted-foreground">

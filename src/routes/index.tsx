@@ -44,35 +44,31 @@ const cardPositions = [
 
 const stableLandingCards: LandingFoodCard[] = [
   {
-    name: "Smoky Jollof",
+    name: "Fried Rice & Chicken",
     place: "Ready lunch",
     time: "20 min",
-    image:
-      "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?auto=format&fit=crop&w=480&q=55",
+    image: "/landing-food-11.jpg",
     className: cardPositions[0],
   },
   {
-    name: "Grilled Chicken",
-    place: "Campus pickup",
-    time: "18 min",
-    image:
-      "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=480&q=55",
+    name: "Stuffed Chicken Wrap",
+    place: "Quick bite",
+    time: "12 min",
+    image: "/landing-food-13.jpg",
     className: cardPositions[1],
   },
   {
-    name: "Pasta Bowl",
-    place: "Fast meals",
-    time: "15 min",
-    image:
-      "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=480&q=55",
+    name: "Crispy Bites",
+    place: "Snack break",
+    time: "10 min",
+    image: "/landing-food-15.jpg",
     className: cardPositions[2],
   },
   {
-    name: "Cold Drinks",
-    place: "Quick add-on",
-    time: "5 min",
-    image:
-      "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=480&q=55",
+    name: "Rice & Plantain",
+    place: "Campus favourite",
+    time: "18 min",
+    image: "/landing-food-18.jpg",
     className: cardPositions[3],
   },
 ];
@@ -140,9 +136,9 @@ function FoodFan({ cards }: { cards: LandingFoodCard[] }) {
         >
           <img
             src={card.image}
-            alt=""
-            width="480"
-            height="480"
+            alt={card.name}
+            width="264"
+            height="225"
             loading={index === 0 ? "eager" : "lazy"}
             fetchPriority={index === 0 ? "high" : "low"}
             decoding="async"
@@ -215,19 +211,22 @@ function Landing() {
       <nav className="sticky top-0 z-50 border-b border-[var(--landing-border-soft)] bg-[var(--landing-bg)]/90 backdrop-blur-xl transition-colors duration-300">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
           <div className="flex items-center gap-2 text-sm font-bold">
+            <Link to="/" aria-label="BitePass home" className="shrink-0">
+              <img src="/brand-logo.png" alt="" className="h-9 w-9 object-contain" />
+            </Link>
+            <Link to="/" className="text-[var(--landing-text)]">
+              BitePass
+            </Link>
             <button
               type="button"
               onClick={() => setLandingDark((value) => !value)}
-              className="h-6 w-6 rounded-full bg-[#ff6b2d] shadow-[0_0_0_5px_rgba(255,107,45,0.12)] transition active:scale-90"
+              className="ml-1 h-3.5 w-3.5 rounded-full bg-[#ff6b2d] shadow-[0_0_0_4px_rgba(255,107,45,0.12)] transition active:scale-90"
               aria-label={
                 landingDark
                   ? "Switch landing page to light theme"
                   : "Switch landing page to dark theme"
               }
             />
-            <Link to="/" className="text-[var(--landing-text)]">
-              BitePass
-            </Link>
           </div>
 
           <div className="hidden items-center gap-8 md:flex">
@@ -464,7 +463,7 @@ function Landing() {
       <footer className="border-t border-[var(--landing-border-soft)] px-5 py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-sm text-[var(--landing-muted)] md:flex-row">
           <div className="flex items-center gap-2 font-bold text-[var(--landing-text)]">
-            <span className="h-5 w-5 rounded-full bg-[#ff6b2d]" />
+            <img src="/brand-logo.png" alt="" className="h-8 w-8 object-contain" />
             BitePass
           </div>
           <p className="text-xs">
